@@ -230,3 +230,7 @@ Matching выполняется строго в порядке **typed normaliza
 ## 25. R1A — реализация Catalog & Classification Foundation
 
 В GitHub добавлен начальный JPA-срез (не только проектное ТЗ): `Category` как единая иерархия HCC (20 символьных позиционных цифр), `AttributeDefinition`, `CategoryAttributeRule`, `CanonicalProduct`, `SellerListing`, `SellerSku`, `SkuAttributeValue` и репозитории. Существующие `CustomerOrder`, `OrderLine`, `BuyerDemand`, `SellerBid` сохранены. Есть быстрые unit/JPA-тесты и **ручной, ещё не применённый** PostgreSQL DDL `backend/src/main/resources/db/manual/V001__catalog_foundation.sql`. До выпуска нужны полноценная валидация правил атрибутов и позиционной иерархии, авторизация продавца, PostgreSQL schema validation с Testcontainers и контролируемый миграционный процесс. [R1-CATALOG-FOUNDATION-IMPLEMENTATION.md](R1-CATALOG-FOUNDATION-IMPLEMENTATION.md).
+
+## 26. R1B — каталог, HCC, публикация и серверные факты SKU
+
+Реализованы первичные R1B-проверки и JPA-слой: фиксированная 2/2/3/5/8 позиционная структура HCC, обязательность и применимость атрибутов для каждого SKU при публикации, проверка принадлежности Listing продавцу и серверное разрешение фактов PUBLIC SKU для будущего сопоставления с BuyerDemand. PostgreSQL ручной DDL проверяется отдельным Testcontainers IT; production миграция, идентификация authenticated actor, текущий остаток, seller verification, территория и ценовой quote пока не реализованы. Подробные ограничения и квалификация: [R1B-CATALOG-QUALIFICATION.md](R1B-CATALOG-QUALIFICATION.md).
