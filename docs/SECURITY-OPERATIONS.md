@@ -66,3 +66,7 @@ Graceful degradation: public listing works when analytics/FCM unavailable; order
 ## DEC-27 — no-SMS login and notifications
 
 An FCM push token is **not** an authentication factor. Recovery requires a verified email or still-authorized trusted session, else safe manual procedure pending review. Persistent Notification Center in PostgreSQL is authoritative; push optional and nonblocking. Notification read flags independent from Seller Inbox. Details and RED oracles: [AUTH-NOTIFICATIONS.md](AUTH-NOTIFICATIONS.md).
+
+## R0.3 Kazakhstan data residency and targeted encryption
+
+Chosen baseline: production PostgreSQL, personal data, media/claim storage, backups, PITR, audit and logs containing personal data are hosted within Kazakhstan. Encrypt transport TLS, backups/disks, and **sensitive fields** (lead phone, delivery address, claim evidence/access tokens) using appropriate encryption and key rotation; password hash with Argon2id, not reversible encryption. Assess third-party emails, FCM, CDN/analytics, ops access and any cross-border transfers separately; KZ hosting by itself does not discharge consent, retention or transfer obligations. The current Article 12 data localization language was amended in 2026. [R0.3 spec and legal references](MVP-DECISIONS-R03.md). Formal Kazakhstan legal/security review remains mandatory.
