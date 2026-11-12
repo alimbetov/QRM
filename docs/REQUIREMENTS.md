@@ -176,3 +176,9 @@ Use **S0 Scenario Design → S1 executable RED → S2 independent Test Review �
 **Ссылки на детальные источники:** [ADR-002](ADR-002-MVC-JPA.md), [ADR-003](ADR-003-JAVA-ML-RECOMMENDATIONS.md), [Buyer Web](DEC-BUYER-WEB-CATALOG.md), [SKU/locations](DEC-ENTITY-MULTI-SKU-LOCATION.md), [Selected SKU Order](DEC-SELECTED-SKU-ORDER.md), [Order Number/QR](DEC-ORDER-NUMBER-001.md), [Geolocation](DEC-LOCATION-GEOPOINT.md), [Reverse/Bargaining/Deal Finder](DEC-KILLER-FEATURES-R1.md), [Entity Registry](ENTITY-REGISTRY-R05.md), [Domain Contracts](DOMAIN-CONTRACTS.md), [API-SPEC](API-SPEC.md), [TEST-PLAN](TEST-PLAN.md), [DECISIONS](DECISIONS.md).
 
 **Note:** detailed older design documents remain for traceability but cannot override the conflict ledger above. No product feature described here is deemed implemented solely because its product direction is approved.
+
+## 17. UCE-001 — Универсальная классификация для Buyer/Seller Matching
+
+Утверждается для последующего S2 согласования концепт [Universal Classification Engine](DEC-UCE-001-UNIVERSAL-CLASSIFICATION.md): единый каталог PHYSICAL/SERVICE/DIGITAL, классы, типизированные атрибуты (единицы и нормализованные коды), схема с версионированием, локализация KK/RU/EN/ZH, раздельные сущности Canonical Product/Service Spec и предложение конкретного продавца. Внешние GS1 GPC/UNSPSC/Schema.org коды — optional mapping, не внутренние первичные ключи. 
+
+Matching выполняется строго в порядке **typed normalization → eligibility/hard constraints → verified all-in cost → Tribuo score или rules fallback**. Модель не может разрешить неподходящий SKU, фиктивное наличие, чужую публикацию или автоматически акцептовать торговые условия. Политики замен/единиц/модификации схемы должны пройти S2; дополнительные таблицы не считаются утверждёнными до физического проектирования и PostgreSQL-тестов.
