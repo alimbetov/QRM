@@ -7,7 +7,7 @@
 | Phase | Scope | Exit gate |
 |---|---|---|
 | R0 | scenario design, domain invariants, ER, state diagrams and draft OpenAPI | independent review of test oracles |
-| R1 | Identity, OTP, seller profile, logo | ownership/security integration tests |
+| R1 | Password Identity (without SMS/OTP), seller profile, logo | ownership/security integration tests |
 | R2 | category, product, listing, translation, image, YouTube | public visibility + media validations |
 | R3 | quantity pricing and scheduled discounts | price boundary/time/concurrency tests |
 | R4 | QR attribution and React storefront | QR→page and public views E2E |
@@ -24,8 +24,8 @@
 
 | ID | Given / when | Expected |
 |---|---|---|
-| ID-01 | valid phone OTP | creates single user and unique normalized nickname |
-| ID-02 | invalid/overused OTP | rejected and throttled |
+| ID-01 | valid phone login + password | creates user with unique normalized login and phoneVerified=false |
+| ID-02 | invalid password, brute force | rejected, same public error and throttled |
 | SEL-01 | owner changes seller logo | profile and all listing pages show updated logo |
 | SEL-02 | other account updates seller | 403, no mutation |
 | CAT-01 | category missing | category suggestion, not immediate public category |
@@ -125,3 +125,7 @@ No automatic merge into main without approved PR review. This repository current
 ## Customer Activity Aggregator — сценарии R0
 
 Тесты `CAA-01…CAA-12` и критерии разграничения данных продавцов, точных границ девятимесячного окна, replay/idempotency, статусов новых и вернувшихся клиентов приведены в [CUSTOMER-ACTIVITY-AGGREGATOR.md](CUSTOMER-ACTIVITY-AGGREGATOR.md). Отдельный S2 Review должен проверить алгоритм уровней и антинакрутку до реализации.
+
+## DEC-27 scenarios
+
+AUTH-01…AUTH-10 and NOT-01…NOT-10 from [AUTH-NOTIFICATIONS.md](AUTH-NOTIFICATIONS.md) supersede obsolete OTP/phone verification tests. Test on real PostgreSQL, ensure no SMS gateways or required FCM presence.
