@@ -22,7 +22,7 @@ Web callback form: телефон, количество, «согласен с �
 1. Dashboard: новые обращения, ожидающие цены, активные заказы, QR views, без финансовых обещаний.
 2. Inbox: три категории LEAD / NEGOTIATION / ORDER; вкладки ALL/UNREAD/READ/BOOKMARKED, фильтры статус/период/listing, count unread, cursor pagination 30/page.
 3. Lead detail: телефон покупателя только при авторизованном просмотре, цена/количество, отмечать «перезвонил», «неинтересно», контекст открытия, без кнопки auto-create order.
-4. Negotiation: история раундов, current offer and expiry, accept/counter/reject, явная кнопка «Создать заказ» только после AGREED; показывает remaining round count.
+4. Negotiation: история раундов, current offer and expiry, accept/counter/reject, для продавца AGREED отображается без кнопки создания заказа; покупатель во Flutter видит явную кнопку «Создать заказ», если соглашение действительно. Показывает remaining round count.
 5. Order: price snapshot, статус, события, fulfillment type, buyer cancellation requests.
 6. Listing manager: черновик, загрузка фото, каталог и ед. измерения, локали, tiers, timed discounts, YouTube, QR download.
 7. Seller profile: логотип, slug, публичная страница, ошибки модерации.
@@ -78,3 +78,7 @@ Flutter registration: phone login + password + nickname, optional email; display
 ## Карта переходов и последовательностей MVP
 
 Согласованная карта экранов и доменных действий, схемы для React Web, Flutter Buyer/Seller, QR-login, уведомлений, fulfillment и reputation: [USER-JOURNEYS-MVP.md](USER-JOURNEYS-MVP.md). Таблицы UX-01…16/EDGE-01…20 являются проектными acceptance-критериями. Обязательно отображать отдельные состояния AGREED vs Order PLACED и Web Lead vs электронный заказ.
+
+## Результат MVP technical review
+
+[TECHNICAL-REVIEW-MVP.md](TECHNICAL-REVIEW-MVP.md): продавец подтверждает/отклоняет/предлагает цену через React Seller Cabinet или Flutter, **создание Order после AGREED — явная команда покупателя во Flutter** (предложенное правило, подтвердить S2). Завершение продавцом — READY_FOR_RECEIPT, а не подтверждение получения покупателем. Не отображать оплачено на основании статуса сделки.
