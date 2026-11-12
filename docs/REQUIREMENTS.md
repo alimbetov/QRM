@@ -234,3 +234,7 @@ Matching выполняется строго в порядке **typed normaliza
 ## 26. R1B — каталог, HCC, публикация и серверные факты SKU
 
 Реализованы первичные R1B-проверки и JPA-слой: фиксированная 2/2/3/5/8 позиционная структура HCC, обязательность и применимость атрибутов для каждого SKU при публикации, проверка принадлежности Listing продавцу и серверное разрешение фактов PUBLIC SKU для будущего сопоставления с BuyerDemand. PostgreSQL ручной DDL проверяется отдельным Testcontainers IT; production миграция, идентификация authenticated actor, текущий остаток, seller verification, территория и ценовой quote пока не реализованы. Подробные ограничения и квалификация: [R1B-CATALOG-QUALIFICATION.md](R1B-CATALOG-QUALIFICATION.md).
+
+## 27. R1B.2 — Catalog Security & Integrity (реализация)
+
+Кодовая реализация добавляет `CatalogDraftMutationService` (транзакционные изменения DRAFT с блокировкой Listing, проверкой владельца), глобальные допустимые `AttributeEnumOption` и `CatalogEnumPolicy`, запрет неизвестных enum при публикации и выдаче server-owned SKU facts. Дополнительно PostgreSQL `V003` защищает опубликованные SKU/атрибуты от прямых SQL UPDATE/INSERT/DELETE. Домен заказов не менялся. **Пока нет** HTTP-авторизации seller principal, полного контролируемого процесса миграции, версионированного HCC/reference-data snapshot и разрешённого процесса переиздания SKU. Эти условия обязательны до production. [R1B.2 отчёт](R1B2-CATALOG-SECURITY-AND-INTEGRITY.md).
