@@ -15,7 +15,7 @@
 | Package | Scope | Prerequisites | Definition of Done |
 |---|---|---|---|
 | FND-01 | Java 21/WebFlux/R2DBC spike, Liquibase, CI | ADR-001 review | red-green transaction, rollback, outbox proof |
-| ID-01 | Phone OTP, identity, reactive authz | FND-01 | OTP/rate-limit/ownership tests |
+| ID-01 | Phone-as-login + password, refresh sessions, reactive authz; NO SMS/OTP | FND-01 | AUTH-01…10, recovery and ownership tests |
 | SEL-01 | SellerProfile, logo, seller page | ID-01, media | public+private integration and upload tests |
 | CAT-01 | Category, measurement units, products | FND-01 | category permissions, locale contract |
 | LST-01 | Listing, translation, publish/unlisted/archive | CAT-01, SEL-01, media | state matrix tests |
@@ -33,7 +33,7 @@
 | APP-01 | Flutter buyer and seller journeys | ID-01, ORD-01, INB-01 | real device smoke |
 | AUTH-QR | QR Web login and sessions | ID-01, APP-01 | challenge browser-binding/replay/revoke |
 | FAV-01 | Flutter favorites, quantity watch | APP-01, PRI-01 | unique favorite, watched pricing |
-| NOT-01 | push+outbox and scheduled discount alerts | DSC-01, FAV-01 | dedup/retry/consent |
+| NOT-01 | durable Notification Center + Outbox + optional Push | FND-01, ID-01 | NOT-01…10, FCM outage resilience; price-watch events later after DSC-01/FAV-01 |
 | RTE-01 | reviews, seller/product rating | FUL-01 | purchase eligibility and abuse tests |
 | ANA-01 | view/QR event ingestion, daily aggregates | QR-01, WEB-01 | nonblocking, bot/dedup/test |
 | OPS-01 | deployment, monitoring, backup/recovery | FND-01 | documented runbooks and restored DB |
@@ -65,11 +65,11 @@
 | OPEN-04 | Услуги и digital: единицы, исполнение, претензии | separate fulfillment strategies | product/legal review |
 | OPEN-05 | Юр. правила обработки/хранения контактов в Казахстане | minimize+expire, local legal counsel | production launch |
 | OPEN-06 | React Web seller cabinet: какие изменения разрешены | full seller management subject to RBAC | UX/API review |
-| OPEN-07 | Обязателен ли OTP для добровольных Web leads | нет, антиспам + callback consent | threat model |
+| OPEN-07 | Web Leads без SMS/OTP | согласовано; антиспам + callback consent, secure per-lead withdrawal | threat model |
 | OPEN-08 | Рассчитывается ли уведомление по per-unit или total watch | effective total for watched quantity | pricing UX review |
 | OPEN-09 | Доступ к отмене после исполнения и возвратам | consumer-law preserving workflow | product/legal review |
 | OPEN-10 | Сроки хранения detailed analytics/reviews/claims | explicit retention schedule | legal/privacy review |
-| OPEN-11 | Доступность авторизации через QR при потере телефона | recovery via verified phone + session reset | identity UX review |
+| OPEN-11 | Восстановление при потере телефона без SMS | только verified email или ещё действующая доверенная сессия; иначе ручная процедура TBD | identity UX review |
 | OPEN-12 | Граница первого релиза между P0/P1 | confirm scope after V1/V2 pilots | product sign-off |
 
 ## 6. Нельзя объявлять готовым без доказательств
@@ -91,3 +91,7 @@
 | NPA-01 | Daily 02:30 Asia/Almaty snapshot buyer/seller/seller-buyer 9M, profile publication, rerun/recovery | CAA-01, ORD-01, FUL-01, RTE-01 | NPA-01…NPA-20 RED/S2/PG integration and failure recovery |
 
 Единый ночной worker проектируется без Kafka/отдельного микросервиса. Реализацию начинать после квалификации реальных событий выполнения заказов и рейтингов, иначе будет рейтинг по неподтверждённым действиям. [Полное ТЗ](NIGHTLY-PROFILE-AGGREGATION.md).
+
+## DEC-27 work package
+
+Identity must not include SMS/OTP adapter, and notification first must persist internally, without required FCM. Build password credentials, rotating device sessions, verified-email recovery, and notification outbox projection in RED→S2→GREEN sequence. [Full design](AUTH-NOTIFICATIONS.md).
