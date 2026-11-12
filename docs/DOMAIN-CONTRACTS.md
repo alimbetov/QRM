@@ -101,7 +101,7 @@
 
 ## 5. Правила целостности
 
-- `unique(userId, listingId)` Favorite, `unique(listingId, locale)` Translation, `unique(sellerId, subjectType, subjectId, userId)` InboxState.
+- `unique(userId, listingId)` Favorite, `unique(listingId, locale)` Translation, `unique(sellerId, subjectType, subjectId, userId)` InboxState; verified ratings unique by `(orderId,targetType)` and target is derived from immutable Order.
 - `unique(acceptedOfferId)` на создание Order из Negotiation, включая nullable semantics.
 - `unique(requestActorId, idempotencyKey, operationKind)` для mutable operations.
 - Строгий tenant/owner predicate во всех seller queries, включая списки, count и cursors.
@@ -115,3 +115,13 @@ Phone is only an unverified login identifier, no OTP confirmation. Passwords has
 ## MVP consistency decisions (R0 recommendations)
 
 [TECHNICAL-REVIEW-MVP.md](TECHNICAL-REVIEW-MVP.md) определяет canonical Negotation enum, buyer-only command создания Order после AGREED, различие Fulfillment READY_FOR_RECEIPT и Order COMPLETED, независимые seller/product ratings. **Пять встречных сообщений** как определение лимита — PROPOSED до S2. Состояния `ORDER_CREATED` не являются заказом, пока транзакция Order+Outbox не закоммичена.
+
+## Second-pass critical invariants
+
+- **Fulfillment:** READY_FOR_RECEIPT продавца != RECEIVED покупателя; нажатие продавцом «выполнено» не создаёт право на рейтинг и не улучшает торговый уровень. Случаи отсутствия подтверждения разрешаются отдельной процедурой, не auto-completion.
+- **Lead:** секрет отзыва одноразовый, криптостойкий, хранится хеш, TTL/rate-limit; совпадение телефона не связывает с зарегистрированным аккаунтом.
+- **Reviews:** по одному независимому seller/product отзыву на квалифицированный Order; отзыв всегда указывает продавца/объявление из снапшота заказа, не из клиентского payload; модерация меняет рейтинг при rebuild.
+- **Money:** server-side BigDecimal и immutable Order price/terms snapshot; оффер не может менять каталог, при переходе AGREED→Order проверяются актуальные права, expiry и условия согласования. Числовая шкала KZT и округление проходят S2 до реализации.
+- **Identities:** телефон без подтверждения — alias для логина, не гарантирует владение и не допускает восстановления доступа по номеру.
+
+[R2 technical review](TECHNICAL-REVIEW-R2.md).
