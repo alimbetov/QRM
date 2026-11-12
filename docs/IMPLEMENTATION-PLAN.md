@@ -83,3 +83,11 @@
 | CAA-01 | Outbox consume, daily/monthly stats, 9M rolling score, seller-specific customer relationship, optional monthly partitioning | ORD-01, FUL-01, OPS-01 | CAA-01…12 Testcontainers, privacy isolation, anti-replay, reclassification, S2 review |
 
 Рекомендую разрабатывать после подтверждения Order/Fulfillment, иначе агрегатор не получит достоверные события завершения. [Полная спецификация](CUSTOMER-ACTIVITY-AGGREGATOR.md).
+
+## NPA-01 — Nightly Profile Aggregation
+
+| Package | Scope | Dependencies | Gate |
+|---|---|---|---|
+| NPA-01 | Daily 02:30 Asia/Almaty snapshot buyer/seller/seller-buyer 9M, profile publication, rerun/recovery | CAA-01, ORD-01, FUL-01, RTE-01 | NPA-01…NPA-20 RED/S2/PG integration and failure recovery |
+
+Единый ночной worker проектируется без Kafka/отдельного микросервиса. Реализацию начинать после квалификации реальных событий выполнения заказов и рейтингов, иначе будет рейтинг по неподтверждённым действиям. [Полное ТЗ](NIGHTLY-PROFILE-AGGREGATION.md).
