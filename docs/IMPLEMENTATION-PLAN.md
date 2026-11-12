@@ -133,3 +133,7 @@ S1: пять временных fold, sufficiency, fallback выбора алг�
 ## ADR-005 — staged nightly intelligence batching
 
 Новые S1/S2 задачи: deterministic bucket assignment и 12 NB тестов → source watermark/period revision → PostgreSQL monthly RANGE events/daily (weekly partitions only after measured size), control run/bucket task schema и worker claim с `FOR UPDATE SKIP LOCKED` → bounded chunks/checkpoints/lease expiry → closed-week revision + 1/4/12/52 feature invalidation → staged whole-run publication / rollback → conditional Tribuo retraining и benchmark против online p95/p99. Нагрузка сначала 16 виртуальных бакетов, 1–2 реальных worker-потока; числа являются гипотезой для k6/pg benchmark. Начать без Kafka/нового микросервиса. [ADR-005](ADR-005-NIGHTLY-BUCKETED-INTELLIGENCE.md).
+
+## ML-RISK-002 — self-tuning gates + bounded multithreaded buckets
+
+S1: безопасная калибровка порогов на исторических независимых cohorts, floor/ceiling и отказ при слабых доказательствах; детерминированные SHA-256 buckets и bounded platform worker pool, тесты на провал бакета. S2: запрет tuning/evaluation leakage, независимый holdout, clustered intervals, проверка worst segments, версии threshold policy; реальный adaptive worker admission по p95/CPU/DB pool, ограниченная очередь, PostgreSQL lease/checkpoint и atomic publication. S3: Testcontainers/k6 стресс с 5K пользователей и nightly 1→4 workers. [DEC-ML-RISK-002](DEC-ML-RISK-002-ADAPTIVE-GATES-AND-BOUNDED-WORKERS.md).
