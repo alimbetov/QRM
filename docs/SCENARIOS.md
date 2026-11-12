@@ -129,3 +129,7 @@ No automatic merge into main without approved PR review. This repository current
 ## DEC-27 scenarios
 
 AUTH-01…AUTH-10 and NOT-01…NOT-10 from [AUTH-NOTIFICATIONS.md](AUTH-NOTIFICATIONS.md) supersede obsolete OTP/phone verification tests. Test on real PostgreSQL, ensure no SMS gateways or required FCM presence.
+
+## Единая карта пользовательских сценариев MVP
+
+[USER-JOURNEYS-MVP.md](USER-JOURNEYS-MVP.md) объединяет 16 сквозных UX-сценариев и 20 негативных/конкурентных случаев, диаграммы Web→Flutter→Order, PurchaseLead, торговых переговоров, получения/отзыва, QR Web login, уведомлений и ночных агрегатов. До implementation нужно закрыть явно обозначенные OPEN-01/03/04/11/13/14 и проверить диаграммы независимым S2 Review. Схемы описывают проект, не реализованный Backend.
