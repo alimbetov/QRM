@@ -122,3 +122,7 @@ Seller relationship endpoints require verified seller ownership/participation in
 ## Implementation sequencing clarified after technical review
 
 Logical `customer_daily_stats` and `customer_monthly_stats` definitions are **optimization candidates**, not a requirement to create all tables before MVP. First calculate exact rolling 9M using auditable indexed qualified-order event times and publish one nightly snapshot. Daily/monthly rollups and partitioning are deferred unless load evidence requires them. Canonical minimal pipeline: [NIGHTLY-PROFILE-AGGREGATION.md](NIGHTLY-PROFILE-AGGREGATION.md), [TECHNICAL-REVIEW-MVP.md](TECHNICAL-REVIEW-MVP.md).
+
+## R0.3 tier proposals
+
+For the lightweight MVP, preliminary buyer 9M levels by qualified receipts are 0–2/3–9/10–24/25–49/50+; seller levels are 0–4/5–19/20–49/50–149/150+. No minimum active-month requirement for **tier** in MVP; lifecycle activity is separate. New / no-history is a neutral profile label, never a negative trust marker. These thresholds **are proposed, not final S2-approved**; version them and test all boundaries. Avoid counting seller self-confirmation without buyer receipt. See [MVP-DECISIONS-R03.md](MVP-DECISIONS-R03.md).
