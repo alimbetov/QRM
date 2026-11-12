@@ -14,7 +14,7 @@
 
 | Package | Scope | Prerequisites | Definition of Done |
 |---|---|---|---|
-| FND-01 | Java 21/WebFlux/R2DBC spike, Liquibase, CI | ADR-001 review | red-green transaction, rollback, outbox proof |
+| FND-01 | Java 21/Spring MVC/JPA foundation, PostgreSQL, dev-only Hibernate DDL, CI | ADR-001 review | red-green transaction, rollback, outbox proof |
 | ID-01 | Phone-as-login + password, refresh sessions, reactive authz; NO SMS/OTP | FND-01 | AUTH-01…10, recovery and ownership tests |
 | SEL-01 | SellerProfile, logo, seller page | ID-01, media | public+private integration and upload tests |
 | CAT-01 | Category, measurement units, products | FND-01 | category permissions, locale contract |
