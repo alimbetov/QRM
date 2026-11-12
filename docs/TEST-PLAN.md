@@ -80,3 +80,22 @@ All AUTH-01…10 and NOT-01…10 from [AUTH-NOTIFICATIONS.md](AUTH-NOTIFICATIONS
 ## Post-review gates
 
 [TECHNICAL-REVIEW-MVP.md](TECHNICAL-REVIEW-MVP.md) задаёт единые P0/P1 границы. Дополнительные RED оракулы: Order и Outbox атомарно; buyer-only explicit create-order (до S2), подтверждение исполнения не равнозначно получению, отдельные Seller/Product reviews, no-rating null, один snapshot при повторном ночном пересчёте, web seller cabinet не выпускается без QR auth, phone unverified не доступен для восстановления, internal Notification Center сохраняется при отказе Push.
+
+## R2 regression / consistency tests
+
+| ID | Scenario | Oracle |
+|---|---|---|
+| R2-T01 | unverified phone login collision | no implied ownership; account squatting mitigation and recovery review |
+| R2-T02 | no verified email or trusted device | no insecure password recovery |
+| R2-T03 | seller marks fulfillment READY, buyer does not confirm | no Order COMPLETED/review/tier inflation |
+| R2-T04 | concurrent offer acceptance and order conversion | exactly one Order+Outbox and immutable price snapshot |
+| R2-T05 | two ratings: seller/product same Order | exactly one per target, independent summaries |
+| R2-T06 | lead withdrawn with guessed/expired token | rejected and no PII exposure |
+| R2-T07 | profile aggregation reads during concurrent order/review mutation | one coherent source snapshot, no mixed counts |
+| R2-T08 | job lease takeover + stale worker publish | stale worker rejected; old published snapshot preserved |
+| R2-T09 | no current-month activity but historical 9M | tier preserved until window decay |
+| R2-T10 | Web lead/Notification Center/Inbox GET | no mutation of unrelated business/read states |
+| R2-T11 | nonphysical listing without enabled workflow | publishing rejected, physical flow unaffected |
+| R2-T12 | optional push unavailable | notification persisted, order/lead succeeds |
+
+[R2 audit](TECHNICAL-REVIEW-R2.md). **Ни один тест в этом документе ещё не реализован.**
