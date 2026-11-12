@@ -137,3 +137,7 @@ S1: пять временных fold, sufficiency, fallback выбора алг�
 ## ML-RISK-002 — self-tuning gates + bounded multithreaded buckets
 
 S1: безопасная калибровка порогов на исторических независимых cohorts, floor/ceiling и отказ при слабых доказательствах; детерминированные SHA-256 buckets и bounded platform worker pool, тесты на провал бакета. S2: запрет tuning/evaluation leakage, независимый holdout, clustered intervals, проверка worst segments, версии threshold policy; реальный adaptive worker admission по p95/CPU/DB pool, ограниченная очередь, PostgreSQL lease/checkpoint и atomic publication. S3: Testcontainers/k6 стресс с 5K пользователей и nightly 1→4 workers. [DEC-ML-RISK-002](DEC-ML-RISK-002-ADAPTIVE-GATES-AND-BOUNDED-WORKERS.md).
+
+## R1 Catalog & Classification Foundation — executed slice A
+
+R1A implemented in branch: minimal category/HCC, typed attribute definition + applicability, canonical product separate from seller listing and SKU, smoke tests, draft SQL DDL. R1B next: PostgreSQL Testcontainers **against real migration**, required attribute/enum/units rules, category parent depth/cycle, authenticated seller ownership, server-side SKU matching facts. RED test review before implementation. [Implementation note](R1-CATALOG-FOUNDATION-IMPLEMENTATION.md).
