@@ -259,3 +259,7 @@ sequenceDiagram
 8. **OPEN-14 (new):** consistency semantics for relation status after buyer account changes / seller staff access.
 
 **Implementation note:** diagrams in this document are Markdown Mermaid and are not evidence of operational software.
+
+## Consistency review addendum
+
+Схемы отражают MVP концепцию, где только Flutter-покупатель явно создаёт Order после AGREED (pending S2 oracle), а продавец через React/Flutter соглашается или делает counter. У продавца завершение исполнения — READY_FOR_RECEIPT, получение подтверждает покупатель; статус Order COMPLETED после этого события. При конфликте подробности см. [TECHNICAL-REVIEW-MVP.md](TECHNICAL-REVIEW-MVP.md). Для services/digital необходимо отдельное тестовое исполнение до их включения.
