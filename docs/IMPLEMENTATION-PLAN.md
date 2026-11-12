@@ -119,3 +119,7 @@ Do **not** build SMS delivery in ID-01 registration or normal auth. Keep `PhoneV
 ## SD-R2 — Smart Deal optional differentiator
 
 [SMART-DEAL-R2.md](SMART-DEAL-R2.md): SD-R2-S0 → S1 RED (SD-01…SD-36) → independent S2 → S3 BuyerDemand/SQL Matching → SellerBid/one Order conversion → S4 E2E → S5 optional Tribuo shadow. Depends on working Identity, Listing, Pricing, Negotiation, Order, Fulfillment, Outbox and Notification Center. **SD-R2 is a feature milestone, distinct from the existing R2 catalog stage**; avoid implementing parallel Order/payment/notification services. React guest callback remains Lead-only.
+
+### SD-R2 Audit Gate
+
+[SD-AUD-01](SMART-DEAL-R2-AUDIT.md) describes 20 architectural findings; [Smart Deal spec](SMART-DEAL-R2.md) has 52 proposed RED tests. Required R2-S1 PostgreSQL Testcontainers coverage: SELECTED bid expiry, seller replacement/select race, repeat Outbox/invite, full quantity matching, cost unknown, one accepted-offer+Order+Outbox transaction, no collateral effect on existing QR/Web Lead flow. No independent S2 review or executable tests yet. Extra infrastructure not allowed without evidence.
