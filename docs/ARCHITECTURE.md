@@ -12,7 +12,7 @@ flowchart TD
   FLUTTER --> API[Spring Boot modular monolith]
   WEB --> API
   LEAD --> API
-  API -->|R2DBC| PG[(PostgreSQL)]
+  API -->|JPA / JDBC| PG[(PostgreSQL)]
   API --> OBJ[(S3-compatible media / RustFS)]
   API --> OUTBOX[(Transactional Outbox)]
   OUTBOX --> WORKER[Async notification/analytics workers]
@@ -34,7 +34,8 @@ Backend: утверждён Java 21 LTS, поддерживаемый Spring Boo
 | qr | QR code, source attribution, stable redirect | хранить цену в QR |
 | lead | PurchaseLead, callback consent, lead status, anti-spam | превращать Web callback в заказ автоматически |
 | negotiation | PriceNegotiation, PriceOffer, 5 rounds | менять Listing price |
-| order | CustomerOrder, immutable price snapshot, status | делать перевод денег |
+| order | CustomerOrder, multiple OrderLine immutable snapshots, status | делать перевод денег |
+| inventory | ProductSku inventory policy, InventoryLocation, InventoryBalance, InventoryReservation, InventoryMovement | резервировать до подтверждения продавца |
 | fulfillment | Delivery, ServiceCompletion, DigitalProvision, ReturnClaim | использовать одну механику доставки для всех типов |
 | favorite | Favorite, FavoritePriceWatch | позволять Web UI сохранять избранное |
 | rating | ProductReview, SellerReview, moderation state | оценивать качество до получения |
@@ -62,7 +63,15 @@ erDiagram
   USER ||--o{ FAVORITE : saves
   LISTING ||--o{ FAVORITE : saved
   FAVORITE ||--o| FAVORITE_PRICE_WATCH : monitors
-  CUSTOMER_ORDER ||--o{ PRICE_OFFER : negotiates
+  LISTING ||--|{ PRODUCT_SKU : offers
+  SELLER_PROFILE ||--o{ INVENTORY_LOCATION : operates
+  PRODUCT_SKU ||--o{ INVENTORY_BALANCE : stored_as
+  INVENTORY_LOCATION ||--o{ INVENTORY_BALANCE : holds
+  CUSTOMER_ORDER ||--|{ ORDER_LINE : includes
+  PRODUCT_SKU ||--o{ ORDER_LINE : selected
+  ORDER_LINE ||--o| INVENTORY_RESERVATION : reserves
+  NEGOTIATION_SESSION ||--|{ PRICE_OFFER : proposes
+  PRICE_OFFER o|--o| CUSTOMER_ORDER : accepted_into
   CUSTOMER_ORDER ||--o{ ORDER_STATUS_HISTORY : tracks
   CUSTOMER_ORDER ||--o| FULFILLMENT : fulfills
   CUSTOMER_ORDER ||--o{ RETURN_CLAIM : claims
@@ -71,7 +80,7 @@ erDiagram
   QR_CODE ||--o{ LISTING_VIEW_EVENT : attributed
 ```
 
-Отдельные сущности также: `MediaObject`, `ListingVideo`, `NotificationPreference`, `PushDevice`, `NotificationDelivery`, `OutboxEvent`, `AuditEvent`, `ReturnReason`, `SellerReview`, `DailyAnalyticsAggregate`, `MeasurementUnit`. Непосредственное участие переговоров в заказе уточняется на R0: согласование может начинаться до создания Order; нельзя требовать CustomerOrder для ещё не подтверждённой цены. Итоговая ER должна отделять NegotiationSession от CustomerOrder и связывать accepted offer с новым заказом.
+Отдельные сущности также: `MediaObject`, `ListingVideo`, `NotificationPreference`, `PushDevice`, `NotificationDelivery`, `OutboxEvent`, `AuditEvent`, `ReturnReason`, `SellerReview`, `DailyAnalyticsAggregate`, `MeasurementUnit`. Непосредственное участие переговоров в заказе уточняется на R0: согласование может начинаться до создания Order; нельзя требовать CustomerOrder для ещё не подтверждённой цены. Основная модель теперь включает много SKU на Listing, много строк заказа, InventoryLocation с регионом/адресом и резервирование только после подтверждения продавца. См. [DEC-ENTITY](DEC-ENTITY-MULTI-SKU-LOCATION.md).
 
 ## 4. API surface (проектные маршруты)
 
@@ -97,6 +106,9 @@ GET    /api/v1/me/seller/leads
 POST   /api/v1/negotiations
 POST   /api/v1/negotiations/{id}/offers
 POST   /api/v1/orders
+POST   /api/v1/orders/{id}/confirm
+GET    /api/v1/me/inventory-locations
+POST   /api/v1/me/inventory-locations
 GET    /api/v1/me/orders
 POST   /api/v1/orders/{id}/transitions
 POST   /api/v1/orders/{id}/claims
