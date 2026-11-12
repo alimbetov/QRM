@@ -201,3 +201,7 @@ QR-авторизация кабинета — отдельный контур `
 ## 15. DEC-27 Identity / Notifications
 
 Телефон — только логин до внешней проверки владения, пароль Argon2id, rotating refresh token, revocation; SMS/OTP не используется. Internal Notification Center в PostgreSQL — обязательный durable ledger; Push/FCM — необязательный best-effort adapter. Seller Inbox и Notification Center имеют независимые read flags. QR Web login авторизуется существующей Flutter-сессией, а не push-токеном. См. [AUTH-NOTIFICATIONS.md](AUTH-NOTIFICATIONS.md).
+
+## Lean MVP boundary after technical review
+
+[TECHNICAL-REVIEW-MVP.md](TECHNICAL-REVIEW-MVP.md) — единая архитектурная сверка; приложение остаётся модульным монолитом WebFlux + R2DBC + PostgreSQL. Seller Web кабинет не выпускается без AUTH-QR, хотя публичная страница работает без входа. Для Aggregator v1 хватит аудируемой исходной проекции квалифицированного исполнения и трёх nightly snapshots, без обязательных дневных/месячных стат-таблиц и партиционирования. Product Rating и Seller Rating независимы, а seller tier не эквивалентен надёжности или оплате.
