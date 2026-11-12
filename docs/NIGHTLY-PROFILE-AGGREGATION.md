@@ -161,8 +161,8 @@ Sample buyer:
   "activitySegment": "ACTIVE",
   "qualifyingOrders9m": 12,
   "activeMonths9m": 4,
-  "windowStart": "2026-02-12T00:00:00Z",
-  "windowEnd": "2026-11-12T00:00:00Z",
+  "windowStart": "2026-02-11T19:00:00Z",
+  "windowEnd": "2026-11-11T19:00:00Z",
   "calculatedAt": "2026-11-12T03:00:00Z",
   "rulesVersion": 1,
   "dataStatus": "CURRENT"
