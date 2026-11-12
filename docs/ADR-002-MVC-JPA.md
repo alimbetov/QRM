@@ -27,6 +27,7 @@ QRM is a QR-first marketplace with transactional negotiations, order conversion,
 - Keep clean architecture boundaries so a future reactive adapter can be benchmarked without rewriting domain invariants.
 
 - Application business timezone: `Asia/Qyzylorda` (owner-selected), applied explicitly in business rules. Persist timestamps as UTC instants and set Hibernate JDBC timezone UTC; never infer timezone merely from a custom property.
+- Test strategy: H2 in-memory for quick Docker-free tests of basic JPA mappings/CRUD and service logic, plus **mandatory PostgreSQL Testcontainers** for native queries, constraints, transactional correctness, isolation and concurrency (especially stock reservation and Order + Outbox). H2 is never a substitute for PostgreSQL acceptance.
 - Initially use Hikari maximum-pool-size=5, minimum-idle=1 for local development, to be measured and tuned before load qualification. Keep `spring.jpa.open-in-view=false`.
 - Logback rolling files: 200MB, 7-day retention, requestId MDC where present; Logbook TRACE only in local/debug profile with PII masking. Avoid request/response body logging in production.
 
