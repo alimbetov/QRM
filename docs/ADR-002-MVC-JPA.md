@@ -1,6 +1,6 @@
 # ADR-002 — Spring MVC + Spring Data JPA as the QRM backend baseline
 
-**Status:** PROPOSED — supersedes ADR-001 on approval; not a statement of completed implementation.
+**Status:** ACCEPTED — architecture baseline approved by product owner on 2026-11-12; documentation and runtime implementation pending.
 **Date:** 2026-11-12
 **Scope:** R0/R1 backend architecture; no runtime code exists in the reviewed repository.
 
@@ -8,8 +8,10 @@
 
 QRM is a QR-first marketplace with transactional negotiations, order conversion, stock reservation, immutable pricing, cancellation, receipts and a PostgreSQL transactional outbox. ADR-001 proposes WebFlux + R2DBC, but its proof spike has not been run. Prioritize transactional correctness, operability, and familiar JPA tooling rather than assuming reactive throughput gains.
 
-## Proposed decision
+## Approved technology stack
 
+- React + TypeScript: public QR storefront and Seller Web Cabinet; no server-rendered HTML.
+- Flutter: buyer and seller mobile app on Android/iOS.
 - Java 21 LTS; pin an actively supported, compatibility-verified Spring Boot release when bootstrapping.
 - Spring MVC + Spring Data JPA/Hibernate + PostgreSQL JDBC + HikariCP.
 - Enable virtual threads as a **separately measured option**, not a throughput guarantee. Blocking JDBC still consumes database connections.
@@ -48,8 +50,8 @@ Collect RPS, p95/p99, error rate, CPU, memory, connection pool waits, lock waits
 
 ## Documentation impacts
 
-When approved, replace reactive-specific stack, testing and architecture language in ARCHITECTURE.md, TEST-PLAN.md, IMPLEMENTATION-PLAN.md, API-SPEC.md and related docs. Retain ADR-001 as historical rationale, mark SUPERSEDED. Replace reactive `StepVerifier/WebTestClient/TransactionalOperator` and 'no JPA' ArchUnit rules with `MockMvc`, JPA/Testcontainers, `@Transactional`, and no domain-to-JPA coupling checks. Do not silently rewrite business decisions or declare implementation complete.
+In the follow-up documentation alignment, replace reactive-specific stack, testing and architecture language in ARCHITECTURE.md, TEST-PLAN.md, IMPLEMENTATION-PLAN.md, API-SPEC.md and related docs. Retain ADR-001 as historical rationale, mark SUPERSEDED. Replace reactive `StepVerifier/WebTestClient/TransactionalOperator` and 'no JPA' ArchUnit rules with `MockMvc`, JPA/Testcontainers, `@Transactional`, and no domain-to-JPA coupling checks. Do not silently rewrite business decisions or declare implementation complete.
 
 ## Decision owner / acceptance
 
-Pending owner review and independent S2 review. This ADR is documentation only.
+Product owner approved the technology choice on 2026-11-12. Independent S2 review still required for executable tests/implementation. This ADR is documentation only.
