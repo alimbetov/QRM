@@ -69,17 +69,17 @@ React Web без авторизации показывает: логотип и 
 
 ### 6.1 Избранное и уведомления
 
-`Favorite` уникален по `(userId,listingId)`. Во Flutter выбирается `trackingMode = UNIT | QUANTITY` и `watchedQuantity`. Система сравнивает **эффективную цену для выбранного количества** с reference/last-notified, учитывает запланированные скидки, присылает push только при реальном снижении и согласии пользователя. Использовать FCM, NotificationPreference, PushDevice, Outbox и idempotent delivery; дедупликация, throttle, отказ от маркетинговых push и обработка невалидных токенов. Изменение цены/начало акции не должно блокироваться недоступностью FCM.
+`Favorite` уникален по `(userId,listingId)`. Во Flutter выбирается `trackingMode = UNIT | QUANTITY` и `watchedQuantity`. Система сравнивает **эффективную цену для выбранного количества** с reference/last-notified, учитывает запланированные скидки, присылает push только при реальном снижении и согласии пользователя. Внутренний Notification Center + Outbox обязательны; FCM, NotificationPreference и PushDevice используются опционально для Push, с idempotent delivery; дедупликация, throttle, отказ от маркетинговых push и обработка невалидных токенов. Изменение цены/начало акции не должно блокироваться недоступностью FCM.
 
 ## 7. Заказ, исполнение, расчёты
 
 **CustomerOrder** — отдельная сущность от Web Lead. MVP: один Listing на заказ, snapshot `seller, buyer, listing, type, quantity, unit, unitPrice, total, currency, discount/offer, terms, createdAt`. Для physical: адрес и ожидаемая дата; для service: дата и условия оказания; для digital: способ предоставления. Покупатель и продавец договариваются о взаиморасчёте напрямую; **система не фиксирует успешную оплату без подтверждённых внешних данных**.
 
-Ортогональные состояния:
-- Negotiation: `PENDING / COUNTER_OFFERED / ACCEPTED / REJECTED / EXPIRED`;
-- Order: `PLACED / CONFIRMED / PROCESSING / COMPLETED / CANCELLED`;
-- Physical delivery: `AWAITING_SHIPMENT / IN_TRANSIT / DELIVERED / FAILED` (+ `NOT_REQUIRED` для нефизических);
-- Return/claim: `REQUESTED / APPROVED / REJECTED / RETURNED`.
+Ортогональные состояния (канонический контракт R0; некоторые переходы требуют S2):
+- Negotiation: `OPEN / COUNTER_PENDING / AGREED / REJECTED / WITHDRAWN / EXPIRED / ORDER_CREATED`;
+- Order: `PLACED / CONFIRMED / PROCESSING / CANCELLATION_REQUESTED / COMPLETED / CANCELLED_BY_BUYER / CANCELLED_BY_SELLER / CANCELLED`;
+- Fulfillment: `PENDING / IN_PROGRESS / READY_FOR_RECEIPT / RECEIVED` (+ типовые стадии для PHYSICAL/SERVICE/DIGITAL);
+- Return/claim: `REQUESTED / APPROVED / REJECTED / RETURNED` (отдельный агрегат).
 
 Фактическая матрица переходов и роли акторов проектируются отдельно; запрещены произвольные PATCH статуса. Создание заказа и переходы статуса идемпотентны; конкурентное согласование — через version/locking. Отдельная history/audit; изменения Listing/скидки не изменяют confirmed Order.
 
@@ -175,3 +175,7 @@ QRM использует один управляемый **Nightly Profile Aggre
 ## 20. Сквозные пользовательские сценарии
 
 [USER-JOURNEYS-MVP.md](USER-JOURNEYS-MVP.md) — единая карта MVP для гостя, Flutter-покупателя и продавца; содержит схемы последовательности, переходы статусов, 16 основных UX и 20 негативных/конкурентных сценариев. Web callback остаётся заявкой на обратный звонок, без заказа; Flutter AGREED не превращается в Order без явного действия. Документ проходит S2 review до разработки.
+
+## 21. Итоги архитектурного review MVP
+
+[TECHNICAL-REVIEW-MVP.md](TECHNICAL-REVIEW-MVP.md) — единый перечень обнаруженных несоответствий, согласованная модель Order/Negotiation/Rating, минимальное разбиение на vertical slices и gates. При расхождении старых описаний статусов ориентироваться на [DOMAIN-CONTRACTS.md](DOMAIN-CONTRACTS.md) и канонические инварианты review; числовые политики требуют S2. Реализация отсутствует.
