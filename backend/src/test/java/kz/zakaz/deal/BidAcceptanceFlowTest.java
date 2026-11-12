@@ -36,7 +36,9 @@ class BidAcceptanceFlowTest {
     private record Seed(BuyerDemand demand,SellerBid bid,UUID buyer,UUID seller,UUID location) {}
     private Seed setup() {
         var category=categories.saveAndFlush(Category.create(
-            "01020030000000000000",ProductType.PHYSICAL,"Phones",null));
+            "01"+String.format("%02d",1+Math.floorMod(UUID.randomUUID().hashCode(),99))
+                +String.format("%03d",1+Math.floorMod(UUID.randomUUID().hashCode(),999))
+                +"0000000000000",ProductType.PHYSICAL,"Phones",null));
         var product=products.saveAndFlush(CanonicalProduct.create(category,"Phone"));
         var seller=UUID.randomUUID();var buyer=UUID.randomUUID();
         var listing=listings.saveAndFlush(SellerListing.draft(seller,product));
@@ -59,7 +61,7 @@ class BidAcceptanceFlowTest {
     private JwtAuthenticationToken buyerToken(String subject) {
         return new JwtAuthenticationToken(Jwt.withTokenValue("verified-by-spring-security")
             .header("alg","RS256").issuer("https://idp.example.test").subject(subject)
-            .claim("aud",List.of("zakaz-api")).build());
+            .claim("aud",List.of("zakaz-api")).build(),List.of());
     }
 
     @Test void quotedDeliveryIncludedInOrderAndExactRetryReturnsSameOrder() {
