@@ -64,3 +64,7 @@ Do not add all these as JPA tables automatically. Reuse existing `Favorite`, `Fa
 ## Explicit non-goals and gates
 
 No runtime model, user profiling, training dataset or real pushes are implemented by this ADR. Production rollout requires security/privacy review appropriate for Kazakhstan, confirmed permissions, defined retention, objective offline/online thresholds and evidence from executable tests. Keep catalog/transaction performance isolated from training tasks.
+
+### TRIBUO-HCC-001 — проверка совместимости HCC и Tribuo
+
+Проведён проектный анализ [REVIEW-TRIBUO-HCC-001.md](REVIEW-TRIBUO-HCC-001.md): HCC и числовые DictionaryNode.id используются как идентификаторы иерархии, а не ordinal ML значения; типизированные глобальные атрибуты, реестр frozen feature schema, чистые as-of признаки и безопасный deterministic fallback обязательны. Город запроса отделён от добровольно указанного города проживания, год рождения — необязательный персональный атрибут с ограничениями обработки. Результат **архитектурно совместимо при выполнении S2-gates**, не доказательство обученной модели или реализованного модуля.
