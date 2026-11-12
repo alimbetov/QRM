@@ -111,3 +111,7 @@ Identity must not include SMS/OTP adapter, and notification first must persist i
 ## R0.3 post-review decision gates
 
 [Decision pack](MVP-DECISIONS-R03.md) records user direction: no SMS, verified-email recovery, buyer-confirmed receipt using short-lived QR/code, nightly profile job after local midnight (00:30 proposed), data residency in Kazakhstan, proposed buyer/seller tier thresholds, KZT legal cash-rounding separation. **OPEN-15** phone-as-unverified-login remains deferred and **must not** be silently declared safe for broad public signup. R03-01…18 → RED/PostgreSQL integration → S2 review → implementation. No extra infrastructure for QR receipt or nightly job.
+
+## DEC-34 optional recovery provider
+
+Do **not** build SMS delivery in ID-01 registration or normal auth. Keep `PhoneVerificationProvider` as optional recovery-bound port only; implementations may be deferred. A valid SMS code for an unverified phone **must not** reset password. Recovery by previously verified email is first option. Implement testable no-SMS-by-default flow and keep OPEN-15 as public-signup blocker. [Auth design](AUTH-NOTIFICATIONS.md).
