@@ -16,7 +16,7 @@ QRM is a QR-first marketplace with transactional negotiations, order conversion,
 - Spring MVC + Spring Data JPA/Hibernate + PostgreSQL JDBC + HikariCP.
 - Enable virtual threads as a **separately measured option**, not a throughput guarantee. Blocking JDBC still consumes database connections.
 - Use Spring Security servlet stack, Bean Validation, MVC REST/OpenAPI, Micrometer and Actuator.
-- Liquibase owns schema and migrations. Database structure, indexes, constraints, SQL plans and money arithmetic remain authoritative.
+- Liquibase is deferred for R1; local development uses Hibernate `ddl-auto=update`, tests use reproducible PostgreSQL schema initialization, and production uses `ddl-auto=validate`. **No automatic production schema changes.** Before public deployment, institute versioned reviewed SQL migrations (Liquibase or equivalent), backup/rollback procedures and a schema consistency gate. Database constraints, indexes and SQL remain authoritative.
 - Use a modular monolith with domain/application/infrastructure boundaries. Domain rules are plain Java. Use DTOs at HTTP boundaries, no exposure of JPA entities.
 - Use `@Transactional` service-level units for state transitions and Order + Outbox atomic persistence. No remote I/O, media uploads, or notifications within the DB transaction.
 - Design repository methods with explicit fetch strategy, no Open Session in View, pagination, projections and optimized SQL for read-heavy storefront endpoints.
@@ -25,6 +25,10 @@ QRM is a QR-first marketplace with transactional negotiations, order conversion,
 - Outbox worker is independently retryable and idempotent; use batched claiming with PostgreSQL locking and bounded concurrency; keep external delivery outside the order transaction.
 - Redis is an **approved deferred caching component**, not an R1 infrastructure dependency. Introduce Spring Cache + Redis in a later measured milestone for public catalog/category/read-model caches, with explicit TTL, event-based invalidation and tenant/key isolation. PostgreSQL remains the only source of truth; order, stock reservation, negotiated price and other authoritative transactional decisions always use PostgreSQL. Cache outage must not compromise order correctness. Kafka, distributed sagas and partitions remain deferred pending measured need.
 - Keep clean architecture boundaries so a future reactive adapter can be benchmarked without rewriting domain invariants.
+
+- Application business timezone: `Asia/Qyzylorda` (owner-selected), applied explicitly in business rules. Persist timestamps as UTC instants and set Hibernate JDBC timezone UTC; never infer timezone merely from a custom property.
+- Initially use Hikari maximum-pool-size=5, minimum-idle=1 for local development, to be measured and tuned before load qualification. Keep `spring.jpa.open-in-view=false`.
+- Logback rolling files: 200MB, 7-day retention, requestId MDC where present; Logbook TRACE only in local/debug profile with PII masking. Avoid request/response body logging in production.
 
 ## Alternatives
 
