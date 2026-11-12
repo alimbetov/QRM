@@ -214,3 +214,7 @@ Metrics: `profile_aggregation_last_success_epoch`, `profile_aggregation_duration
 ## R2 verification: source snapshot and publish policy
 
 A `source_watermark TIMESTAMPTZ` field is **diagnostic**, not the definition of DB-consistent reads. For the MVP choose one coherent `REPEATABLE READ` extraction of qualified orders and eligible reviews or a journal cursor with proven commit semantics, then stage as runId; avoid hours-long R2DBC transactions. Rerun uses new generation; old run stays immutable. Atomic publish refuses older `cutoff_at` or stale fencing token, and same-cutoff replacement requires explicit operator approval. Test backfills and worker split-brain. [R2 technical review](TECHNICAL-REVIEW-R2.md).
+
+## R0.3 schedule clarification
+
+Product direction 'после 12' interpreted **after midnight**: propose start at **00:30 Asia/Almaty**, with `asOfLocalDate` today and exclusive `cutoff` exactly **00:00 Asia/Almaty**. Processes data through the completed previous business day, not live current-day activity. Correctness still requires coherent PostgreSQL read snapshot/journal cursor; delaying run by 30 minutes is **not** a consistency guarantee. Nine-month exact rolling window ends at cutoff. Qualifying Order requires confirmed buyer receipt, not seller-only `READY_FOR_RECEIPT`. [R0.3 decisions](MVP-DECISIONS-R03.md).
