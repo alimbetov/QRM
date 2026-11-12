@@ -171,3 +171,7 @@ erDiagram
 ## Buyer Web catalog follow-up (2026-11-12)
 
 See [DEC-BUYER-WEB-CATALOG](DEC-BUYER-WEB-CATALOG.md). Dynamic category characteristics may require `CategoryAttributeDefinition` plus typed `ListingAttributeValue` / `SkuAttributeValue` **additional candidates beyond 46**. Their cardinality and mapping must be decided in S2 after catalog API contract and indexing tests. Current React prototype has no server entities and does not increase implemented JPA table count.
+
+## Java ML рекомендации — ADR-003
+
+Утверждён стек **Java 21 + Spring Boot + PostgreSQL + Tribuo** в модульном монолите. Для персонализации и рекомендательных Push определены кандидаты `BuyerInteractionEvent`, `BuyerInterestProfile`, `MlTrainingRun`, `MlModelVersion`, `RecommendationFeedback` и возможный `NotificationDecision`; `RecommendationFeatures` — value object, а не JPA entity. Состав таблиц не расширять автоматически; использовать уже имеющиеся Favorite/analytics/notification/outbox контракты. Подробнее: [ADR-003-JAVA-ML-RECOMMENDATIONS.md](ADR-003-JAVA-ML-RECOMMENDATIONS.md). Реального обучения, ML-инференса и отправки Push пока нет.
