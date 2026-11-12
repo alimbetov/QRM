@@ -144,3 +144,7 @@ Phone is only an unverified login identifier, no OTP confirmation. Passwords has
 ## Location snapshots in OrderLine and PriceOfferLine — APPROVED
 
 Buyer sees region and city for each SKU/line. `originCitySnapshot` and `originRegionCodeSnapshot` are preliminary terms at offer/PLACED time, not an exact warehouse promise. The actual confirmed location for TRACKED items is referenced through reservation, and the delivery/pickup destination belongs to fulfillment, not stock address. Full street/building/coordinates are private `InventoryLocation` data. Publish exact pickup address only for an authorized customer-facing pickup point and order participants. Material origin-city changes during seller confirmation require the buyer's explicit renewed consent before reserving. See [DEC-SELECTED-SKU-ORDER](DEC-SELECTED-SKU-ORDER.md).
+
+## Public Order Number — APPROVED
+
+`CustomerOrder.publicNumber` is an immutable unique `ZK-XXXX-XXXX` human-facing locator generated from 8 random uppercase characters (approved alphabet) with PostgreSQL UNIQUE, bounded collision retry and no embedded seller/date/sequence. It is **not** an authorization factor. FulfillmentGroup QR receipt confirmation uses a separate expiring, hashed, one-time token and explicit authenticated buyer consent. [DEC-ORDER-NUMBER-001](DEC-ORDER-NUMBER-001.md).
