@@ -121,3 +121,7 @@ Do **not** build SMS delivery in ID-01 registration or normal auth. Keep `PhoneV
 ## ADR-004 — roadmap гибридных движков
 
 Целевой портфель из десяти продуктовых функций утверждён в [ADR-004-HYBRID-INTELLIGENCE-ENGINES.md](ADR-004-HYBRID-INTELLIGENCE-ENGINES.md). Порядок срезов: P0-F1 HCC/атрибуты/проверка совместимости и FeatureRegistry → P0-F2 реальный каталог/запрос/однопродавцовый заказ → P1-F3 языковой поиск и аналоги → P1-F4 Demand Radar и Bargaining Advisor → P1-F5 размеченные события/Tribuo baseline → P2-F6 симуляция мультипродавцового набора и комплекты (Timefold при оправданной сложности) → P2-F7 AI Shopping Assistant / сегментация → P3-F8 GIS Delivery Optimizer. Физическое включение библиотек только после RED → S2 Review, тестов совместимости Java 21, лицензий и оценок производительности.
+
+## DEC-INTELLIGENCE-002 — Weekly Aggregation / Inventory smoke
+
+Созданы `WeeklyIntelligenceAggregator` (полные ISO-недели, ежедневные наблюдения и 1/4/12-недельные rolling windows), `WeeklyFeatureProjector` (freeze `inventory_advisor/v1`, девять слотов) и синтетические проверки `WeeklyIntelligenceSmokeTest` на 12 неделях/3 SKU. Следующий этап после успешного CI: независимый S2 Review схемы PostgreSQL, идемпотентного source watermark, коррекции прошлых недель, реальной истории stock exposure и сопоставления BuyerDemand с каноническими товарами. Реальные закупочные рекомендации блокируются до получения lead time, себестоимости, возвратов, минимальных партий и точных остатков. [Спецификация](DEC-INTELLIGENCE-002-WEEKLY-AGGREGATES.md).
