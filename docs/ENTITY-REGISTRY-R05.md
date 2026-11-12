@@ -179,3 +179,7 @@ See [DEC-BUYER-WEB-CATALOG](DEC-BUYER-WEB-CATALOG.md). Dynamic category characte
 ## Reverse Marketplace / Bargaining / Deal Finder extension — 2026-11-12
 
 Новые **кандидаты сверх прежних 46**: `BuyerDemand` (aggregate), `BuyerDemandLine`, `SellerBid` (aggregate), `SellerBidLine`. `DealComparisonResult` — вычисляемый value object, не новая таблица. Они не заменяют `PurchaseLead` (анонимный callback) и не создают `CustomerOrder` автоматически. `NegotiationSession`/`PriceOfferLine` повторно используются для переговоров после выбранного предложения продавца. Обязательные ограничения: `unique(demand_id,seller_id,revision)`, идемпотентное принятие одного предложения и конверсия в один заказ, seller/product validation, immutable offered lines. См. [DEC-KILLER-FEATURES-R1](DEC-KILLER-FEATURES-R1.md). Статус: доменные Java-контракты и юнит-тесты, **JPA-хранилище ещё не добавлено**.
+
+## Universal Classification Engine (UCE-001) — candidate changes
+
+See [DEC-UCE-001-UNIVERSAL-CLASSIFICATION.md](DEC-UCE-001-UNIVERSAL-CLASSIFICATION.md). Reuse existing Category/Product/ProductSku instead of parallel category hierarchy; typed attribute definitions, per-class validation rules, normalized typed values, multilingual synonyms, external standards mapping, source provenance and feature schema version are **additional candidates beyond baseline 46**, not an automatic declaration of new tables. Mandatory hard-constraint match validation precedes Tribuo rank.
