@@ -46,6 +46,10 @@ public class CustomerOrder {
   }
   o.totalAmount=sum.add(o.deliveryFee).setScale(2);return o;
  }
+ public void confirm(){
+  if(status!=OrderStatus.PLACED)throw new IllegalStateException("Order not PLACED");
+  status=OrderStatus.CONFIRMED;
+ }
  public UUID getId(){return id;}
  public String getPublicNumber(){return publicNumber;}
  public OrderStatus getStatus(){return status;}

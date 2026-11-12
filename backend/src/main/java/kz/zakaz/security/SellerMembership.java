@@ -37,6 +37,7 @@ public class SellerMembership {
     public boolean canEditCatalog() {
         return active&&(role==Role.CATALOG_EDITOR||role==Role.SELLER_ADMIN);
     }
+    public boolean canConfirmOrders(){return active && role==Role.SELLER_ADMIN;}
     public UUID getSellerId(){return sellerId;}
     public String getIssuer(){return issuer;}
     public String getSubject(){return subject;}

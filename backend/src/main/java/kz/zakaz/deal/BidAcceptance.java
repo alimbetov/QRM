@@ -32,5 +32,8 @@ public class BidAcceptance {
         return a;
     }
     public UUID getOrderId(){return orderId;}
+    public UUID getBidId(){return bidId;}
+    public UUID getDemandId(){return demandId;}
+    public UUID getBuyerId(){return buyerId;}
     public String getRequestFingerprint(){return requestFingerprint;}
 }

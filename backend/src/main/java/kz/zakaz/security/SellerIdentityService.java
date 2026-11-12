@@ -30,4 +30,18 @@ public class SellerIdentityService {
             throw new AccessDeniedException("Insufficient seller role");
         return membership.getSellerId();
     }
+    @Transactional(readOnly=true)
+    public UUID requireSellerAdmin(JwtAuthenticationToken actor,UUID requestedSellerId){
+        if(actor==null||!actor.isAuthenticated()||requestedSellerId==null
+                ||actor.getToken()==null||actor.getToken().getIssuer()==null
+                ||actor.getToken().getSubject()==null)
+            throw new AccessDeniedException("Verified seller administrator required");
+        var jwt=actor.getToken();
+        var member=memberships.findByIssuerAndSubjectAndSellerIdAndActiveTrue(
+            jwt.getIssuer().toString(),jwt.getSubject(),requestedSellerId)
+            .orElseThrow(()->new AccessDeniedException("No seller membership"));
+        if(!member.canConfirmOrders())
+            throw new AccessDeniedException("SELLER_ADMIN role required");
+        return member.getSellerId();
+    }
 }

@@ -28,7 +28,10 @@ public class OrderLine{
   l.lineTotal=l.unitPrice.multiply(l.quantity).setScale(2,RoundingMode.HALF_UP);
   l.originCitySnapshot=d.city();l.originRegionCodeSnapshot=d.region();return l;
  }
+ public UUID getId(){return id;}
  public UUID getSkuId(){return skuId;}
+ public BigDecimal getQuantity(){return quantity;}
+ public MeasurementUnit getUnit(){return unit;}
  public BigDecimal getLineTotal(){return lineTotal;}
  public String getOriginCitySnapshot(){return originCitySnapshot;}
 }
