@@ -10,7 +10,7 @@ S0 Scenario Design → S1 executable RED tests → S2 independent Test Review �
 
 | Layer | Stack | Purpose |
 |---|---|---|
-| Unit | JUnit 5, AssertJ, Mockito | invariant calculation, reactive signals, pure rules |
+| Unit | JUnit 5, AssertJ, Mockito | invariant calculation, pure domain rules |
 | Fast DB/JPA smoke | H2 in-memory (test scope), Spring Data JPA | fast CRUD/mapping/slice tests; not proof of PostgreSQL locking or SQL correctness |
 | PostgreSQL integration (mandatory) | Testcontainers PostgreSQL, Spring Data JPA, reproducible schema | actual PostgreSQL SQL, transactions, isolation, locking, indices, concurrency |
 | API contract | MockMvc, OpenAPI validator, security tests | verbs, status, DTO, problem details, authz |
@@ -122,3 +122,7 @@ R03-01…R03-18 from [MVP-DECISIONS-R03.md](MVP-DECISIONS-R03.md): identity alia
 - REC-SMS-05 reused phone/SIM reassignment -> require independent stronger proof; no takeover.
 
 These are RED acceptance expectations, not executed tests. Security S2 before any phone recovery is enabled.
+
+## Multi-SKU / multi-line / warehouse RED contract
+
+Обязательные **INV-01…INV-18**: [DEC-ENTITY-MULTI-SKU-LOCATION.md](DEC-ENTITY-MULTI-SKU-LOCATION.md). H2 — быстрое JPA/API smoke; PostgreSQL Testcontainers — обязательная проверка атомарного резервирования после подтверждения, многопозиционного rollback, конкурентности, location ownership и Outbox. Это пока S0-оракулы, не исполняемые тесты.
