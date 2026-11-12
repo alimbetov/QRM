@@ -21,7 +21,7 @@
 | SEC-03 Issuer + subject + seller ID + role matched by repository | `SellerIdentityService`, `SellerMembershipRepository`, policy tests | Implemented/CI |
 | SEC-04 Client path sellerId cannot grant access to another merchant | `SellerPublishingSecurityIT` | Implemented/CI |
 | SEC-05 Viewer with valid JWT cannot publish | `SellerPublishingSecurityIT` | Implemented/CI |
-| SEC-06 Real cryptographic issuer/JWKS, aud, expiry/key rotation tested end-to-end | No real IdP configured; JWT decoder is mocked in HTTP integration tests | **BLOCKED** |
+| SEC-06 Cryptographic signature/issuer/aud/expiry checked | `SignedJwtCryptographicSecurityIT` uses signed RSA test JWT and local public key; **real OIDC/JWKS/key rollover UAT still absent** | PARTIAL / external provider BLOCKED |
 | SEC-07 Provisioning/revocation of trusted seller memberships | No approved backoffice or seller onboarding flow | **BLOCKED** |
 | SEC-08 Race: privilege revoked concurrently with request | Needs decision and real concurrent PostgreSQL tests | Open |
 | MIG-01 Fresh PostgreSQL applies V1–V4 and JPA `validate` | `ManagedSchemaPostgresIT` | Implemented/CI |

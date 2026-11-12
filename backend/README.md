@@ -1,11 +1,27 @@
-# ZAKAZ Backend (first executable slice)
+# ZAKAZ Backend — Java 21 / Spring Boot 3.5.16
 
-Java 21 / Spring Boot 3.5.16 / MVC / JPA / PostgreSQL.
+Spring MVC + JPA/Hibernate + PostgreSQL 17 + Flyway + Spring Security OAuth2 resource server.
 
-- Fast tests (H2): `mvn -f backend/pom.xml test`
-- PostgreSQL Testcontainers integration: `mvn -f backend/pom.xml verify` (requires Docker).
-- Dev PostgreSQL: environment variables `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, and `mvn -f backend/pom.xml spring-boot:run`.
-- Production: only preprovisioned reviewed schema (`ddl-auto=validate`). Liquibase deferred; migrations required before deployment.
-- `GeoPoint` captures WGS84 latitude/longitude for a future InventoryLocation pickup/dispatch point. Private warehouse coordinates are not automatically public.
-- `OrderNumberGenerator` uses random ZK-XXXX-XXXX. Persistence UNIQUE exists but collision-safe transactional retry and idempotent order creation service still need implementation.
-- This is intentionally not a working checkout API. Buyer price authorization, stock reservation, identity and Outbox are not yet implemented; exposing HTTP order creation now would be unsafe.
+## Test lanes
+
+- Fast JUnit/H2 tests: `mvn -f backend/pom.xml test`
+- All JUnit + PostgreSQL Testcontainers/Failsafe: `mvn -f backend/pom.xml verify` (Docker required).
+- PostgreSQL `test-pg` uses **Flyway V1–V4** then Hibernate `ddl-auto=validate`. H2 `test` explicitly disables Flyway and creates an isolated test schema. Never use H2 as evidence of production SQL migration compatibility.
+
+## Database/schema ownership
+
+- Fresh PostgreSQL environments: Flyway applies versioned `db/migration/V1__domain_and_catalog_baseline.sql`, `V2`, `V3`, `V4` on application startup. Includes existing `customer_order`, `order_line`, `inventory_location`, catalog tables, enum governance and seller membership. JPA only validates; it never updates the PostgreSQL schema.
+- Existing **pre-Flyway** environments are intentionally blocked from silent migration. `spring.flyway.baseline-on-migrate=false` and `spring.flyway.clean-disabled=true`. Before upgrading a populated DB: backup, compare physical schema and data to V1, rehearse a reviewed adoption/baseline plan and verify checksums + migration history. **Do not** simply enable `baseline-on-migrate=true` or delete old tables.
+- The older `db/manual/V001..V003` scripts remain for isolated historical integration checks; `db/migration/` is authoritative for new PostgreSQL environments. Retire manual duplicates only after transition review.
+- Dev PostgreSQL: `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, then `mvn -f backend/pom.xml spring-boot:run`. Development also uses Flyway; old dev DBs require manual adoption.
+
+## Seller security (fail closed)
+
+- One currently exposed seller write route: `POST /api/v1/sellers/{sellerId}/listings/{listingId}/publish`. It requires a verified Bearer JWT with `catalog:write` scope **and** an active server-managed `seller_membership` record matching the signed token `iss + sub`, requested seller ID and `CATALOG_EDITOR`/`SELLER_ADMIN` role. Listing ownership and required SKU attributes are independently checked.
+- Client-supplied `seller_id`, JWT `seller_id` claims, or phone aliases never establish membership. There is no public membership creation endpoint; membership must be provisioned via approved trusted administration process.
+- Production requires `ZAKAZ_JWT_ISSUER`, optional `ZAKAZ_JWT_AUDIENCE` (default `zakaz-api`) and a real OIDC provider/JWKS. In dev without a configured trusted issuer/JwtDecoder, write routes **deny all**; do not add test tokens or developer bypasses.
+- Mock-decoder HTTP tests prove business ACL. `SignedJwtCryptographicSecurityIT` additionally verifies actual RSA signature, issuer, audience, expiry, scope and membership with locally generated test-only keys. It does not replace external OIDC/JWKS integration UAT.
+
+## Current scope / safety gates
+
+**Not yet a production checkout.** The order factory exists but authenticated buyer acceptance, seller confirmation, transactional stock reservation, idempotency and outbox remain R2 work. There is no live inventory validation in catalog publication; published listing does not imply stock or an approved merchant. No real ML training or autonomous procurement.

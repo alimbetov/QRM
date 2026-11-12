@@ -149,3 +149,7 @@ RED tests for HCC positional validation, required SKU facts, seller publication 
 ## R1B.2 — seller draft protection and PostgreSQL integrity
 
 RED → GREEN: тесты подтверждают отклонение чужого sellerId, изменение только DRAFT, idempotent attribute upsert, одобренный enum lookup, отказ от неизвестных значений в catalog facts; PostgreSQL manual V002 enum check и V003 trigger замораживают опубликованные SKU при прямом SQL. Требуются S2 review, реальные auth principal / membership, schema migration history для всех доменов и versioned categorical facts перед ML. [Отчёт R1B.2](R1B2-CATALOG-SECURITY-AND-INTEGRITY.md).
+
+## Seller JWT + Flyway → S2 → R2
+
+RED test commits for ACL/migration → GREEN: JWT issuer+scope, issuer+sub membership DB authorization, HTTP seller publication endpoint; Flyway complete V1–V4 fresh PostgreSQL schema and JPA validation, existing schema fail-closed; RSA-signed JWT integration test. Independent reviewer: issue [#3](https://github.com/alimbetov/QRM/issues/3); cannot be replaced by developer self-audit. R2 scenario design and 20 acceptance oracles: issue [#4](https://github.com/alimbetov/QRM/issues/4). Before R2 RED implementation: approve migration of any existing database and issuer/JWKS + membership provisioning integration. [S2 package](S2-REVIEW-SELLER-AUTH-FLYWAY-R2-GATE.md), [R2 oracles](R2-BUYER-DEMAND-BID-ORDER-RESERVATION-SCENARIOS.md).
