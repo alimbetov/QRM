@@ -111,3 +111,42 @@ Final DTO shape, routes, validation errors and authorization to be reviewed befo
 - UCE-R5: deploy model ranking only if offline and A/B quality gates passed. Keep deterministic fallback.
 
 **Unresolved S2 choices:** canonical product identity and exact-brand substitute policy, attribute version merge/migration, unit conversions, service delivery scope, whether variable/bespoke service work fits one canonical spec, external taxonomy licensing/translation and source versions, and type-safe PostgreSQL attribute storage strategy.
+
+## DEC-UCE-002 — Strict positional coded HCC + versioned ML feature layout (2026-11-12)
+
+**Status: APPROVED design direction, pending S2 physical schema and numerical-width review.** UniversalDictionary + stable generated numeric identifiers remains the source of truth. The positional classification code is a **separate stable classification path**, not the database primary key, and **not an ordinal ML feature**.
+
+### Two codes, different jobs
+
+1. `DictionaryNode.id BIGINT GENERATED ...`: immutable DB surrogate key for categories, brands, colors, materials, size systems, enum values, translations, etc. Sequential generator values have **no semantic proximity**.
+2. `ClassificationPath.code CHAR(20)`: optional published fixed-width hierarchical code for taxonomy navigation / external interchange, built from fixed-width zero-padded *segment allocations*. Example `01|02|003|00123|00000001` = `01020030012300000001`; slots (2,2,3,5,8) denote kind, group, class, canonical subject, optional variant. **This is a proposed layout, not a commitment to encode every object in exactly 20 digits**. Physical width, overflow and cross-type semantics must be validated before migrations. Store as CHAR/VARCHAR, never as an integer (leading zeros, overflow). Root/id identity does not depend on positional code; moving a class requires new mapping/alias/version, not silently renumbering historical facts.
+3. `AttributeDefinition` and `DictionaryNode` values form universal dimension dictionaries (COLOR, MATERIAL, BRAND, SIZE_SYSTEM, SIZE_VALUE, CONDITION, etc.). Links `ClassAttributeRule` choose which are applicable and required in each class; named numerical values store units, not every scalar as a dictionary leaf. No Cartesian explosion of color × size × material.
+4. `FeatureSchemaVersion` declares an **immutable logical slot layout** for each task/model family (seller-response, deal-conversion, buyer segmentation), with feature name, source attribute, data type, normalizer, missing-policy, categorical-vocabulary version, dimension, optional category hierarchy ancestors and ordering.
+
+### Encoding contract (strict order is for interoperability, named features are source of truth)
+
+For `SMARTPHONE_MATCH_V1`, a logical pre-encoding vector might be:
+`[type, group, class, brand, model, storage_gb, color, condition, budget_deviation_pct, delivery_days]`.
+CATEGORICAL slots must **not** be fed to Tribuo as ordinal integers (e.g. brandId 5002 must not be treated as greater than 5001). Encode them into named binary indicators such as `class.01`, `class.01.02`, `class.01.02.003`, `brand.5002`, `color.4001`; continuous values remain numeric and must be normalized consistently. The encoder may materialize a reproducible fixed-order `double[]` for interchange **only after** expanding categorical vocabularies, using a frozen ordered feature-name dictionary; Tribuo's normal public feature representation is **named numeric features** and internal IDs need not align with raw HCC digits.
+
+Persist `schemaVersion`, `vocabularyVersion`, `classificationRevision`, `encoderVersion`, `asOf`, and `SHA-256` of canonical schema serialization with every training run/model artifact. Inference refuses incompatible input schema and falls back to deterministic eligible-deal ranking. Never infer missing values as zero/false, distinguish missing/unknown/N/A; do not train on labels or features postdating decision instant.
+
+### Positional code examples and exclusions
+
+- A phone's color/size/material **must not** be permanently packed into the classification path; those attributes are optional, vary by class and may evolve.
+- `KATO` remains its own official code scheme (region/territory) linked in `ExternalClassificationMap` or `GeoArea`, not concatenated into a product classification ID.
+- A published code should not be derived from raw names, MD5, or an opaque hash. Hashing serves version integrity (SHA-256) or optional feature hashing after measurement, never replacing semantics.
+- No false numeric similarity: numerical difference between `0102003` and `0102004` cannot prove category proximity; hierarchy must be derived from explicit parent relations and slot ancestors.
+
+### Additional acceptance tests
+
+- UCE-13: zero-padding/segment boundaries round-trip and preserve exact string.
+- UCE-14: code uniqueness and parent-child consistency; aliases/version transitions preserve historic references.
+- UCE-15: `brandId=5001` and `brandId=5002` encode as distinct indicator features, **not** ordinal magnitudes.
+- UCE-16: training and inference use same frozen ordered feature dictionary, normalization and missing policies; schema mismatch is rejected.
+- UCE-17: size ID is qualified by SIZE_SYSTEM; numeric 42 for shoes is not equal to clothing 42 by accident.
+- UCE-18: color/material values reusable in many classes but restricted by each ClassAttributeRule; invalid combinations rejected.
+- UCE-19: classification recodes, migrated aliases and old model artifacts remain reproducible with exact schema revisions.
+- UCE-20: encoding cannot include raw phone, addresses, GPS, credentials or buyer personal identifiers; buyer segmentation uses only purpose-authorized signals.
+
+**Implementation gate:** first prove stable types/segment capacity through two drastically different pilots (smartphones and electrical services), then add generator/schema migrations, normalization/encoding unit tests and Testcontainers verification. Don't ship an unversioned positional format.
