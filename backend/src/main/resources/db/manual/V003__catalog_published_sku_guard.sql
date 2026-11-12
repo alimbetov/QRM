@@ -14,8 +14,10 @@ BEGIN
         ELSE
             checked_listing := NEW.listing_id;
         END IF;
-        IF TG_OP = 'UPDATE' AND OLD.listing_id IS DISTINCT FROM NEW.listing_id THEN
-            RAISE EXCEPTION 'Changing SKU listing reference is not permitted';
+        IF TG_OP = 'UPDATE' THEN
+            IF OLD.listing_id IS DISTINCT FROM NEW.listing_id THEN
+                RAISE EXCEPTION 'Changing SKU listing reference is not permitted';
+            END IF;
         END IF;
     ELSE
         IF TG_OP = 'DELETE' THEN
@@ -23,10 +25,11 @@ BEGIN
         ELSE
             checked_sku := NEW.sku_id;
         END IF;
-        IF TG_OP = 'UPDATE' AND
-           (OLD.sku_id IS DISTINCT FROM NEW.sku_id OR
-            OLD.attribute_id IS DISTINCT FROM NEW.attribute_id) THEN
-            RAISE EXCEPTION 'Changing SKU attribute identity is not permitted';
+        IF TG_OP = 'UPDATE' THEN
+            IF OLD.sku_id IS DISTINCT FROM NEW.sku_id OR
+               OLD.attribute_id IS DISTINCT FROM NEW.attribute_id THEN
+                RAISE EXCEPTION 'Changing SKU attribute identity is not permitted';
+            END IF;
         END IF;
         SELECT s.listing_id INTO checked_listing FROM catalog_sku s WHERE s.id = checked_sku;
     END IF;
