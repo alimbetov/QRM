@@ -43,10 +43,11 @@
 | QR-01 | listing updated after QR printed | QR publicId stable |
 | QR-02 | same listing has multiple QR sources | per-source attribution |
 | WEB-01 | React listing loaded | logo, public view count, grey inactive favorite |
-| LEAD-01 | verified phone + proposed price | lead created, no reservation/order |
-| LEAD-02 | lead owner withdraws before contact | WITHDRAWN, seller notified, cannot convert |
+| LEAD-01 | phone + callback consent + proposed price | lead created, no reservation/order |
+| LEAD-02 | lead requester withdraws before closure | WITHDRAWN, seller notified, cannot convert |
 | LEAD-03 | other user accesses lead phone | forbidden |
-| LEAD-04 | same lead converted concurrently | max one order linked to original |
+| LEAD-04 | Web lead submitted and seller marks CONTACTED | no CustomerOrder automatically created |
+| LEAD-05 | seller gets Web lead with phone | seller can call back; callback consent recorded and phone protected |
 | APP-01 | Flutter App Link to listing | exact listing opens |
 | FAV-01 | same favorite added twice | one record |
 | FAV-02 | watch quantity 50 | price change compares 50-unit tier |
@@ -55,6 +56,8 @@
 | NEG-01 | five counter rounds exhausted | sixth counter rejected |
 | NEG-02 | active listing, finished negotiation | new negotiation permitted |
 | NEG-03 | buyer withdraws open offer | cannot accept withdrawn offer |
+| NEG-05 | Flutter seller accepts buyer price | negotiation AGREED, not an Order yet |
+| NEG-06 | Flutter agreed offer converted twice | exactly one Order with acceptedOfferId snapshot |
 | NEG-04 | offer past seller expiry | cannot accept |
 | ORD-01 | buyer tampers with price | server trusted price and snapshot |
 | ORD-02 | duplicate POST with same key | one order |
