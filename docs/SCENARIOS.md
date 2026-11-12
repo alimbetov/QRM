@@ -141,3 +141,7 @@ AUTH-01…AUTH-10 and NOT-01…NOT-10 from [AUTH-NOTIFICATIONS.md](AUTH-NOTIFICA
 ## SD-R2 BuyerDemand / SellerBid / Matching
 
 [SMART-DEAL-R2.md](SMART-DEAL-R2.md) adds SD-UX-01…12 user journeys, SD-01…36 RED oracles, Mermaid diagrams and seller/buyer permission rules. Only one selected SellerBid, buyer explicit Order confirmation, atomic Order + Outbox, no matching or bid by anonymous React visitor, graceful degradation without ML or FCM. This is **optional post-core-MVP** design work, not evidence of executable tests.
+
+## Smart Deal R2 audit — added oracles
+
+SD-37…SD-52 in [SMART-DEAL-R2-AUDIT.md](SMART-DEAL-R2-AUDIT.md) augment SD-01…36. Core negative cases: selected bid expiry before conversion; seller cannot withdraw SELECTED; old bid revision never selectable; UNLISTED excluded; no partial quantity mismatch; idempotency key with changed payload rejected; exactly one Order+Outbox; incomplete shipping not ranked cheapest; invitations deduplicated under retries; unauthorized seller cannot read other bids. This is S0 test specification, not executed tests.
