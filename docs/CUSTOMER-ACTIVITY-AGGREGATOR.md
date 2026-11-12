@@ -118,3 +118,7 @@ Seller relationship endpoints require verified seller ownership/participation in
 | CAA-12 | read API во время пересчёта | показывает последний консистентный snapshot с calculatedAt |
 
 **Release gates:** independent S2 review of score thresholds + anti-abuse + data privacy, PostgreSQL Testcontainers for partial boundaries and partitions, load tests, React/Flutter labels, reconciliation metrics and error budget.
+
+## Implementation sequencing clarified after technical review
+
+Logical `customer_daily_stats` and `customer_monthly_stats` definitions are **optimization candidates**, not a requirement to create all tables before MVP. First calculate exact rolling 9M using auditable indexed qualified-order event times and publish one nightly snapshot. Daily/monthly rollups and partitioning are deferred unless load evidence requires them. Canonical minimal pipeline: [NIGHTLY-PROFILE-AGGREGATION.md](NIGHTLY-PROFILE-AGGREGATION.md), [TECHNICAL-REVIEW-MVP.md](TECHNICAL-REVIEW-MVP.md).
