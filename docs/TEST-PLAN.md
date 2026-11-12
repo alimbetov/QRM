@@ -103,3 +103,13 @@ All AUTH-01…10 and NOT-01…10 from [AUTH-NOTIFICATIONS.md](AUTH-NOTIFICATIONS
 ## R0.3 acceptance suite (S0 oracles)
 
 R03-01…R03-18 from [MVP-DECISIONS-R03.md](MVP-DECISIONS-R03.md): identity alias squatting/recovery, KZT arithmetic and cash-rounding final total, seller-generated one-time QR for buyer-confirmed receipt, dispute/refusal, after-midnight 9M window, PostgreSQL consistent source reads, tier threshold boundaries, Kazakhstan data residency/logs and optional FCM failures. Tests have **not** been implemented. Independent S2 review before enabling affected functionality.
+
+## DEC-34 recovery SMS contract tests
+
+- REC-SMS-01 register/login -> 0 calls to `PhoneVerificationProvider`.
+- REC-SMS-02 SMS code obtained by current holder of UNVERIFIED alias -> password reset denied.
+- REC-SMS-03 previously verified email -> one-time recovery, revoke old refresh sessions.
+- REC-SMS-04 SMS provider unavailable -> listing/Order/ordinary login unaffected.
+- REC-SMS-05 reused phone/SIM reassignment -> require independent stronger proof; no takeover.
+
+These are RED acceptance expectations, not executed tests. Security S2 before any phone recovery is enabled.
