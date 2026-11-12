@@ -132,3 +132,13 @@ Authentication grant/session exchange, exact constraints/rounding, enum values a
 - Для физических товаров `READY_FOR_RECEIPT` — стадия Fulfillment, `COMPLETED` — Order только после квалифицированного подтверждения; не считать Seller COMPLETE фактом оплаты.
 - Все пути в таблицах задаются относительно `/api/v1`; пользовательские URL `/p/:publicId`, `/s/:slug`, `/seller/login` — маршруты React, не REST API.
 - [TECHNICAL-REVIEW-MVP.md](TECHNICAL-REVIEW-MVP.md) — блокирующие R0 корректировки OpenAPI до генерации кода.
+
+## R2 API invariants
+
+- Web lead withdrawal requires an unguessable, expiring secret capability returned **only on creation** and stored hashed; never infer ownership from the phone string.
+- Seller/product reviews are separate target types; target IDs are resolved server-side from immutable Order, one eligible review of each target per Order; missing ratings are null, not 0.
+- `create-order` after AGREED is an explicit buyer action proposed for S2; review latest offer actor, expiry and state; one Order guaranteed by unique acceptedOfferId and Idempotency-Key.
+- GET endpoints are always side-effect free: a seller inbox detail load is followed by explicit read mutation with observedActivityVersion (never mark read on GET).
+- Profile data carries `asOf`, `rulesVersion`, `dataStatus`; seller sees only relationship with own buyer and no other sellers' activity.
+
+[Second technical audit](TECHNICAL-REVIEW-R2.md).
