@@ -98,3 +98,7 @@ Java-only `intelligence.FeatureRegistry` (frozen ordered names), `FeatureVectorE
 One concern in this deliberately small prototype: seller location/language and attribute codes are provided as verified booleans/maps by the caller — the **production application must derive them from authoritative catalog and territory tables**, not trust HTTP JSON.
 
 **Next slices:** (A) versioned dictionary + attribute applicability rules and immutable snapshots; (B) audited PostgreSQL seller eligibility; (C) Tribuo dependency + actual model/output contract when labeled history exists; (D) pilot instrumentation and measured model lift.
+
+## Ten-feature adopted shortlist / ADR-004
+
+Из 30 гипотез выделено десять целевых гибридных функций, закреплённых в [ADR-004-HYBRID-INTELLIGENCE-ENGINES.md](ADR-004-HYBRID-INTELLIGENCE-ENGINES.md). Они не считаются реализованными. Отдельно зафиксированы границы Tribuo, Timefold, Lucene, LangChain4j, JGraphT, GIS, PostgreSQL и правил HCC; это не утверждение о необходимости всех зависимостей на старте. Первая демонстрационная связка — Smart Demand + Compatibility Passport + Verified Best Deal + Language-Aware Matching, с постепенным развитием десяти направлений.
