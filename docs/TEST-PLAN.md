@@ -21,7 +21,7 @@ S0 Scenario Design → S1 executable RED tests → S2 independent Test Review �
 
 ## 3. Critical matrix by module
 
-- **Identity:** OTP expiry/replay/rate limit, uniqueness, stale tokens, permission boundaries, session revocation.
+- **Identity:** password hash, brute force/rate limit, unverified phone, unique account, refresh replay/rotation, verified-email recovery, authz, session revocation. No SMS/OTP.
 - **Seller:** upload/replace logo, old asset cache invalidation, slug uniqueness, seller ownership.
 - **Catalog:** category permission, locale fallback, photo 3–5 publication guard, archive/unlisted access.
 - **Pricing:** 1/9/10/49/50/199/200 boundaries, non-overlapping tiers, decimal rounding KZT, fixed vs percent, snapshot.
@@ -32,7 +32,7 @@ S0 Scenario Design → S1 executable RED tests → S2 independent Test Review �
 - **Order:** one-time conversion, idempotency keys, immutable price snapshots, buyer cancel and cancellation request, race dispatch, role transitions, no invented paid flag.
 - **Product types:** physical delivery vs service completion vs digital provision, claim eligibility, type-specific data.
 - **Favorite:** only authenticated user, unit/quantity price watch, same preference across sessions, archive retained correctly.
-- **Notification:** duplicate outbox event, one logical push, revoke token, marketing opt-out, failed FCM retry, no storefront outage.
+- **Notification:** durable internal record, duplicate Outbox event, independent read state, optional best-effort Push, revoke token, marketing opt-out, failed FCM retry, no storefront outage.
 - **Inbox:** read/unread/bookmark filters + counters, per-user isolation, event version race, cursor pagination and indexes.
 - **Analytics:** no re-render counting, dedup 24h, QR source correctness, bots/excess clicks, privacy retention, nonblocking ingestion.
 - **Review:** verified transaction only, one order-one review, photo moderation, post-return review permitted, cancellation does not rate product.
@@ -72,3 +72,7 @@ Per PR: scope, approved decisions and scenarios, RED evidence, S2 reviewer verdi
 ## Nightly buyer/seller profile test suite
 
 NPA-01…NPA-20 из [NIGHTLY-PROFILE-AGGREGATION.md](NIGHTLY-PROFILE-AGGREGATION.md) обязательны для отдельного RED → S2 Review: replay, month boundary, snapshots, lease fencing, concurrent writes, ratings moderation, buyer/seller role independence, seller customer privacy and profile fallback. Никакой профиль не показывает искусственно свежие метрики при неудаче job.
+
+## DEC-27 acceptance
+
+All AUTH-01…10 and NOT-01…10 from [AUTH-NOTIFICATIONS.md](AUTH-NOTIFICATIONS.md) are mandatory RED→S2→GREEN acceptance tests; special attention to account takeover without confirmed phone, password reset recovery, QR approval, push disabled and Outbox replays.
