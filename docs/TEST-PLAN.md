@@ -130,3 +130,19 @@ These are RED acceptance expectations, not executed tests. Security S2 before an
 ## Checkbox-selected SKU orders / negotiated multi-line prices
 
 Required S0 oracles `SELSKU-01…SELSKU-14` are specified in [DEC-SELECTED-SKU-ORDER.md](DEC-SELECTED-SKU-ORDER.md). Validate checkbox selection and disabled empty order in Flutter/React UI, API against price tampering and cross-seller products, H2 basic mapping, PostgreSQL Testcontainers for versioned quote, duplicate conversion and reserve-on-seller-confirm. No runnable tests implemented yet.
+
+## Buyer-visible origin locality and privacy — new S0 oracles
+
+| ID | Given / action | Expected / test lane |
+| --- | --- | --- |
+| LOC-01 | Selected line sourced preliminarily in Алматы | Quote and PriceOfferLine expose city/region and provisional=true; H2/MockMvc |
+| LOC-02 | Multi-line order has SKUs from Алматы and Астана | OrderLine retains distinct immutable preliminary locality snapshots; PostgreSQL |
+| LOC-03 | Seller confirms from previously previewed eligible location | Authorized fulfillment shows confirmed city; original snapshots remain historically immutable; PostgreSQL |
+| LOC-04 | Private warehouse has street/building/coordinates | Public listing/quote/offer/order-line APIs never reveal private address or internal source location IDs; MockMvc |
+| LOC-05 | Published customer pickup location assigned | Only authorized order participants receive public pickup address; permission test |
+| LOC-06 | Seller chooses another origin city that changes shipping cost/ETA/pickup terms | Confirmation blocked pending explicit renewed buyer consent; no reservation/outbox confirmation event; PostgreSQL |
+| LOC-07 | Seller changes warehouse inside same city without changing material terms | Successful confirmation allowed by policy; source remains authorized and auditable; PostgreSQL |
+| LOC-08 | UNTRACKED item with provisional origin | No fabricated inventory reservation; confirmed source/fulfillment assignment is explicit; PostgreSQL |
+| LOC-09 | Client injects private locationId/false city into quote/order request | Server derives authoritative location and rejects unauthorized allocation; PostgreSQL API security |
+
+S0 specifications only; executable RED tests and S2 review remain pending.
