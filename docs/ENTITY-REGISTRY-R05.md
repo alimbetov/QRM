@@ -175,3 +175,7 @@ See [DEC-BUYER-WEB-CATALOG](DEC-BUYER-WEB-CATALOG.md). Dynamic category characte
 ## Java ML рекомендации — ADR-003
 
 Утверждён стек **Java 21 + Spring Boot + PostgreSQL + Tribuo** в модульном монолите. Для персонализации и рекомендательных Push определены кандидаты `BuyerInteractionEvent`, `BuyerInterestProfile`, `MlTrainingRun`, `MlModelVersion`, `RecommendationFeedback` и возможный `NotificationDecision`; `RecommendationFeatures` — value object, а не JPA entity. Состав таблиц не расширять автоматически; использовать уже имеющиеся Favorite/analytics/notification/outbox контракты. Подробнее: [ADR-003-JAVA-ML-RECOMMENDATIONS.md](ADR-003-JAVA-ML-RECOMMENDATIONS.md). Реального обучения, ML-инференса и отправки Push пока нет.
+
+## Reverse Marketplace / Bargaining / Deal Finder extension — 2026-11-12
+
+Новые **кандидаты сверх прежних 46**: `BuyerDemand` (aggregate), `BuyerDemandLine`, `SellerBid` (aggregate), `SellerBidLine`. `DealComparisonResult` — вычисляемый value object, не новая таблица. Они не заменяют `PurchaseLead` (анонимный callback) и не создают `CustomerOrder` автоматически. `NegotiationSession`/`PriceOfferLine` повторно используются для переговоров после выбранного предложения продавца. Обязательные ограничения: `unique(demand_id,seller_id,revision)`, идемпотентное принятие одного предложения и конверсия в один заказ, seller/product validation, immutable offered lines. См. [DEC-KILLER-FEATURES-R1](DEC-KILLER-FEATURES-R1.md). Статус: доменные Java-контракты и юнит-тесты, **JPA-хранилище ещё не добавлено**.
