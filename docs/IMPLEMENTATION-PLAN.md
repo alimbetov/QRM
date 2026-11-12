@@ -75,3 +75,11 @@
 ## 6. Нельзя объявлять готовым без доказательств
 
 «Spec written» не равно «implemented». Каждая история получает: scenario IDs → RED evidence → independent S2 review → code changes → Testcontainers/contract/UI E2E → security review → exact SHA → deployment evidence. Draft PR на требованиях не следует автоматически merge в main.
+
+## Customer Activity Aggregator — work package
+
+| Package | Scope | Dependencies | Exit gate |
+|---|---|---|---|
+| CAA-01 | Outbox consume, daily/monthly stats, 9M rolling score, seller-specific customer relationship, optional monthly partitioning | ORD-01, FUL-01, OPS-01 | CAA-01…12 Testcontainers, privacy isolation, anti-replay, reclassification, S2 review |
+
+Рекомендую разрабатывать после подтверждения Order/Fulfillment, иначе агрегатор не получит достоверные события завершения. [Полная спецификация](CUSTOMER-ACTIVITY-AGGREGATOR.md).
