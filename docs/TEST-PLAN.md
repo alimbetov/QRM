@@ -117,3 +117,7 @@ These are RED acceptance expectations, not executed tests. Security S2 before an
 ## Smart Deal R2 test-first gate
 
 [SMART-DEAL-R2.md](SMART-DEAL-R2.md) defines 36 independent SD-* RED test oracles: permission isolation, no Web guest Order, allowed matching, bid versioning/expiry, one selected bid, one atomic CustomerOrder+Outbox under concurrency, pricing and fulfillment integrity, low-data baseline, optional FCM/ML failure, and matching load. Do not mark S1/S2 passed until actual test evidence is recorded against a commit SHA.
+
+## SD-AUD-01 second-pass Smart Deal test gate
+
+In addition to original 36 Smart Deal test scenarios, **SD-37…SD-52** are required: see [audit](SMART-DEAL-R2-AUDIT.md). Do not begin R2-S3 GREEN until exact actor/state/transition assertions are implemented as RED tests against real PostgreSQL and independently reviewed at S2. Concurrency outcome must be atomic Order+Outbox and no orphan accepted offer, with SQL constraints verified under Testcontainers.
