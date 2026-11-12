@@ -221,3 +221,7 @@ QR-авторизация кабинета — отдельный контур `
 ## Lean MVP boundary after technical review
 
 [TECHNICAL-REVIEW-MVP.md](TECHNICAL-REVIEW-MVP.md) — единая архитектурная сверка; приложение остаётся модульным монолитом WebFlux + R2DBC + PostgreSQL. Seller Web кабинет не выпускается без AUTH-QR, хотя публичная страница работает без входа. Для Aggregator v1 хватит аудируемой исходной проекции квалифицированного исполнения и трёх nightly snapshots, без обязательных дневных/месячных стат-таблиц и партиционирования. Product Rating и Seller Rating независимы, а seller tier не эквивалентен надёжности или оплате.
+
+## Canonical Entity Registry R0.5
+
+Единый каталог 46 кандидатов в сущности, модели enum/value object, владельцы, ключи, ограничения и приоритеты: [ENTITY-REGISTRY-R05.md](ENTITY-REGISTRY-R05.md). Реестр — спецификация S0, не перечень 46 обязательных PostgreSQL таблиц; отдельные supporting storage модели требуют S2 решения.
