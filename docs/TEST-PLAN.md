@@ -11,13 +11,22 @@ S0 Scenario Design → S1 executable RED tests → S2 independent Test Review �
 | Layer | Stack | Purpose |
 |---|---|---|
 | Unit | JUnit 5, AssertJ, Mockito | invariant calculation, reactive signals, pure rules |
-| DB integration | Testcontainers PostgreSQL, Spring Data JPA, reproducible test schema | actual SQL schema, transactions, isolation, locking, indices |
+| Fast DB/JPA smoke | H2 in-memory (test scope), Spring Data JPA | fast CRUD/mapping/slice tests; not proof of PostgreSQL locking or SQL correctness |
+| PostgreSQL integration (mandatory) | Testcontainers PostgreSQL, Spring Data JPA, reproducible schema | actual PostgreSQL SQL, transactions, isolation, locking, indices, concurrency |
 | API contract | MockMvc, OpenAPI validator, security tests | verbs, status, DTO, problem details, authz |
 | Architecture | ArchUnit | dependency direction/domain isolation; JPA entities confined to persistence |
 | React | component tests, Playwright | public pages, lead, seller inbox, QR login |
 | Flutter | unit/widget/integration | favorites, negotiations, App Links, notifications |
 | System/E2E | deployed backend + PostgreSQL + S3 compatible + controlled FCM stub | real flows, retries, QR redirects |
 | Load/recovery | k6 or equivalent, crash/restart/restore | SLA, outbox and schedule recovery |
+
+## CI test lanes
+
+1. **Fast lane — every push/PR, Docker-free:** JUnit domain/unit, MockMvc, H2 in-memory JPA basic mapping/CRUD/slice tests. H2 never stands in for PostgreSQL-specific SQL, locking, isolation or money/order acceptance.
+2. **PostgreSQL lane — every PR affecting persistence, ordering, stock, pricing, transactions or migrations, and required for merge/release:** real PostgreSQL via Testcontainers, test-specific schema; exercise native SQL, uniqueness, optimistic/pessimistic locks, concurrent reserve, idempotency, rollback/Outbox and transaction isolation. Run in CI environment with Docker or equivalent Testcontainers-compatible runtime.
+3. **Qualification lane — before release:** deployed PostgreSQL with representative data plus k6 load/overload and recovery evidence.
+
+An H2-only green result is not a passing merge gate for database-sensitive changes. JPA DDL `create-drop` is permitted only on disposable test databases.
 
 ## 3. Critical matrix by module
 
