@@ -7,7 +7,7 @@
 ```mermaid
 flowchart TD
   QR[QR / direct link] --> WEB[React public Web]
-  WEB -->|OTP + contact + offer| LEAD[Purchase Lead API]
+  WEB -->|phone + desired price / callback request| LEAD[Purchase Lead API]
   WEB -->|App Links| FLUTTER[Flutter Buyer/Seller]
   FLUTTER --> API[Spring Boot modular monolith]
   WEB --> API
@@ -32,7 +32,7 @@ Backend: Java 17, поддерживаемая версия Spring Boot 3, Sprin
 | media | Upload, validation, thumbnails, S3 keys | хранить business metadata заказа |
 | pricing | PricingTier, effective-price query, DiscountCampaign | менять подтверждённый заказ |
 | qr | QR code, source attribution, stable redirect | хранить цену в QR |
-| lead | PurchaseLead, lead status, OTP eligibility | выдавать Lead за confirmed Order |
+| lead | PurchaseLead, callback consent, lead status, anti-spam | превращать Web callback в заказ автоматически |
 | negotiation | PriceNegotiation, PriceOffer, 5 rounds | менять Listing price |
 | order | CustomerOrder, immutable price snapshot, status | делать перевод денег |
 | fulfillment | Delivery, ServiceCompletion, DigitalProvision, ReturnClaim | использовать одну механику доставки для всех типов |
@@ -164,3 +164,11 @@ deployment/
 4. Часовой пояс, границы окон акций, price-tracking compare policy.
 5. Минимальные требования к жалобам и защите продавцов от фальшивых leads.
 6. Срок хранения контактных данных, legal privacy и пользовательских согласий.
+
+## 10. DEC-17 и DEC-18: разграничение конверсии и отмены
+
+**Web PurchaseLead:** телефон/цена/количество/согласие на обратный звонок → NEW/VIEWED → продавец связывается вне системы → CONTACTED/DECLINED/EXPIRED; WITHDRAWN по инициативе заявителя. Никакого автоматического создания Order или обязательного OTP в Web.
+
+**Flutter PriceNegotiation:** offer → accept/counter/reject → AGREED → явное создание CustomerOrder, связанного с согласованной ценой/количеством/сторонами; один Order на согласованное предложение. Блокировка дублей и гонок в PostgreSQL.
+
+**Buyer cancellation:** для незавершённого Lead/offer — WITHDRAWN; для ещё неподтверждённого Order — CANCELLED_BY_BUYER; после подтверждения — CANCELLATION_REQUESTED с типоспецифичной обработкой и сохранением законных прав покупателя. Все переходы аудитируются, продавец уведомляется.
