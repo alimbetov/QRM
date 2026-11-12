@@ -148,3 +148,7 @@ Buyer sees region and city for each SKU/line. `originCitySnapshot` and `originRe
 ## Public Order Number — APPROVED
 
 `CustomerOrder.publicNumber` is an immutable unique `ZK-XXXX-XXXX` human-facing locator generated from 8 random uppercase characters (approved alphabet) with PostgreSQL UNIQUE, bounded collision retry and no embedded seller/date/sequence. It is **not** an authorization factor. FulfillmentGroup QR receipt confirmation uses a separate expiring, hashed, one-time token and explicit authenticated buyer consent. [DEC-ORDER-NUMBER-001](DEC-ORDER-NUMBER-001.md).
+
+## Canonical Entity Registry R0.5
+
+Единый каталог 46 кандидатов в сущности, модели enum/value object, владельцы, ключи, ограничения и приоритеты: [ENTITY-REGISTRY-R05.md](ENTITY-REGISTRY-R05.md). Реестр — спецификация S0, не перечень 46 обязательных PostgreSQL таблиц; отдельные supporting storage модели требуют S2 решения.
