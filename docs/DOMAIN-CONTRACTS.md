@@ -14,7 +14,8 @@
 | QrCampaign | qr | tag, target, counters | неизменный publicId; только публично доступная цель |
 | PurchaseLead | lead | callback request, withdrawal | отсутствие создания Order из Web lead |
 | NegotiationSession | negotiation | offers, rounds, expiry | max 5 встречных раундов, один accepted final offer |
-| CustomerOrder | order | immutable snapshot, cancellation | единый источник подтверждённой стоимости |
+| CustomerOrder | order | multiple OrderLine snapshots, cancellation | единственный продавец, неизменные цены строк, атомарное подтверждение |
+| InventoryLocation / InventoryBalance | inventory | multiple seller locations, region/address, optional tracked stock, reservation/movement | при PLACED резерва нет; подтверждение seller атомарно резервирует все TRACKED строки |
 | Fulfillment | fulfillment | delivery/service/digital, claims | исполнение соответствует listingType |
 | Favorite | favorite | priceWatch, user preference | уникальная пара user+listing |
 | SellerInboxItem | inbox | read-version, bookmark | метки персональные, не business status |
@@ -131,3 +132,7 @@ Phone is only an unverified login identifier, no OTP confirmation. Passwords has
 - Наличные расчёты: отдельно от immutable Order total вычисляется **округлённый итог платежа** для информирования сторон; QRM не подтверждает внешнюю оплату. По проектной денежной политике сохраняются KZT 2 decimals, сумма округляется после quantity × price/discount, а не по каждой единице. Формула и налоговые правила требуют S2/legal Review.
 - Продавец переводит Fulfillment в READY_FOR_RECEIPT, создаёт одноразовый привязанный к Order QR challenge; **только аутентифицированный покупатель данного заказа** после явной команды подтверждения переводит в RECEIVED/Order COMPLETED. Проверить TTL, rate-limit, replay и конкурентные обращения. Само сканирование или ввод кода продавцом не является подтверждением. Отказ покупателя ведёт к dispute, без автоувеличения уровня.
 - Детали схемы и оракулы: [MVP-DECISIONS-R03.md](MVP-DECISIONS-R03.md).
+
+## DEC-ENTITY — утверждённые контракты SKU, OrderLine, InventoryLocation
+
+Утверждено: **несколько SKU на Listing; несколько строк CustomerOrder; опциональный TRACKED/UNTRACKED учёт; резерв после подтверждения продавцом**. InventoryLocation создаётся сразу с кодом региона и структурированным адресом, принадлежит продавцу; один продавец на Order и одна location на строку — предложенные MVP-ограничения до S2. PLACED не удерживает остаток, CONFIRMED для TRACKED резервирует все строки в одной транзакции или отклоняется целиком. Подробная модель и тесты: [DEC-ENTITY](DEC-ENTITY-MULTI-SKU-LOCATION.md).
