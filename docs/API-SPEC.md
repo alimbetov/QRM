@@ -153,3 +153,7 @@ POST /api/v1/orders/{id}/disputes                     # authenticated buyer, ref
 ```
 
 Challenge is short-lived, one-time, hashed at rest, contains no PII and cannot be redeemed by seller as buyer. Receipt transition atomic with Outbox; no automatic completion on expired QR. Email recovery requires verified email. Pricing quote responses distinguish `orderTotalKzt` and optional `cashSettlementEstimateKzt`; cash rounding never mutates order snapshot. [Details](MVP-DECISIONS-R03.md).
+
+## DEC-34 optional SMS recovery integration
+
+The existing `/auth/recovery/request` and `/auth/recovery/complete` endpoints are factor-neutral; only backend recovery policy chooses allowed methods. `PhoneVerificationProvider` may be used **only** for SMS recovery of a previously independently verified phone binding. A valid SMS code to an unverified number is insufficient to reset credentials. No SMS/OTP endpoints for registration and ordinary login. Do not reveal account existence or factor availability in public error messages. [Auth policy](AUTH-NOTIFICATIONS.md).
