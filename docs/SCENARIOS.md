@@ -121,3 +121,7 @@ No automatic merge into main without approved PR review. This repository current
 ## Дополнительные S0/S1 test specs
 
 Доменная state matrix и concurrency: [DOMAIN-CONTRACTS.md](DOMAIN-CONTRACTS.md). API error and cursor: [API-SPEC.md](API-SPEC.md). Reactive transaction/replay/security test plan: [TEST-PLAN.md](TEST-PLAN.md). Утверждение tests требует независимого S2 Review; этот документ не является отчётом об их выполнении.
+
+## Customer Activity Aggregator — сценарии R0
+
+Тесты `CAA-01…CAA-12` и критерии разграничения данных продавцов, точных границ девятимесячного окна, replay/idempotency, статусов новых и вернувшихся клиентов приведены в [CUSTOMER-ACTIVITY-AGGREGATOR.md](CUSTOMER-ACTIVITY-AGGREGATOR.md). Отдельный S2 Review должен проверить алгоритм уровней и антинакрутку до реализации.
