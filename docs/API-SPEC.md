@@ -72,7 +72,7 @@ Prices returned as `{unitPrice:"9000.00",total:"90000.00",currency:"KZT",quantit
 | POST | `/negotiations/{id}/accept` | counterparty | agree latest offer |
 | POST | `/negotiations/{id}/reject` | counterparty | reject |
 | POST | `/negotiations/{id}/withdraw` | buyer | withdraw before agreement |
-| POST | `/negotiations/{id}/create-order` | authorized actor | one-time conversion AGREED → Order |
+| POST | `/negotiations/{id}/create-order` | authenticated Flutter buyer (proposed S2) | explicit one-time conversion AGREED → Order |
 | POST | `/orders` | Flutter buyer | order using current public price |
 | GET | `/me/orders` | authenticated | own orders with cursor |
 | POST | `/orders/{id}/cancel` | buyer | cancel before confirmation |
@@ -124,3 +124,11 @@ Favorite API belongs to authenticated identity, but Web React hides/disables fea
 Authentication grant/session exchange, exact constraints/rounding, enum values and legal consent text, quote expiry, image upload design, rate limits, QR attribution vs referrer, status transition commands, seller staff roles and auth boundaries require R0 formal OpenAPI review. No endpoint is treated as shipped until contract tests are green.
 
 **DEC-27:** телефон не подтверждён самим фактом регистрации; OTP API отсутствует; Notification Center — постоянный источник истины, Push — optional. [Auth/notification spec](AUTH-NOTIFICATIONS.md). Recovery endpoints must not allow takeover without verified factor.
+
+## API review corrections
+
+- Для публичного профиля продавца предусмотреть `GET /api/v1/sellers/{slug}/reputation`; seller rating и trade tier — отдельные показатели, null для отсутствующих отзывов.
+- Для подтверждённой сделки допускаются **два разных** типа отзыва (seller/product) с независимой уникальностью `(orderId,targetType)`; существующий `POST /orders/{id}/reviews` принимает typed target, а `GET /api/v1/me/trade-profile` читает опубликованный ночной snapshot.
+- Для физических товаров `READY_FOR_RECEIPT` — стадия Fulfillment, `COMPLETED` — Order только после квалифицированного подтверждения; не считать Seller COMPLETE фактом оплаты.
+- Все пути в таблицах задаются относительно `/api/v1`; пользовательские URL `/p/:publicId`, `/s/:slug`, `/seller/login` — маршруты React, не REST API.
+- [TECHNICAL-REVIEW-MVP.md](TECHNICAL-REVIEW-MVP.md) — блокирующие R0 корректировки OpenAPI до генерации кода.
