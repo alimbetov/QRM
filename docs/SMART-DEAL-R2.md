@@ -30,7 +30,7 @@ Buyer publishes one authenticated request for a product with quantity, delivery/
 | SD-UX-04 | Seller | Receive in-app invitation | Demand summary, hide private buyer data | Inbox/notification by event, seller may ignore |
 | SD-UX-05 | Seller | Submit explicit bid | Own bid price, qty, terms, expiry | `SellerBid ACTIVE`; validated against own Listing |
 | SD-UX-06 | Buyer | Compare bids | Full comparable price + separate shipping/unknown costs, availability, reputation | Read-only projection; no state transition |
-| SD-UX-07 | Buyer | Choose bid | Explicit confirm terms / compare snapshot | `SELECTED` demand + bid; link agreed offer |
+| SD-UX-07 | Buyer | Choose bid | Explicit confirm terms / compare snapshot | `SELECTED` demand + bid; **no** accepted offer or Order yet |
 | SD-UX-08 | Buyer | Press Create Order | Order details, final total, receipt expectations | Exactly one `CustomerOrder PLACED` through existing conversion; demand `ORDER_CREATED` |
 | SD-UX-09 | Seller/Buyer | Fulfill / confirm receipt using existing protocol | Normal order, dispute and review screens | `READY_FOR_RECEIPT → RECEIVED → COMPLETED` when qualified |
 | SD-UX-10 | Buyer | Withdraw before selection | Closed request | `CANCELLED`; no new bids/orders |
@@ -77,6 +77,7 @@ stateDiagram-v2
  SELECTED --> ORDER_CREATED: Explicit buyer conversion succeeds
  SELECTED --> OPEN: Buyer cancels selection; no Order exists (guarded)
  SELECTED --> CANCELLED: Buyer closes; no Order exists (guarded)
+ SELECTED --> EXPIRED: Validity deadline; no Order
  ORDER_CREATED --> [*]
  CANCELLED --> [*]
  EXPIRED --> [*]
@@ -96,43 +97,44 @@ stateDiagram-v2
  ACTIVE --> EXPIRED: Bid expiry
  ACTIVE --> SELECTED: Buyer selects valid bid
  SELECTED --> CONVERTED: Order created
- SELECTED --> ACTIVE: Demand reopens before Order, bid still valid
+ SELECTED --> ACTIVE: Buyer releases selection before Order, bid valid
+ SELECTED --> EXPIRED: Demand or bid validity expires
  WITHDRAWN --> [*]
  SUPERSEDED --> [*]
  EXPIRED --> [*]
  CONVERTED --> [*]
 ```
 
-- One **current active bid per (demandId,sellerId)**; revisions recorded via version/supersession; immutable `BidOffer` economics once presented.
+- One **current actionable bid per (demandId,sellerId)**; revisions are immutable history. Replacing an ACTIVE bid requires the demand to remain OPEN; in one transaction mark the old revision SUPERSEDED then insert a new ACTIVE revision. Seller may not replace or withdraw a SELECTED bid. Use exact full demand quantity.
 - A seller must own and be authorized for the referenced listing; same seller cannot impersonate another seller or the buyer.
-- `SELECTED` is not `PAID`, `DELIVERED` or an Order; it only points to immutable agreed terms.
+- `SELECTED` is not `PAID`, `DELIVERED`, `AGREED NegotiationOffer` or an Order; it is only buyer intent to create an Order later. Deadline = earlier of demand expiry and bid validity, and selection does not extend either.
 
 ### Negotiation interoperability: one contract, not two engines
 
-Only at explicit **Create Order** does the selected bid become a linked **accepted offer** of the existing negotiation/order workflow. Implement an application adapter `SmartDealOrderConversion` that creates/links the accepted negotiation snapshot and CustomerOrder **inside one transactional command** with Outbox. Do not create a second SmartDeal order table and do not call two independent public APIs with an inconsistent intermediate state.
+Only at explicit **Create Order** does the selected bid become a linked **accepted offer** of the existing negotiation/order workflow. A buyer selecting a bid must **not** persist an AGREED NegotiationSession or a CustomerOrder. Implement an application adapter `SmartDealOrderConversion` that creates/links the accepted negotiation snapshot and CustomerOrder **inside one transactional command** with Outbox. Do not create a second SmartDeal order table and do not call two independent public APIs with an inconsistent intermediate state.
 
-The buyer always performs the final **explicit Create Order** action. A selected bid must still be valid and Seller Listing available at conversion time; locked terms are not silently replaced by a fresh catalog quote. If conditions invalidate the bid, return 409 with a safe reselect/new-bid path. Payment stays outside QRM.
+The buyer always performs the final **explicit Create Order** action. **Within one PostgreSQL transaction**, conditionally lock/CAS the buyer-owned SELECTED demand and its current selected bid, verify no prior conversion, `now < min(demand.expiresAt,bid.validUntil)`, PUBLIC listing, seller ownership, full quantity/unit and known money terms, then write one accepted-offer snapshot, existing CustomerOrder(PLACED), conversion mapping and Outbox. A selected bid must still be valid and Seller Listing available at conversion time; bid economic terms are never silently replaced by a fresh catalog quote. If conditions invalidate the bid, return 409 with a safe reselect/new-bid path. Payment stays outside QRM.
 
 ## 5. Matching: first deterministic, later Tribuo
 
 ### Hard filters (before rank, non-negotiable)
 
-1. Listing `PUBLIC` or `UNLISTED` only when explicitly shared with demand owner; owner active and not suspended.
+1. **Only `PUBLIC` Listing** can be discovered by matcher in first Smart Deal release. UNLISTED requires a future explicit sharing/grant contract, so it is excluded. Owner must be active and not suspended.
 2. Category/product type compatible with request and allowed publishing type; physical product first.
-3. Compatible unit and quantity range; do **not** auto-convert KG ↔ PCS or service/digital dimensions.
-4. Region serviceable under merchant-defined delivery/pickup coverage (missing coverage = unknown, not invented eligible).
+3. Exactly matching canonical `unitCode` and **full demand quantity**; no partial fill and no implicit KG ↔ G, KG ↔ PCS, or service/digital conversions.
+4. City matching must use explicit seller coverage/pickup declaration; if delivery city coverage is missing, treat delivery eligibility as **unknown and exclude from delivery matches** (seller may configure it). No inferred distance or delivery promise.
 5. No self-dealing (buyer cannot bid using seller identity they control); respect blocks/abuse controls.
 6. Bounded candidate page, deterministic stable sort and tie-break, exclude expired/archive/private listing.
 7. **No inventory guarantee**: seller affirmatively states availability in their bid; conversion revalidates any controlled stock rule.
 
 ### Ranked signals (explainable)
 
-For matching v1 sort eligible candidates using explicit **deterministic** score: request category relevance, delivery-region fit, price eligibility from **server-side quote** for quantity, buyer-required deadline, seller review sample count and qualified-order completion (capped to avoid unfair monopoly). Give buyer reasons such as `В регионе`, `Есть объём`, `В бюджете`. Do not use unverified public reviews, private cross-seller buyer data or inferred financial reliability.
+For matching v1 sort eligible candidates deterministically using required category/unit/city criteria, published Listing and **server-side price quote** for the exact quantity if known; optional seller reputation or deadlines can only act as explainable tie-breakers **when validated data exist**. Do not require geographic optimization, stock prediction, reviews, or ML scoring to implement basic matching. Give buyer reasons such as `В регионе`, `Есть объём`, `В бюджете`. Do not use unverified public reviews, private cross-seller buyer data or inferred financial reliability.
 
 Price comparison:
 - All numbers are KZT `BigDecimal`, use existing pricing version and policy.
 - SellerBid contains `unitPrice, quantity, currency, estimatedShippingKzt?`, `fulfillmentMode`, `availableBy?`, validity and explicit terms.
-- Comparable price is `bidTotal + knownShipping`; when shipping unknown **display “Доставка не указана” and never rank it as cheaper all-in**.
+- Comparable known price is `bidUnitPrice × fullQuantity + explicitly known shipping` (and applicable disclosed taxes/fees under approved money policy). When any required fee is unknown, **display “Итоговая стоимость неизвестна” and never rank the offer as cheapest all-in**.
 - Compare bids with incompatible fulfillment terms only in separately labeled groups; never mix pickup and delivery as equivalent.
 - The buyer budget is optional; if not shared, seller receives only quantity/category/region requirements.
 
@@ -145,11 +147,11 @@ Price comparison:
 | `buyer_demand` | id UUID PK, buyer_user_id, category_id, type, description, quantity NUMERIC, unit_code, city_code, max_budget_kzt nullable, budget_visibility, needed_by, state, version, selected_bid_id nullable, linked_order_id nullable, expires_at, created_at | owner, positive quantity, expiration, optimistic version, one linked Order |
 | `seller_bid` | id UUID PK, demand_id FK, seller_id, listing_id, bid_version, status, quantity, unit_price_kzt NUMERIC, shipping_kzt nullable, delivery_terms, valid_until, created_at | seller/listing ownership, one active per seller and demand, nonnegative amounts |
 | `smartdeal_conversion` | demand_id unique FK, accepted_bid_id unique FK, negotiation_id unique, order_id unique, converted_at | one Order per Demand; immutable link, transactional idempotency |
-| `match_invitation` | id UUID PK, demand_id, seller_id, listing_id, created_at, state | unique(demandId,sellerId,listingId); bounded, dedup notifications |
+| `match_invitation` | id UUID PK, demand_id, seller_id, listing_id, created_at, state | unique(demandId,sellerId); max one invitation per seller and demand, bounded Outbox retry |
 
 Keep `match_candidate` **computed via SQL** for first implementation; no mandatory table. Use same PostgreSQL and same transactional Outbox. No duplicate user account, seller reputation, Order or price book model. A short-lived match cache can be omitted entirely until measured.
 
-**Database rules:** foreign keys, unique indexes and partial unique constraint `(demand_id,seller_id) WHERE status IN ('ACTIVE','SELECTED')` for current bid rows (adjust for version history); DB-level idempotency key scoped to buyer/action; transactional CAS on `buyer_demand.version`. Ensure selected bid belongs to same demand and buyer never accepts bid from their own seller profile. Archive/expiry races must be covered by integration tests. A request may have many historical bids, but at most one selected bid.
+**Database rules:** foreign keys, unique indexes and partial unique constraint `(demand_id,seller_id) WHERE status IN ('ACTIVE','SELECTED')` for current bid rows; historical revision states SUPERSEDED/WITHDRAWN/EXPIRED/CONVERTED are immutable; DB-level idempotency key scoped to buyer/action; transactional CAS on `buyer_demand.version`. Ensure selected bid belongs to same demand and buyer never accepts bid from their own seller profile. Archive/expiry races must be covered by integration tests. A request may have many historical bids, but at most one selected bid.
 
 ## 7. Draft REST API (`/api/v1` prefix)
 
@@ -167,10 +169,11 @@ Keep `match_candidate` **computed via SQL** for first implementation; no mandato
 | POST | `/smart-deals/demands/{id}/bids/{bidId}/withdraw` | same seller | Withdraw unselected bid |
 | GET | `/smart-deals/demands/{id}/bids` | owner | Compare eligible bids; paged |
 | POST | `/smart-deals/demands/{id}/select-bid` | buyer owner | Select ONE valid bid |
-| POST | `/smart-deals/demands/{id}/create-order` | buyer owner | Explicit idempotent conversion through existing Order |
+| POST | `/smart-deals/demands/{id}/release-selection` | buyer owner | Explicitly reopen before any Order; restore bid only if valid |
+| POST | `/smart-deals/demands/{id}/create-order` | buyer owner | Explicit idempotent atomic conversion through existing Order |
 | POST | `/smart-deals/demands/{id}/cancel` | buyer owner | Cancel if not converted |
 
-**Required headers:** `Idempotency-Key` for publish, submit/replace bid, select, convert and cancel; `If-Match` or `expectedVersion` for mutable demand/bid. Response `201` on newly created, `200` on identical replay, `409` stale version or invalid state, `422` failed business validation, `403/404` foreign ownership. Multi-call path must be safe under racing buyers/sellers.
+**Required headers:** `Idempotency-Key` for publish, submit/replace bid, select, release, convert and cancel; store scoped key, request hash and prior result; same key/different payload => 409; `If-Match` or `expectedVersion` for mutable demand/bid. Response `201` on newly created, `200` on identical replay, `409` stale version or invalid state, `422` failed business validation, `403/404` foreign ownership. Multi-call path must be safe under racing buyers/sellers.
 
 **Request sketch (server does not accept `buyerUserId` from client):**
 
@@ -209,7 +212,7 @@ Currency is always KZT in MVP. In total calculation: unit price × quantity plus
 
 - Buyer and Seller must be authenticated; phone is currently **UNVERIFIED** unless a separate confirmed method exists. **No implicit phone/account binding** from Web leads. Keep OPEN-15 registration-risk gate.
 - Seller sees only demand fields required to prepare bid; buyer exact delivery address and phone are exposed **only through authorized Order if necessary** after creation. Do not broadcast exact contact to all matched sellers.
-- Invitation count default **max 10 seller profiles per demand**, no duplicate invitation to same seller, 7-day demand TTL and 48-hour bid TTL are **PROPOSED for S2**, not accepted facts. Rate-limit creation, publication and bids by account, device and IP, with moderation of abusive requests.
+- Invitation count default **max 10 seller profiles per demand**, no duplicate invitation to same seller, 7-day demand TTL and 48-hour bid TTL are **PROPOSED for S2**, not accepted facts. Effective bid deadline is `min(demand.expiresAt, bid.validUntil)`; matching restart/replay cannot duplicate invite or notification. No seller is obligated to bid. Rate-limit creation, publication and bids by account, device and IP, with moderation of abusive requests.
 - SQL tenant/owner predicates on every read and write; no IDOR by changing demandId/bidId/listingId. Rate-limit matching to prevent public catalog scraping and exact-user inference.
 - Prevent sellers buying their own demand from another seller persona they control as possible; do not treat anonymous identity claims as strong proof. For the broader fraud graph, only suggest manual review rather than automatic disqualification on ML prediction.
 - Retain necessary business/audit records under KZ legal review. Keep personal data and backups in Kazakhstan; third-party push providers assessed separately.
@@ -226,7 +229,7 @@ Currency is always KZT in MVP. In total calculation: unit price × quantity plus
 | SD-04 | Buyer publishes own DRAFT twice with same key | one OPEN and one logical matching event |
 | SD-05 | Other user publishes/edits demand | 403/404, no disclosure |
 | SD-06 | Buyer tries edit after OPEN | rejected; version/history unchanged |
-| SD-07 | Matching sees archived/unlisted-not-shared listing | listing excluded |
+| SD-07 | Matching sees archived or UNLISTED listing | listing excluded in Smart Deal v1 |
 | SD-08 | Region/quantity/unit incompatible | no invitation |
 | SD-09 | No eligible sellers | empty result, no fabricated bid |
 | SD-10 | 100 eligible sellers for one demand | deterministic bounded invites, no duplicate seller |
@@ -235,7 +238,7 @@ Currency is always KZT in MVP. In total calculation: unit price × quantity plus
 | SD-13 | Seller tries to bid on self-owned buyer demand | rejected |
 | SD-14 | Seller submits valid bid + duplicate retry | one ACTIVE current bid, one event |
 | SD-15 | Seller replaces bid | original immutable SUPERSEDED, new version ACTIVE |
-| SD-16 | Seller withdraws selected bid after buyer selection | cannot silently invalidate selected terms; guarded outcome |
+| SD-16 | Seller withdraws selected bid after buyer selection | 409; immutable selected terms until effective expiry, no Order unless buyer explicitly converts |
 | SD-17 | Bid expires before buyer selects | rejected; cannot create Order |
 | SD-18 | Buyer sees price + known delivery, unknown delivery separately | no false all-in cheapest label |
 | SD-19 | Buyer selects seller A and B concurrently | exactly one SELECTED bid; no accepted NegotiationOffer or Order before explicit conversion |
@@ -243,7 +246,7 @@ Currency is always KZT in MVP. In total calculation: unit price × quantity plus
 | SD-21 | Buyer selects bid | demand SELECTED but **no CustomerOrder and no accepted NegotiationOffer yet** |
 | SD-22 | Buyer creates Order once, 20 concurrent retries | one CustomerOrder + one acceptedOffer link + one Outbox event |
 | SD-23 | DB Outbox write fails during conversion | full rollback, no orphan accepted offer/Order |
-| SD-24 | Listing archived while Order conversion | 409, no order |
+| SD-24 | Listing archived before Order conversion | 409, no order |
 | SD-25 | Seller modifies Listing price after bid accepted | agreed bid price immutable; no silent reprice |
 | SD-26 | Buyer cancels demand before selection | no new bids/order, notice delivered internally |
 | SD-27 | Buyer cancels after Order created | must use normal Order cancellation, demand Order link remains |
@@ -289,3 +292,9 @@ Currency is always KZT in MVP. In total calculation: unit price × quantity plus
 | SD-DEC-10 | Is supply matched automatically to buyer request? | only candidate invitation; seller must explicitly bid |
 
 **No silent policy adoption:** above defaults are recommendations until R0/S2 signoff. KZT rounding and receipt/dispute semantics inherit their own unresolved upstream gates. 
+
+## 12. SD-AUD-01 corrections and additional RED qualification
+
+[SMART-DEAL-R2-AUDIT.md](SMART-DEAL-R2-AUDIT.md) is the detailed review of 20 issues. It defines **SD-37…SD-52** as additional RED cases covering selection expiry, immutable bids, bid version races, UNLISTED exclusion, full quantity matching, replay with changed payload, conversion concurrency, shipping fees, invitation dedup, missing seller delivery coverage, explicit release-selection, feature flag isolation, privacy and fallback. This expands **SD-01…SD-36 to SD-01…SD-52**; none are executable yet. S2 must approve the technical assumptions.
+
+**Canonical corrections:** no accepted NegotiationOffer on selection, no Order before explicit buyer command, all matching sourced from PUBLIC listings, one current bid revision per seller+demand, no inventory reservation guarantee, cost unknown != cheapest, use same domain Order/outbox transaction. No extra queue, ML service or duplicated Order state machine.
