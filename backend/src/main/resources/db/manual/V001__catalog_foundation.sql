@@ -15,7 +15,6 @@ CREATE TABLE catalog_category (
         AND (substring(hcc_code,3,2)<>'00' OR substring(hcc_code,5,16)='0000000000000000')
         AND (substring(hcc_code,5,3)<>'000' OR substring(hcc_code,8,13)='0000000000000')
         AND (substring(hcc_code,8,5)<>'00000' OR substring(hcc_code,13,8)='00000000')
-        AND (substring(hcc_code,13,8)<>'00000000' OR substring(hcc_code,8,5)<>'00000')
     ),
     CONSTRAINT chk_catalog_type CHECK (product_type IN ('PHYSICAL','SERVICE','DIGITAL'))
 );
