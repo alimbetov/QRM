@@ -84,3 +84,7 @@ Unique constraint recipient_user_id + event_id + kind. Encrypt sensitive tokens 
 ## R2 — риск неподтверждённого телефона
 
 Владение телефонным логином не подтверждено; злоумышленник может зарегистрировать чужой номер раньше его владельца. MVP не должен обещать, что SMS-номер означает личность, и не должен позволять восстановление по этому номеру. Ввести регистрацию с rate-limit/abuse audit и независимым `accountId` как первичным ключом; уникальность нормализованного логина не является проверкой владения. **OPEN-15:** до публичного запуска необходимо определить безопасный процесс смены/освобождения/оспаривания непроверенного логина с доказательством независимым способом либо перейти на другой первичный логин. Не автоматизировать захват аккаунта по совпадению номера. [R2 audit](TECHNICAL-REVIEW-R2.md).
+
+## R0.3 recovery decision
+
+If the customer provided and **verified** email, password-reset email may be sent to that address with a single-use expiring token. Email merely entered but not verified **does not qualify**. With no verified email/trusted authenticated session: no self-service reset by unverified phone and no SMS fallback. Explain limits at signup and define manual support procedure; unresolved phone alias squatting risk is still an OPEN-15 public-release gate. Push/receipt QR is not identity login recovery. [R0.3 requirements](MVP-DECISIONS-R03.md).
