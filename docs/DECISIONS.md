@@ -85,3 +85,7 @@
 ## Smart Deal — проектные решения до отдельного утверждения
 
 **SD-R2 / PROPOSED:** функциональность BuyerDemand → Matching → SellerBid → CustomerOrder выделена как отдельный следующий этап **после** основного QR MVP, с повторным использованием существующих Order/Negotiation/Outbox. SQL matching перед ML; никаких автозаказов/автопринятия ставок. Параметры приглашений, времени действия и видимости бюджета остаются SD-DEC-01…10, не APPROVED. Полная спецификация: [SMART-DEAL-R2.md](SMART-DEAL-R2.md).
+
+## Smart Deal SD-AUD-01 (proposed technical clarifications)
+
+[Smart Deal R2 technical audit](SMART-DEAL-R2-AUDIT.md) / [feature spec](SMART-DEAL-R2.md): candidate matching v1 PUBLIC-only; one seller bid current revision per buyer demand; selected bid is buyer preference **not** finalized Order or accepted NegotiationOffer; buyer explicitly converts via existing Order transaction; no reservation/payment guarantee; unknown shipping cost cannot be presented as cheapest. These are technical recommendations awaiting S2, not a new APPROVED product DEC.
