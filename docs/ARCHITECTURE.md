@@ -172,3 +172,14 @@ deployment/
 **Flutter PriceNegotiation:** offer → accept/counter/reject → AGREED → явное создание CustomerOrder, связанного с согласованной ценой/количеством/сторонами; один Order на согласованное предложение. Блокировка дублей и гонок в PostgreSQL.
 
 **Buyer cancellation:** для незавершённого Lead/offer — WITHDRAWN; для ещё неподтверждённого Order — CANCELLED_BY_BUYER; после подтверждения — CANCELLATION_REQUESTED с типоспецифичной обработкой и сохранением законных прав покупателя. Все переходы аудитируются, продавец уведомляется.
+
+
+## 11. Seller Inbox — персональные метки чтения и закладки
+
+Инбокс объединяет три типа входящих записей для представления: `PurchaseLead`, `PriceNegotiation`, `CustomerOrder`. Не смешивать их бизнес-агрегаты и жизненные циклы. Модель предпочтительно `SellerInboxItem` как денормализованная/проекционная запись (`sellerId, subjectType, subjectId, lastActivityAt`) и `SellerInboxUserState` (`userId, sellerId, subjectType, subjectId, readActivityVersion, bookmarked, updatedAt`) с уникальностью `(userId, sellerId, subjectType, subjectId)`. Точную схему квалифицировать в R0.
+
+Прочтение не следует хранить простым `isRead` на `PurchaseLead`: оно зависит от пользователя и новых входящих событий. Новое сообщение увеличивает `incomingActivityVersion`, а признак непрочитанности вычисляется как `readActivityVersion < incomingActivityVersion` (включая отсутствие записи). Это защищает от гонки, когда пользователь помечает предыдущую версию как прочитанную одновременно с новым предложением. Закладка — независимый boolean. Чтение/закладки доступны только авторизованным субъектам продавца и применяются и к Web, и к Flutter.
+
+Пагинация inbox: стабильный cursor на `(lastActivityAt, subjectType, subjectId)` с tie-break; при новых событиях элементы могут перемещаться в начало, для строгой консистентности сквозной навигации предусмотреть snapshot/as-of cursor. Индексы по `sellerId, lastActivityAt DESC`, отдельные индексы пользовательских меток по `userId, bookmarked` и оптимизированные проекции для unread counts. Не выполнять по одному SQL на каждую строку списка.
+
+QR-авторизация кабинета — отдельный контур `identity/device-session`: challenge одноразовый, короткоживущий, подтверждается во Flutter, cookies Secure HttpOnly; состояние inbox не хранится в браузере как источник истины.
