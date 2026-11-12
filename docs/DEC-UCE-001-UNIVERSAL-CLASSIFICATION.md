@@ -150,3 +150,30 @@ Persist `schemaVersion`, `vocabularyVersion`, `classificationRevision`, `encoder
 - UCE-20: encoding cannot include raw phone, addresses, GPS, credentials or buyer personal identifiers; buyer segmentation uses only purpose-authorized signals.
 
 **Implementation gate:** first prove stable types/segment capacity through two drastically different pilots (smartphones and electrical services), then add generator/schema migrations, normalization/encoding unit tests and Testcontainers verification. Don't ship an unversioned positional format.
+
+## DEC-UCE-003 — Buyer city and birth-year signals (2026-11-12)
+
+**Status: APPROVED as optional buyer-profile data dimensions / proposed ML usage, subject to privacy and legal review.** This is personal data, not a product attribute and **must not** be encoded inside a product/service HCC classification code.
+
+### Buyer profile (separate domain from universal product dictionary)
+
+- `BuyerProfile.residenceCityAreaId`: nullable reference to versioned territory registry, backed by an official administrative code where permitted (e.g. KATO). Source is **buyer-selected city**, not inferred GPS or public address; city change does not rewrite historical signals.
+- `BuyerProfile.birthYear`: optional integer year, self-declared, with basic sanity checks and ability to edit/delete. Do not require full birth date for product personalization; avoid storing exact date solely for ML.
+- `BuyerProfile.personalizationConsent`: distinct, revocable purpose-scoped consent (recommendations and separately marketing push); data export/retention/delete/correction controls. Saving a city for delivery must not silently authorize behavioral advertising.
+- `BuyerPreferenceProfile` is derived only from lawful, in-scope events and must be recomputable on opt-out/deletion. No raw phone, full address, or precise GPS in ML feature vectors.
+
+### Encoding for matching
+
+**City:** normalized stable area ID + official/code version; never supply sequential city ID or KATO as an ordinal continuous number. Use named categorical features (`buyer.city.<code>=1`), and preferably relational comparison signals (`coverage.same_city=1`, `coverage.same_region=1`, `delivery.fee_known=1`, `delivery.days=N`). Geographic eligibility is deterministic using service-area coverage. Never imply geographic proximity from numeric distance between territory codes.
+
+**Birth year:** derive age band at feature snapshot's `asOf` year, with boundary ambiguity: age is approximately `asOfYear - birthYear` and may be one less before birthday; do not claim exact legal age from year alone. Prefer stable, coarse adult bands (e.g. `18_24`, `25_34`, `35_44`, `45_54`, `55_PLUS`, `UNKNOWN`) for permitted aggregate analytics; **adult eligibility must be verified using a separate compliant process if legally needed**. Do not treat numeric `birthYear` as arbitrary ordinal category ID, nor expose birth year, age band or location to merchants. For opted-in adult recommendation models, first prove incremental value through controlled tests. Hard requirement: prohibit personalized marketing/profiling based on this data for known or suspected minors until explicit independent child-safety/legal review; fallback to non-personalized offers.
+
+### Schema and tests
+
+`FeatureSchemaVersion` optionally adds `buyer.city.*`, `coverage.same_city`, `coverage.same_region`, `buyer.age_band.*`, `buyer.age_band.UNKNOWN`, `buyer.profile_city_known` and `buyer.birth_year_known`; exact vocabulary and missingness must be frozen per version. No raw city/year in serialized feature logging. `BuyerDemand.city` remains a *request fulfillment destination* and can differ from `BuyerProfile.residenceCityAreaId`; use request city for hard delivery eligibility and opt-in profile city only for ranking when appropriate.
+
+- UCE-21: two different city IDs encode separate indicators; equality/coverage match does not rely on numeric ordering.
+- UCE-22: same buyer age band computed from the same birthYear and asOf date independent of training vs inference; unknown is distinct from zero.
+- UCE-23: missing/revoked consent excludes birth-year and optional location personalization features, not just push dispatch.
+- UCE-24: request destination city overrides residence city for delivery eligibility, with no private address leak to competing sellers.
+- UCE-25: no personalized marketing using age signals for known/suspected minors; no false legal-age claim from birth year alone.
