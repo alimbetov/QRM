@@ -225,3 +225,7 @@ QR-авторизация кабинета — отдельный контур `
 ## Canonical Entity Registry R0.5
 
 Единый каталог 46 кандидатов в сущности, модели enum/value object, владельцы, ключи, ограничения и приоритеты: [ENTITY-REGISTRY-R05.md](ENTITY-REGISTRY-R05.md). Реестр — спецификация S0, не перечень 46 обязательных PostgreSQL таблиц; отдельные supporting storage модели требуют S2 решения.
+
+## Java ML рекомендации — ADR-003
+
+Утверждён стек **Java 21 + Spring Boot + PostgreSQL + Tribuo** в модульном монолите. Для персонализации и рекомендательных Push определены кандидаты `BuyerInteractionEvent`, `BuyerInterestProfile`, `MlTrainingRun`, `MlModelVersion`, `RecommendationFeedback` и возможный `NotificationDecision`; `RecommendationFeatures` — value object, а не JPA entity. Состав таблиц не расширять автоматически; использовать уже имеющиеся Favorite/analytics/notification/outbox контракты. Подробнее: [ADR-003-JAVA-ML-RECOMMENDATIONS.md](ADR-003-JAVA-ML-RECOMMENDATIONS.md). Реального обучения, ML-инференса и отправки Push пока нет.
