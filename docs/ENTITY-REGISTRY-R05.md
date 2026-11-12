@@ -183,3 +183,7 @@ See [DEC-BUYER-WEB-CATALOG](DEC-BUYER-WEB-CATALOG.md). Dynamic category characte
 ## Universal Classification Engine (UCE-001) — candidate changes
 
 See [DEC-UCE-001-UNIVERSAL-CLASSIFICATION.md](DEC-UCE-001-UNIVERSAL-CLASSIFICATION.md). Reuse existing Category/Product/ProductSku instead of parallel category hierarchy; typed attribute definitions, per-class validation rules, normalized typed values, multilingual synonyms, external standards mapping, source provenance and feature schema version are **additional candidates beyond baseline 46**, not an automatic declaration of new tables. Mandatory hard-constraint match validation precedes Tribuo rank.
+
+### DEC-UCE-002 strict positional HCC + feature schema
+
+Идентификатор DictionaryNode (BIGINT generator) не равен опубликованному ClassificationPath (фиксированные строковые сегменты). Общие справочники SIZE_SYSTEM, SIZE_VALUE, COLOR, MATERIAL и другие типизированные значения связываются с категориями через ClassAttributeRule. FeatureSchemaVersion хранит неизменные позиции/поля, схемы нормализации и categorical encoding в Tribuo, предотвращая ordinal interpretation числовых кодов. Новые кандидаты не означают автоматического создания физических таблиц. См. [UCE-001 / UCE-002](DEC-UCE-001-UNIVERSAL-CLASSIFICATION.md).
