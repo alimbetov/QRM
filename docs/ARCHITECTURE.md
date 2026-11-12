@@ -191,3 +191,7 @@ QR-авторизация кабинета — отдельный контур `
 ## 13. Customer Activity Aggregator
 
 Новый bounded context `customer-activity`: consume transactional Outbox, дедупликация событий, месячные и дневные агрегаты, `customer_rolling_score` за 9 календарных месяцев, отдельный `seller_customer_stats`. PostgreSQL партиционирование **исходных событий** по месяцу допускается с доказанной нагрузкой; отсутствие текущей партиции для пользователя не сбрасывает историю. Для точного rolling window используются дневные агрегаты/граничные события, а не сумма девяти целых месячных партиций. Доступ продавца строго только к своим покупателям и не раскрывает сделки клиента у других продавцов. Подробности: [CUSTOMER-ACTIVITY-AGGREGATOR.md](CUSTOMER-ACTIVITY-AGGREGATOR.md).
+
+## 14. Ночные агрегаты и profile read model
+
+Проектный источник профилей: [NIGHTLY-PROFILE-AGGREGATION.md](NIGHTLY-PROFILE-AGGREGATION.md). Job формирует buyer/seller/seller-buyer версии в staging по `runId` и атомарно переключает опубликованный `active_run_id`; длинные транзакции вокруг всего расчёта запрещены. Durable lease+fencing защищает от двух scheduler replicas. Profile APIs читают материализованные snapshots, не агрегируют из Order в каждом GET. Seller tier и звездный рейтинг не смешиваются. Требуются source watermark и reconciliation до публикации.
