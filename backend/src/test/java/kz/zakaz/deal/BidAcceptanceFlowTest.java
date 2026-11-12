@@ -92,4 +92,15 @@ class BidAcceptanceFlowTest {
         assertThatThrownBy(()->accepting.accept(actor,s.demand.id(),s.bid.id(),"stale",NOW.plusSeconds(1900)))
             .isInstanceOf(IllegalStateException.class);
     }
+    @Test void acceptedDemandCannotReceiveNewSellerRevisions() {
+        var s=setup();
+        accepting.accept(buyerToken(s.subject()),s.demand.id(),s.bid.id(),"accepted-1",NOW);
+        var revised=new SellerBid(UUID.randomUUID(),s.demand.id(),s.seller,2,
+            NOW.plusSeconds(1000),s.bid.lines());
+        assertThatThrownBy(()->bidding.submit(s.seller,revised,
+            new SellerBidSubmissionService.QuoteRequest(
+                SellerBidQuoteSnapshot.Method.DELIVERY,s.location,new BigDecimal("300.00")),NOW))
+            .isInstanceOf(IllegalStateException.class).hasMessageContaining("already accepted");
+    }
+
 }

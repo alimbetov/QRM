@@ -18,11 +18,14 @@ public class DealPersistenceService {
     private final SellerBidSnapshotRepository bids;
     private final CanonicalProductRepository products;
     private final CatalogSkuFactsResolver catalog;
+    private final BidAcceptanceRepository acceptances;
     public DealPersistenceService(BuyerDemandSnapshotRepository demands,
                                   SellerBidSnapshotRepository bids,
                                   CanonicalProductRepository products,
-                                  CatalogSkuFactsResolver catalog) {
+                                  CatalogSkuFactsResolver catalog,
+                                  BidAcceptanceRepository acceptances) {
         this.demands=demands;this.bids=bids;this.products=products;this.catalog=catalog;
+        this.acceptances=acceptances;
     }
     @Transactional
     public UUID createDemand(BuyerDemand demand, Instant now) {
@@ -43,6 +46,8 @@ public class DealPersistenceService {
             throw new SecurityException("Seller cannot submit on behalf of another merchant");
         var demand=demands.findForUpdate(bid.demandId())
             .orElseThrow(()->new NoSuchElementException("Buyer demand not found"));
+        if(acceptances.existsByDemandId(demand.getId()))
+            throw new IllegalStateException("Buyer demand already accepted");
         DealQualification.validate(demand.toDomain(),bid,now);
         int next=bids.findFirstByDemand_IdAndSellerIdOrderByRevisionDesc(
             demand.getId(),trustedSellerId).map(b->b.getRevision()+1).orElse(1);
