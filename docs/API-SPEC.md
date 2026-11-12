@@ -142,3 +142,14 @@ Authentication grant/session exchange, exact constraints/rounding, enum values a
 - Profile data carries `asOf`, `rulesVersion`, `dataStatus`; seller sees only relationship with own buyer and no other sellers' activity.
 
 [Second technical audit](TECHNICAL-REVIEW-R2.md).
+
+## R0.3 — receipt confirmation commands (API-First proposal)
+
+```http
+POST /api/v1/orders/{id}/receipt-challenges          # seller only, READY_FOR_RECEIPT
+GET  /api/v1/receipt-challenges/{opaqueToken}         # buyer authenticated, only own order
+POST /api/v1/orders/{id}/confirm-receipt              # authenticated buyer, explicit consent, one-time challenge or own-order action
+POST /api/v1/orders/{id}/disputes                     # authenticated buyer, refuse/not received
+```
+
+Challenge is short-lived, one-time, hashed at rest, contains no PII and cannot be redeemed by seller as buyer. Receipt transition atomic with Outbox; no automatic completion on expired QR. Email recovery requires verified email. Pricing quote responses distinguish `orderTotalKzt` and optional `cashSettlementEstimateKzt`; cash rounding never mutates order snapshot. [Details](MVP-DECISIONS-R03.md).
