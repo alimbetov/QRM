@@ -145,3 +145,7 @@ R1A implemented in branch: minimal category/HCC, typed attribute definition + ap
 ## R1B — executed catalog qualification slice
 
 RED tests for HCC positional validation, required SKU facts, seller publication ownership; GREEN: `HccPath`, `CatalogPublicationPolicy`, `CatalogPublishingService`, `CatalogSkuFactsResolver`, Testcontainers PostgreSQL manual DDL validation. [R1B evidence](R1B-CATALOG-QUALIFICATION.md). Before R2, independent S2 review must validate seller principal integration, enum/unit policy, catalog mutation guards and schema migration path.
+
+## R1B.2 — seller draft protection and PostgreSQL integrity
+
+RED → GREEN: тесты подтверждают отклонение чужого sellerId, изменение только DRAFT, idempotent attribute upsert, одобренный enum lookup, отказ от неизвестных значений в catalog facts; PostgreSQL manual V002 enum check и V003 trigger замораживают опубликованные SKU при прямом SQL. Требуются S2 review, реальные auth principal / membership, schema migration history для всех доменов и versioned categorical facts перед ML. [Отчёт R1B.2](R1B2-CATALOG-SECURITY-AND-INTEGRITY.md).
