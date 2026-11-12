@@ -140,3 +140,7 @@ Phone is only an unverified login identifier, no OTP confirmation. Passwords has
 ## DEC-SELECTED-SKU-ORDER — выбор покупателем позиций
 
 Покупатель выбирает SKU чекбоксами и указывает количество каждого выбранного SKU; невыбранные позиции не переходят в заказ. Чекбоксы — состояние UI, отдельная JPA-сущность не нужна. Сервер проверяет принадлежность SKU одному продавцу, активность, количество и пересчитывает цену. Выбор формирует `OrderLine` для обычного заказа или `PriceOfferLine` для версионированного согласования цен по каждой выбранной позиции. Заказ/переговоры — функции Flutter; публичный React сохраняет сценарий обратного звонка и может передать набор SKU через App Link, но не создаёт заказ анонимно. При `PLACED` резервов нет. Полный контракт: [DEC-SELECTED-SKU-ORDER.md](DEC-SELECTED-SKU-ORDER.md).
+
+## Location snapshots in OrderLine and PriceOfferLine — APPROVED
+
+Buyer sees region and city for each SKU/line. `originCitySnapshot` and `originRegionCodeSnapshot` are preliminary terms at offer/PLACED time, not an exact warehouse promise. The actual confirmed location for TRACKED items is referenced through reservation, and the delivery/pickup destination belongs to fulfillment, not stock address. Full street/building/coordinates are private `InventoryLocation` data. Publish exact pickup address only for an authorized customer-facing pickup point and order participants. Material origin-city changes during seller confirmation require the buyer's explicit renewed consent before reserving. See [DEC-SELECTED-SKU-ORDER](DEC-SELECTED-SKU-ORDER.md).
