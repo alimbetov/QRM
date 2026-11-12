@@ -33,7 +33,7 @@ class BidAcceptanceFlowTest {
     @Autowired CustomerOrderRepository orders;
     @Autowired BidAcceptanceRepository acceptances;
 
-    private record Seed(BuyerDemand demand,SellerBid bid,UUID buyer,UUID seller,UUID location) {}
+    private record Seed(BuyerDemand demand,SellerBid bid,UUID buyer,UUID seller,UUID location,String subject) {}
     private Seed setup() {
         var category=categories.saveAndFlush(Category.create(
             "01"+String.format("%02d",1+Math.floorMod(UUID.randomUUID().hashCode(),99))
@@ -47,7 +47,8 @@ class BidAcceptanceFlowTest {
         var location=locations.saveAndFlush(InventoryLocation.create(seller,"WH-1","Warehouse",
             "KZ-ALA","Almaty region","Almaty","1 Test street",LocationType.SHOP,null,true));
         areas.saveAndFlush(SellerDeliveryArea.allow(seller,"Almaty"));
-        buyerLinks.saveAndFlush(BuyerAccountLink.provision("https://idp.example.test","buyer-1",buyer));
+        var subject="buyer-"+UUID.randomUUID();
+        buyerLinks.saveAndFlush(BuyerAccountLink.provision("https://idp.example.test",subject,buyer));
         var d=new BuyerDemand(UUID.randomUUID(),buyer,"Almaty",NOW.plusSeconds(3600),
             List.of(new BuyerDemand.DemandLine(product.getId(),new BigDecimal("2"),null,MeasurementUnit.PCS)));
         deals.createDemand(d,NOW);
@@ -56,7 +57,7 @@ class BidAcceptanceFlowTest {
                 new BigDecimal("2"),new BigDecimal("1000.00"))));
         bidding.submit(seller,bid,new SellerBidSubmissionService.QuoteRequest(
             SellerBidQuoteSnapshot.Method.DELIVERY,location.getId(),new BigDecimal("300.00")),NOW);
-        return new Seed(d,bid,buyer,seller,location.getId());
+        return new Seed(d,bid,buyer,seller,location.getId(),subject);
     }
     private JwtAuthenticationToken buyerToken(String subject) {
         return new JwtAuthenticationToken(Jwt.withTokenValue("verified-by-spring-security")
@@ -65,7 +66,7 @@ class BidAcceptanceFlowTest {
     }
 
     @Test void quotedDeliveryIncludedInOrderAndExactRetryReturnsSameOrder() {
-        var s=setup(); var actor=buyerToken("buyer-1");
+        var s=setup(); var actor=buyerToken(s.subject());
         var accepted=accepting.accept(actor,s.demand.id(),s.bid.id(),"key-1",NOW);
         assertThat(accepted).isNotNull();
         var o=orders.findById(accepted).orElseThrow();
@@ -81,13 +82,13 @@ class BidAcceptanceFlowTest {
         var s=setup();
         assertThatThrownBy(()->accepting.accept(buyerToken("intruder"),s.demand.id(),s.bid.id(),"k1",NOW))
             .isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
-        var actor=buyerToken("buyer-1");
+        var actor=buyerToken(s.subject());
         accepting.accept(actor,s.demand.id(),s.bid.id(),"k1",NOW);
         assertThatThrownBy(()->accepting.accept(actor,s.demand.id(),UUID.randomUUID(),"k1",NOW))
             .isInstanceOf(IdempotencyConflictException.class);
     }
     @Test void staleOrSupersededBidCannotBeAccepted() {
-        var s=setup();var actor=buyerToken("buyer-1");
+        var s=setup();var actor=buyerToken(s.subject());
         assertThatThrownBy(()->accepting.accept(actor,s.demand.id(),s.bid.id(),"stale",NOW.plusSeconds(1900)))
             .isInstanceOf(IllegalStateException.class);
     }
