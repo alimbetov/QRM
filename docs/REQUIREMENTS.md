@@ -1,8 +1,8 @@
-# QRM — консолидированное техническое задание v1.3
+# QRM — консолидированное техническое задание v1.4
 
 **Дата:** 2026-11-12 · **Статус:** Product baseline / архитектура на проектировании (не утверждённый релиз)  
 **Первый рынок:** Казахстан · **Валюта:** KZT · **Интерфейсы:** React Web + Flutter Android/iOS  
-**Подход:** modular monolith, domain boundaries, scenario-first, test-first.
+**Подход:** modular monolith, domain boundaries, scenario-first, test-first. **Backend:** WebFlux + PostgreSQL R2DBC (ADR-001 proposed).
 
 ## 1. Цель и границы
 
@@ -146,3 +146,16 @@ PUT   /api/v1/seller/inbox/{type}/{id}/bookmark
 ```
 
 В `PUT` передаётся `{ "value": true|false }`. Идентификатор записи всегда проверяется на принадлежность/доступ продавца; повторное назначение того же значения идемпотентно.
+
+## 16. Детальная проектная спецификация
+
+Взаимосвязанные документы R0:
+
+- [DOMAIN-CONTRACTS.md](DOMAIN-CONTRACTS.md) — агрегаты, цены, статусы и конкурентные инварианты.
+- [API-SPEC.md](API-SPEC.md) — проектный API, ошибки, пагинация и идемпотентность.
+- [UX-FLOWS.md](UX-FLOWS.md) — React Web, Flutter, Seller Cabinet, QR Login.
+- [SECURITY-OPERATIONS.md](SECURITY-OPERATIONS.md) — персональные данные, auth, deployment, observability и recovery.
+- [TEST-PLAN.md](TEST-PLAN.md) — RED → S2 → GREEN и квалификация.
+- [ADR-001-REACTIVE-BACKEND.md](ADR-001-REACTIVE-BACKEND.md) — WebFlux/R2DBC проектное решение.
+
+Текущие бизнес-решения имеют приоритет над ранними иллюстративными маршрутами. Web-заявка = **только обратный звонок**. Flutter-согласование = **AGREED → явное создание заказа**. Продавец управляет inbox с bookmark/unread и Web QR login, причём Web не предоставляет покупательское избранное.
