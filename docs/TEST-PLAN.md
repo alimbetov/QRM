@@ -76,3 +76,7 @@ NPA-01…NPA-20 из [NIGHTLY-PROFILE-AGGREGATION.md](NIGHTLY-PROFILE-AGGREGATIO
 ## DEC-27 acceptance
 
 All AUTH-01…10 and NOT-01…10 from [AUTH-NOTIFICATIONS.md](AUTH-NOTIFICATIONS.md) are mandatory RED→S2→GREEN acceptance tests; special attention to account takeover without confirmed phone, password reset recovery, QR approval, push disabled and Outbox replays.
+
+## Post-review gates
+
+[TECHNICAL-REVIEW-MVP.md](TECHNICAL-REVIEW-MVP.md) задаёт единые P0/P1 границы. Дополнительные RED оракулы: Order и Outbox атомарно; buyer-only explicit create-order (до S2), подтверждение исполнения не равнозначно получению, отдельные Seller/Product reviews, no-rating null, один snapshot при повторном ночном пересчёте, web seller cabinet не выпускается без QR auth, phone unverified не доступен для восстановления, internal Notification Center сохраняется при отказе Push.
