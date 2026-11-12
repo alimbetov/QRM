@@ -4,7 +4,8 @@ CREATE TABLE buyer_demand_snapshot (
     buyer_id uuid NOT NULL,
     city varchar(160) NOT NULL,
     expires_at timestamptz NOT NULL,
-    created_at timestamptz NOT NULL
+    created_at timestamptz NOT NULL,
+    version bigint
 );
 CREATE INDEX idx_buyer_demand_buyer ON buyer_demand_snapshot(buyer_id);
 CREATE INDEX idx_buyer_demand_expiry ON buyer_demand_snapshot(expires_at);
@@ -30,6 +31,7 @@ CREATE TABLE seller_bid_snapshot (
     revision integer NOT NULL,
     expires_at timestamptz NOT NULL,
     submitted_at timestamptz NOT NULL,
+    version bigint,
     CONSTRAINT uk_bid_demand_seller_revision UNIQUE(demand_id,seller_id,revision),
     CONSTRAINT chk_bid_revision CHECK (revision>0)
 );

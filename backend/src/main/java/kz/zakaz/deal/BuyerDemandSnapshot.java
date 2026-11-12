@@ -13,6 +13,7 @@ import java.util.*;
 @Table(name="buyer_demand_snapshot")
 public class BuyerDemandSnapshot {
     @Id @Column(nullable=false) private UUID id;
+    @Version private Long version;
     @Column(name="buyer_id",nullable=false,updatable=false) private UUID buyerId;
     @Column(nullable=false,length=160,updatable=false) private String city;
     @Column(name="expires_at",nullable=false,updatable=false) private Instant expiresAt;

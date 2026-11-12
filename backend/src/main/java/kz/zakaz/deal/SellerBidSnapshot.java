@@ -13,6 +13,7 @@ import java.util.*;
     @UniqueConstraint(name="uk_bid_demand_seller_revision",columnNames={"demand_id","seller_id","revision"}))
 public class SellerBidSnapshot {
     @Id @Column(nullable=false) private UUID id;
+    @Version private Long version;
     @ManyToOne(fetch=FetchType.LAZY,optional=false)
     @JoinColumn(name="demand_id",nullable=false,updatable=false) private BuyerDemandSnapshot demand;
     @Column(name="seller_id",nullable=false,updatable=false) private UUID sellerId;
