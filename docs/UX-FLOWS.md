@@ -70,3 +70,7 @@ Inbox opening an item: mark read based on observed activityVersion only after de
 - QR login approved/rejected/expired and remote revoke behave correctly.
 - Flutter seller accepts offer → visible AGREED → explicit one-time create order; buyer receives status.
 - Refund/claim initiation depends on product type and stage, no silent financial reversal.
+
+## DEC-27 — Password/Auth and Notifications UX
+
+Flutter registration: phone login + password + nickname, optional email; display clear notice that phone number is not verified. Login with password, session reuse/secure refresh and logout. Optional verified-email recovery; without verified factor do not promise automated recovery. Notification Center: tabs All/Unread and unread counts, history durable when FCM off, deep-links to authorized business details; reading notifications does not change seller inbox/offer/order. Web seller QR approval must occur inside already signed-in Flutter, push alert cannot approve automatically. [Complete spec](AUTH-NOTIFICATIONS.md).
