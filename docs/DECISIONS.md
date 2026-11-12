@@ -54,3 +54,8 @@
 | DEC-23 | Продавец отмечает входящие заявки, переговоры и заказы закладкой; есть персональные состояния прочитано/непрочитано, фильтры и счётчики с синхронизацией Web/Flutter | APPROVED |
 
 > Метки seller inbox не равнозначны Favorite покупателей и не изменяют статусы Order, Negotiation или Lead.
+
+## Архитектурные записи
+
+- [ADR-001 Reactive Backend](ADR-001-REACTIVE-BACKEND.md): WebFlux + R2DBC + PostgreSQL; статус **PROPOSED** до технического spike/approval. Пользователь предпочёл R2DBC, но исполняемая квалификация ещё не проведена.
+- Детальные контракты и R0 open questions: [DOMAIN-CONTRACTS.md](DOMAIN-CONTRACTS.md), [API-SPEC.md](API-SPEC.md).
