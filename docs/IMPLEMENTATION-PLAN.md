@@ -4,8 +4,8 @@
 
 ## 1. Приоритеты
 
-- **P0 / MVP:** идентичность и продавец с логотипом; каталог и типы предложений; объявление с фотографиями/одной локалью; quantity pricing + scheduled discounts; публичная React QR страница; Web callback lead; Flutter offer→AGREED→Order; отзыв/отмена; seller inbox/read/bookmark/keyset pagination; базовое выполнение; rating после получения; минимальная аналитика просмотров; безопасность.
-- **P1 / MVP+ / release dependent:** Flutter favorites/price watch + FCM; QR Web login; dashboard QR-attribution, YouTube, расширенное review media. Если QR-login обязательная точка входа для Web Seller Cabinet, его security verification становится P0 для выпуска кабинета.
+- **P0 / минимальный вертикальный пилот:** парольная identity + seller/logo; один Listing с фотографиями/одной локалью, server-side KZT pricing (tiers); публичная React QR страница; Web callback lead без Order; Flutter buyer negotiation→AGREED→явное создание Order; seller inbox/read/bookmark с cursor; подтверждение продавцом и получение покупателем, отмена, product/seller rating, durable Notification Center, безопасность и базовый просмотр QR. Для включения SERVICE/DIGITAL требуются отдельные минимальные fulfillment acceptance cases.
+- **P1 / после вертикального пилота, либо релизно-обязательно:** scheduled discounts, Flutter favorites/price watch, optional FCM, advanced QR-attribution, одна YouTube-ссылка, расширенные review media. **Если выпускается React Seller Cabinet, AUTH-QR и revoke Web sessions — P0 для этого кабинета**, но не для публичной React QR страницы. Ночные buyer/seller/seller-buyer профили включаются после квалификации Order/Fulfillment/Review; допускается более поздний публичный запуск уровней.
 - **P2:** мультиаккаунты брендов, расширенные валюты, платежи/эквайринг, собственная логистика, полнотекстовый маркетплейс, AI, аналитический warehouse.
 
 Указание P1 не удаляет функциональность из общего ТЗ; оно позволяет ранжировать вертикальные срезы. Приоритеты требуют продуктового sign-off перед scope freeze.
@@ -19,19 +19,19 @@
 | SEL-01 | SellerProfile, logo, seller page | ID-01, media | public+private integration and upload tests |
 | CAT-01 | Category, measurement units, products | FND-01 | category permissions, locale contract |
 | LST-01 | Listing, translation, publish/unlisted/archive | CAT-01, SEL-01, media | state matrix tests |
-| MED-01 | Images 3–5, thumbnail, external video | FND-01 | real S3 adapter, security and rollback |
+| MED-01 | Images 3–5, thumbnail; optional YouTube URL later | FND-01 | real S3 adapter, security and rollback |
 | PRI-01 | quantity tier and effective price | LST-01 | no overlap, boundary and money tests |
 | DSC-01 | timed campaigns and scheduler recovery | PRI-01 | timezone/outage/concurrency tests |
 | QR-01 | stable QR product/seller URLs, source tags | LST-01 | QR reprint stability and attribution |
-| WEB-01 | public React storefront and callback | QR-01, PRI-01, LEAD-01 | guest E2E no login |
+| WEB-01 | public React storefront and callback | QR-01, PRI-01, LEAD-01 | guest E2E no login; seller cabinet separate release gate |
 | LEAD-01 | callback Lead, spam, seller handoff | ID-01, LST-01 | no auto Order; PII tests |
 | NEG-01 | Flutter offers and 5 counter rounds | PRI-01, ID-01 | atomic agree/race/expiry |
 | ORD-01 | order from agreed offer or public price | NEG-01, PRI-01 | exact-once, idempotent price snapshot |
 | ORD-02 | buyer cancellation and audit | ORD-01 | conflicting transitions qualify |
-| FUL-01 | physical/service/digital type-specific flows | ORD-01 | lifecycle and claim tests |
+| FUL-01 | physical fulfillment first; service/digital typed workflows required before enabling these listing types | ORD-01 | receipt evidence and type-specific lifecycle and claim tests |
 | INB-01 | seller inbox, bookmark/read/counts/pagination | LEAD-01, NEG-01, ORD-01 | no duplicate, race-safe cross-device state |
 | APP-01 | Flutter buyer and seller journeys | ID-01, ORD-01, INB-01 | real device smoke |
-| AUTH-QR | QR Web login and sessions | ID-01, APP-01 | challenge browser-binding/replay/revoke |
+| AUTH-QR | Web Seller Cabinet QR login and sessions **conditional P0 when Web cabinet released** | ID-01, APP-01 | challenge browser-binding/replay/revoke |
 | FAV-01 | Flutter favorites, quantity watch | APP-01, PRI-01 | unique favorite, watched pricing |
 | NOT-01 | durable Notification Center + Outbox + optional Push | FND-01, ID-01 | NOT-01…10, FCM outage resilience; price-watch events later after DSC-01/FAV-01 |
 | RTE-01 | reviews, seller/product rating | FUL-01 | purchase eligibility and abuse tests |
@@ -80,7 +80,7 @@
 
 | Package | Scope | Dependencies | Exit gate |
 |---|---|---|---|
-| CAA-01 | Outbox consume, daily/monthly stats, 9M rolling score, seller-specific customer relationship, optional monthly partitioning | ORD-01, FUL-01, OPS-01 | CAA-01…12 Testcontainers, privacy isolation, anti-replay, reclassification, S2 review |
+| CAA-01 | Audited qualifying-order projection and 9M buyer/seller relationship rule calculation; rollups/partitions after load evidence | ORD-01, FUL-01, OPS-01 | CAA-01…12 Testcontainers, privacy isolation, anti-replay, reclassification, S2 review |
 
 Рекомендую разрабатывать после подтверждения Order/Fulfillment, иначе агрегатор не получит достоверные события завершения. [Полная спецификация](CUSTOMER-ACTIVITY-AGGREGATOR.md).
 
@@ -99,3 +99,7 @@ Identity must not include SMS/OTP adapter, and notification first must persist i
 ## R0 / User journey qualification
 
 В [USER-JOURNEYS-MVP.md](USER-JOURNEYS-MVP.md) зафиксированы Mermaid flowchart/state/sequence диаграммы и матрица UX-01…16/EDGE-01…20. Перед R1: проверить OPEN-13 (неподтверждённое получение и накрутка рейтинга) и OPEN-14 (сегментация seller-buyer + доступ staff), уточнить OPEN-01/03/04/11/12. Затем переводить сценарии в тесты RED с независимым S2 Review. Реализация и CI пока отсутствуют.
+
+## Technical review baseline (2026-11-12)
+
+[TECHNICAL-REVIEW-MVP.md](TECHNICAL-REVIEW-MVP.md) обосновывает lean delivery. В MVP нельзя считать покупателя «оплатившим» по статусу платформы; Seller completed означает READY_FOR_RECEIPT, buyer confirmed receipt открывает рейтинг. Не создавать сразу daily/monthly profile tables, Kafka и data warehouse. Для общего full release Web seller cabinet требуется AUTH-QR, для public QR только guest Web. Решения OPEN-01/03/04/11/13/14 остаются review gates, а не произвольными implicit defaults.
