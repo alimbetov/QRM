@@ -43,6 +43,8 @@ public class InventoryLocation {
  public UUID getId(){return id;}
  public UUID getSellerId(){return sellerId;}
  public String getCity(){return city;}
+ public String getRegionCode(){return regionCode;}
+ public boolean isActive(){return active;}
  public String getAddressLine(){return addressLine;}
  public boolean isPublicPickupEnabled(){return publicPickupEnabled;}
  public GeoPoint getPoint(){return latitude==null?null:new GeoPoint(latitude,longitude);}
