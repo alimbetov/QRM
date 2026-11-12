@@ -74,3 +74,7 @@ Inbox opening an item: mark read based on observed activityVersion only after de
 ## DEC-27 — Password/Auth and Notifications UX
 
 Flutter registration: phone login + password + nickname, optional email; display clear notice that phone number is not verified. Login with password, session reuse/secure refresh and logout. Optional verified-email recovery; without verified factor do not promise automated recovery. Notification Center: tabs All/Unread and unread counts, history durable when FCM off, deep-links to authorized business details; reading notifications does not change seller inbox/offer/order. Web seller QR approval must occur inside already signed-in Flutter, push alert cannot approve automatically. [Complete spec](AUTH-NOTIFICATIONS.md).
+
+## Карта переходов и последовательностей MVP
+
+Согласованная карта экранов и доменных действий, схемы для React Web, Flutter Buyer/Seller, QR-login, уведомлений, fulfillment и reputation: [USER-JOURNEYS-MVP.md](USER-JOURNEYS-MVP.md). Таблицы UX-01…16/EDGE-01…20 являются проектными acceptance-критериями. Обязательно отображать отдельные состояния AGREED vs Order PLACED и Web Lead vs электронный заказ.
