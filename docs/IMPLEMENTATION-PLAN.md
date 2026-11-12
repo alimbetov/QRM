@@ -141,3 +141,7 @@ S1: безопасная калибровка порогов на историч
 ## R1 Catalog & Classification Foundation — executed slice A
 
 R1A implemented in branch: minimal category/HCC, typed attribute definition + applicability, canonical product separate from seller listing and SKU, smoke tests, draft SQL DDL. R1B next: PostgreSQL Testcontainers **against real migration**, required attribute/enum/units rules, category parent depth/cycle, authenticated seller ownership, server-side SKU matching facts. RED test review before implementation. [Implementation note](R1-CATALOG-FOUNDATION-IMPLEMENTATION.md).
+
+## R1B — executed catalog qualification slice
+
+RED tests for HCC positional validation, required SKU facts, seller publication ownership; GREEN: `HccPath`, `CatalogPublicationPolicy`, `CatalogPublishingService`, `CatalogSkuFactsResolver`, Testcontainers PostgreSQL manual DDL validation. [R1B evidence](R1B-CATALOG-QUALIFICATION.md). Before R2, independent S2 review must validate seller principal integration, enum/unit policy, catalog mutation guards and schema migration path.
