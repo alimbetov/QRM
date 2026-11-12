@@ -48,8 +48,8 @@ class SellerPublishingSecurityIT {
 
     @Test void jwtScopeAndActiveMembershipBothRequired() throws Exception {
         var category=categories.saveAndFlush(Category.create(
-            "01020030000000000000",ProductType.PHYSICAL,"Phones",null));
-        var product=products.saveAndFlush(CanonicalProduct.create(category,"Phone"));
+            "01020040000000000000",ProductType.PHYSICAL,"Tablets",null));
+        var product=products.saveAndFlush(CanonicalProduct.create(category,"Tablet"));
         UUID seller=UUID.randomUUID();
         var listing=listings.saveAndFlush(SellerListing.draft(seller,product));
         memberships.saveAndFlush(SellerMembership.grant(
