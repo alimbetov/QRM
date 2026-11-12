@@ -103,3 +103,7 @@ Identity must not include SMS/OTP adapter, and notification first must persist i
 ## Technical review baseline (2026-11-12)
 
 [TECHNICAL-REVIEW-MVP.md](TECHNICAL-REVIEW-MVP.md) обосновывает lean delivery. В MVP нельзя считать покупателя «оплатившим» по статусу платформы; Seller completed означает READY_FOR_RECEIPT, buyer confirmed receipt открывает рейтинг. Не создавать сразу daily/monthly profile tables, Kafka и data warehouse. Для общего full release Web seller cabinet требуется AUTH-QR, для public QR только guest Web. Решения OPEN-01/03/04/11/13/14 остаются review gates, а не произвольными implicit defaults.
+
+## Second-pass review gate
+
+[TECHNICAL-REVIEW-R2.md](TECHNICAL-REVIEW-R2.md) выявляет R2-01…20. Важные новые блокеры: **OPEN-15** (оспаривание неподтверждённого phone-login), **OPEN-16** (PostgreSQL source snapshot / job fencing), **OPEN-17** (consent/retention для Казахстана). Это должны быть точные S0 бизнес-оракулы и RED-тесты, не повод добавлять микросервисы. Предпочтительно один backend deployment + PostgreSQL + S3 + React + Flutter; очередь Outbox и ночной worker внутри монолита.
