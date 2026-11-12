@@ -25,7 +25,7 @@ Backend: предлагаемый Java 21 LTS, поддерживаемая ве
 
 | Модуль | Владеет | Не должен делать |
 |---|---|---|
-| identity | Account, Role, OTP, credentials | управлять Listing |
+| identity | Account, Role, password credentials, refresh sessions, unverified phone | управлять Listing |
 | seller | SellerProfile, публичный slug, logoMediaId | копировать фото в каждый Listing |
 | catalog | Category, Product, unit definitions | назначать цену продавца |
 | listing | Listing, Translation, visibility, media refs | принимать оплату |
@@ -39,7 +39,7 @@ Backend: предлагаемый Java 21 LTS, поддерживаемая ве
 | favorite | Favorite, FavoritePriceWatch | позволять Web UI сохранять избранное |
 | rating | ProductReview, SellerReview, moderation state | оценивать качество до получения |
 | analytics | ViewEvent, QRVisit, daily aggregates | блокировать read path |
-| notification | preferences, device, dedup, deliveries | менять состояние заказа по факту push |
+| notification | persisted user inbox, read state, preferences, device, dedup, deliveries | менять состояние заказа по факту push |
 
 Прямое использование таблиц чужого модуля из application/domain layer запрещено. Коммуникация — публичные application contracts, доменные события или согласованный read model. Проверять ArchUnit.
 
@@ -76,8 +76,10 @@ erDiagram
 ## 4. API surface (проектные маршруты)
 
 ```http
-POST   /api/v1/auth/otp/request
-POST   /api/v1/auth/otp/verify
+POST   /api/v1/auth/register
+POST   /api/v1/auth/login
+POST   /api/v1/auth/refresh
+POST   /api/v1/auth/logout
 GET    /api/v1/sellers/{slug}
 GET    /api/v1/sellers/{slug}/listings
 PATCH  /api/v1/me/seller-profile
@@ -195,3 +197,7 @@ QR-авторизация кабинета — отдельный контур `
 ## 14. Ночные агрегаты и profile read model
 
 Проектный источник профилей: [NIGHTLY-PROFILE-AGGREGATION.md](NIGHTLY-PROFILE-AGGREGATION.md). Job формирует buyer/seller/seller-buyer версии в staging по `runId` и атомарно переключает опубликованный `active_run_id`; длинные транзакции вокруг всего расчёта запрещены. Durable lease+fencing защищает от двух scheduler replicas. Profile APIs читают материализованные snapshots, не агрегируют из Order в каждом GET. Seller tier и звездный рейтинг не смешиваются. Требуются source watermark и reconciliation до публикации.
+
+## 15. DEC-27 Identity / Notifications
+
+Телефон — только логин до внешней проверки владения, пароль Argon2id, rotating refresh token, revocation; SMS/OTP не используется. Internal Notification Center в PostgreSQL — обязательный durable ledger; Push/FCM — необязательный best-effort adapter. Seller Inbox и Notification Center имеют независимые read flags. QR Web login авторизуется существующей Flutter-сессией, а не push-токеном. См. [AUTH-NOTIFICATIONS.md](AUTH-NOTIFICATIONS.md).
