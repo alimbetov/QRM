@@ -146,3 +146,7 @@ Required S0 oracles `SELSKU-01…SELSKU-14` are specified in [DEC-SELECTED-SKU-O
 | LOC-09 | Client injects private locationId/false city into quote/order request | Server derives authoritative location and rejects unauthorized allocation; PostgreSQL API security |
 
 S0 specifications only; executable RED tests and S2 review remain pending.
+
+## Human-readable Order Number / Receipt QR
+
+S0 tests `NUM-01…NUM-06`, `QR-01…QR-06` are documented in [DEC-ORDER-NUMBER-001](DEC-ORDER-NUMBER-001.md). Fast H2 formatting/mapping; mandatory PostgreSQL concurrency, UNIQUE and one-time QR redemption. These are test specifications, not runnable assertions.
