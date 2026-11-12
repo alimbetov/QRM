@@ -48,6 +48,7 @@ class DealSnapshotPostgresIT {
             List.of(new SellerBid.BidLine(product.getId(),sku.getId(),BigDecimal.ONE,
                 new BigDecimal("1200.00"))));
         deals.submitBid(seller,offer,now);
-        assertThat(bids.findById(offer.id()).orElseThrow().toDomain()).isEqualTo(offer);
+        assertThat(deals.getBid(offer.id())).isEqualTo(offer);
+        assertThat(deals.getDemand(d.id())).isEqualTo(d);
     }
 }

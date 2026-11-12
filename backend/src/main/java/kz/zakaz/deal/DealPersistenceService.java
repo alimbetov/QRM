@@ -55,4 +55,16 @@ public class DealPersistenceService {
         }
         return bids.saveAndFlush(SellerBidSnapshot.capture(demand,bid,now)).getId();
     }
+    @Transactional(readOnly=true)
+    public BuyerDemand getDemand(UUID demandId) {
+        Objects.requireNonNull(demandId);
+        return demands.findById(demandId)
+            .orElseThrow(()->new NoSuchElementException("Buyer demand not found")).toDomain();
+    }
+    @Transactional(readOnly=true)
+    public SellerBid getBid(UUID bidId) {
+        Objects.requireNonNull(bidId);
+        return bids.findById(bidId)
+            .orElseThrow(()->new NoSuchElementException("Seller bid not found")).toDomain();
+    }
 }
