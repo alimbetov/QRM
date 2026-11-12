@@ -187,3 +187,7 @@ QR-авторизация кабинета — отдельный контур `
 ## 12. Уточнённый стек и контракты
 
 Источник: [ADR-001](ADR-001-REACTIVE-BACKEND.md). Слои: reactive HTTP adapters → application (Mono/Flux boundary) → pure domain rules → R2DBC persistence; Liquibase JDBC допускается только в изолированном процессе миграций, не в event-loop. Для агрегатов и SQL применять индексы, transactional outbox, optimistic locking / SQL conditional updates и integration tests. UI/spec см. [UX-FLOWS.md](UX-FLOWS.md), security [SECURITY-OPERATIONS.md](SECURITY-OPERATIONS.md), contract [API-SPEC.md](API-SPEC.md).
+
+## 13. Customer Activity Aggregator
+
+Новый bounded context `customer-activity`: consume transactional Outbox, дедупликация событий, месячные и дневные агрегаты, `customer_rolling_score` за 9 календарных месяцев, отдельный `seller_customer_stats`. PostgreSQL партиционирование **исходных событий** по месяцу допускается с доказанной нагрузкой; отсутствие текущей партиции для пользователя не сбрасывает историю. Для точного rolling window используются дневные агрегаты/граничные события, а не сумма девяти целых месячных партиций. Доступ продавца строго только к своим покупателям и не раскрывает сделки клиента у других продавцов. Подробности: [CUSTOMER-ACTIVITY-AGGREGATOR.md](CUSTOMER-ACTIVITY-AGGREGATOR.md).
