@@ -157,3 +157,7 @@ Challenge is short-lived, one-time, hashed at rest, contains no PII and cannot b
 ## DEC-34 optional SMS recovery integration
 
 The existing `/auth/recovery/request` and `/auth/recovery/complete` endpoints are factor-neutral; only backend recovery policy chooses allowed methods. `PhoneVerificationProvider` may be used **only** for SMS recovery of a previously independently verified phone binding. A valid SMS code to an unverified number is insufficient to reset credentials. No SMS/OTP endpoints for registration and ordinary login. Do not reveal account existence or factor availability in public error messages. [Auth policy](AUTH-NOTIFICATIONS.md).
+
+## Smart Deal R2 (future opt-in API group)
+
+See [SMART-DEAL-R2.md](SMART-DEAL-R2.md) for scoped REST draft under `/api/v1/smart-deals`: buyer-owned demands, eligible seller invitations/bids, one winner selection and explicit idempotent conversion to the existing CustomerOrder. Seller identity is taken from authenticated session, not request body. Published BuyerDemand is immutable; bid changes are versioned and comparisons display shipping cost separately. This group is **not part of shipped API until SD-R2 RED/S2/GREEN**. Web public callback stays PurchaseLead only.
