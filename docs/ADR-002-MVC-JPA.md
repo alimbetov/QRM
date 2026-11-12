@@ -23,7 +23,7 @@ QRM is a QR-first marketplace with transactional negotiations, order conversion,
 - PostgreSQL is the source of truth for stock: conditional atomic `UPDATE inventory SET available=available-:q, reserved=reserved+:q WHERE sku_id=:id AND available>=:q`, check affected rows, in same DB transaction as reservation/Order/Outbox. Idempotency keys + uniqueness guard duplicate order conversion.
 - Use `BigDecimal` monetary values, explicit KZT policy and immutable pricing snapshot; legal/product decision OPEN-03 must be closed.
 - Outbox worker is independently retryable and idempotent; use batched claiming with PostgreSQL locking and bounded concurrency; keep external delivery outside the order transaction.
-- No Kafka, Redis, distributed saga or partitions by default without measured need.
+- Redis is an **approved deferred caching component**, not an R1 infrastructure dependency. Introduce Spring Cache + Redis in a later measured milestone for public catalog/category/read-model caches, with explicit TTL, event-based invalidation and tenant/key isolation. PostgreSQL remains the only source of truth; order, stock reservation, negotiated price and other authoritative transactional decisions always use PostgreSQL. Cache outage must not compromise order correctness. Kafka, distributed sagas and partitions remain deferred pending measured need.
 - Keep clean architecture boundaries so a future reactive adapter can be benchmarked without rewriting domain invariants.
 
 ## Alternatives
