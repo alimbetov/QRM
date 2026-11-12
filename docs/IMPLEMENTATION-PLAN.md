@@ -95,3 +95,7 @@
 ## DEC-27 work package
 
 Identity must not include SMS/OTP adapter, and notification first must persist internally, without required FCM. Build password credentials, rotating device sessions, verified-email recovery, and notification outbox projection in RED→S2→GREEN sequence. [Full design](AUTH-NOTIFICATIONS.md).
+
+## R0 / User journey qualification
+
+В [USER-JOURNEYS-MVP.md](USER-JOURNEYS-MVP.md) зафиксированы Mermaid flowchart/state/sequence диаграммы и матрица UX-01…16/EDGE-01…20. Перед R1: проверить OPEN-13 (неподтверждённое получение и накрутка рейтинга) и OPEN-14 (сегментация seller-buyer + доступ staff), уточнить OPEN-01/03/04/11/12. Затем переводить сценарии в тесты RED с независимым S2 Review. Реализация и CI пока отсутствуют.
