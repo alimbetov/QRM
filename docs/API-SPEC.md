@@ -16,8 +16,15 @@
 
 | Method | Path | Actor | Purpose |
 |---|---|---|---|
-| POST | `/auth/otp/request` | guest | request OTP |
-| POST | `/auth/otp/verify` | guest | verify and create/login |
+| POST | `/auth/register` | guest | register using phone login + password; phone unverified |
+| POST | `/auth/login` | guest | authenticate with password |
+| POST | `/auth/refresh` | authenticated by refresh credential | rotate refresh token |
+| POST | `/auth/logout` | authenticated | revoke session |
+| POST | `/auth/password/change` | authenticated | change password |
+| POST | `/auth/email/verification/request` | authenticated | send optional verification link |
+| POST | `/auth/email/verification/confirm` | token holder | verify email |
+| POST | `/auth/recovery/request` | guest | recover only via verified factor |
+| POST | `/auth/recovery/complete` | token holder | complete single-use recovery |
 | GET | `/me` | authenticated | current identity, roles |
 | GET | `/sellers/{slug}` | public | seller profile, logo, rating |
 | PATCH | `/me/seller-profile` | seller | update profile |
@@ -100,6 +107,9 @@ POST   /api/v1/me/favorites/{listingId}
 DELETE /api/v1/me/favorites/{listingId}
 GET    /api/v1/me/favorites
 PUT    /api/v1/me/favorites/{listingId}/price-watch
+GET    /api/v1/me/notifications?read=false&limit=30&cursor=...
+GET    /api/v1/me/notifications/unread-count
+PUT    /api/v1/me/notifications/{id}/read-state
 PUT    /api/v1/me/notification-preferences
 POST   /api/v1/me/push-devices
 DELETE /api/v1/me/push-devices/{id}
@@ -112,3 +122,5 @@ Favorite API belongs to authenticated identity, but Web React hides/disables fea
 ## 7. Unresolved contract details
 
 Authentication grant/session exchange, exact constraints/rounding, enum values and legal consent text, quote expiry, image upload design, rate limits, QR attribution vs referrer, status transition commands, seller staff roles and auth boundaries require R0 formal OpenAPI review. No endpoint is treated as shipped until contract tests are green.
+
+**DEC-27:** телефон не подтверждён самим фактом регистрации; OTP API отсутствует; Notification Center — постоянный источник истины, Push — optional. [Auth/notification spec](AUTH-NOTIFICATIONS.md). Recovery endpoints must not allow takeover without verified factor.
