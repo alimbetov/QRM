@@ -12,14 +12,14 @@ flowchart TD
   FLUTTER --> API[Spring Boot modular monolith]
   WEB --> API
   LEAD --> API
-  API --> PG[(PostgreSQL)]
+  API -->|R2DBC| PG[(PostgreSQL)]
   API --> OBJ[(S3-compatible media / RustFS)]
   API --> OUTBOX[(Transactional Outbox)]
   OUTBOX --> WORKER[Async notification/analytics workers]
   WORKER --> FCM[Firebase Cloud Messaging]
 ```
 
-Backend: Java 17, поддерживаемая версия Spring Boot 3, Spring Security, Data JPA, Liquibase, PostgreSQL, S3 API, Micrometer/OpenTelemetry, REST/OpenAPI. Frontend: React + TypeScript public storefront; Flutter Android/iOS. Старт — модульный монолит: транзакционная согласованность заказов и предложений важнее разбиения на процессы.
+Backend: предлагаемый Java 21 LTS, поддерживаемая версия Spring Boot 3, Spring WebFlux, Spring Security Reactive, Spring Data R2DBC, PostgreSQL, Liquibase как отдельный JDBC migration step, S3 API, Micrometer/OpenTelemetry, REST/OpenAPI. См. ADR-001. Hibernate/JPA не входят в runtime. Frontend: React + TypeScript public storefront; Flutter Android/iOS. Старт — модульный монолит: транзакционная согласованность заказов и предложений важнее разбиения на процессы.
 
 ## 2. Bounded contexts и ответственность
 
@@ -183,3 +183,7 @@ deployment/
 Пагинация inbox: стабильный cursor на `(lastActivityAt, subjectType, subjectId)` с tie-break; при новых событиях элементы могут перемещаться в начало, для строгой консистентности сквозной навигации предусмотреть snapshot/as-of cursor. Индексы по `sellerId, lastActivityAt DESC`, отдельные индексы пользовательских меток по `userId, bookmarked` и оптимизированные проекции для unread counts. Не выполнять по одному SQL на каждую строку списка.
 
 QR-авторизация кабинета — отдельный контур `identity/device-session`: challenge одноразовый, короткоживущий, подтверждается во Flutter, cookies Secure HttpOnly; состояние inbox не хранится в браузере как источник истины.
+
+## 12. Уточнённый стек и контракты
+
+Источник: [ADR-001](ADR-001-REACTIVE-BACKEND.md). Слои: reactive HTTP adapters → application (Mono/Flux boundary) → pure domain rules → R2DBC persistence; Liquibase JDBC допускается только в изолированном процессе миграций, не в event-loop. Для агрегатов и SQL применять индексы, transactional outbox, optimistic locking / SQL conditional updates и integration tests. UI/spec см. [UX-FLOWS.md](UX-FLOWS.md), security [SECURITY-OPERATIONS.md](SECURITY-OPERATIONS.md), contract [API-SPEC.md](API-SPEC.md).
