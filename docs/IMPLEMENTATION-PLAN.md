@@ -125,3 +125,7 @@ Do **not** build SMS delivery in ID-01 registration or normal auth. Keep `PhoneV
 ## DEC-INTELLIGENCE-002 — Weekly Aggregation / Inventory smoke
 
 Созданы `WeeklyIntelligenceAggregator` (полные ISO-недели, ежедневные наблюдения и 1/4/12-недельные rolling windows), `WeeklyFeatureProjector` (freeze `inventory_advisor/v1`, девять слотов) и синтетические проверки `WeeklyIntelligenceSmokeTest` на 12 неделях/3 SKU. Следующий этап после успешного CI: независимый S2 Review схемы PostgreSQL, идемпотентного source watermark, коррекции прошлых недель, реальной истории stock exposure и сопоставления BuyerDemand с каноническими товарами. Реальные закупочные рекомендации блокируются до получения lead time, себестоимости, возвратов, минимальных партий и точных остатков. [Спецификация](DEC-INTELLIGENCE-002-WEEKLY-AGGREGATES.md).
+
+## ML-RISK-001 — от smoke к модели
+
+S1: пять временных fold, sufficiency, fallback выбора алгоритма, детерминированные тесты. S2: независимый review качества labels, Stockout censoring, event as-of, версионированных окон и schema manifest. S3: реальные датасеты, group/time holdout, baseline benchmark, распределения ошибок и bootstrap интервалы, дрейф и модель Tribuo. S4: shadow inference, canary, monitoring + rollback, без автоматической закупки. [Техническое решение](DEC-ML-RISK-001-RELIABLE-LEARNING.md).
