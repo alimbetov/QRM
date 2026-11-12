@@ -1,3 +1,5 @@
+> **Актуальная последовательность:** [REQUIREMENTS.md — мастер-ТЗ v2.0, раздел 15](REQUIREMENTS.md). Старые R0 slices ниже — архив планирования: при конфликте применять R1 Catalog → R2 Identity/Favorites → R3 Reverse Marketplace → R4 Bargaining/Orders/Reserve → R5 Fulfillment/QR → R6 Deal Finder → R7 Tribuo ML/Push. Каждый slice: S0 → S1 RED → S2 Test Review → S3 GREEN → S4 qualification.
+
 # QRM — план разработки, зависимости и критерии готовности
 
 **Статус:** R0 planning, не execution log. Источники: [REQUIREMENTS](REQUIREMENTS.md), [DOMAIN-CONTRACTS](DOMAIN-CONTRACTS.md), [TEST-PLAN](TEST-PLAN.md).
