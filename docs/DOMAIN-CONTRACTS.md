@@ -83,7 +83,7 @@
 |---|---|---|
 | PLACED | CONFIRMED, CANCELLED_BY_BUYER, CANCELLED_BY_SELLER | buyer/seller по действию |
 | CONFIRMED | PROCESSING, CANCELLATION_REQUESTED | seller/buyer |
-| PROCESSING | COMPLETED, CANCELLATION_REQUESTED, CLAIM_PENDING | по типу исполнения |
+| PROCESSING | COMPLETED (только после подтверждения RECEIVED), CANCELLATION_REQUESTED, CLAIM_PENDING | по типу исполнения |
 | CANCELLATION_REQUESTED | CANCELLED, CONFIRMED/PROCESSING (с обоснованием), CLAIM_PENDING | authorized workflow |
 | COMPLETED | CLAIM_PENDING (отдельный claim), остаётся completed | buyer |
 | CANCELLED_* | terminal | none |
@@ -111,3 +111,7 @@
 ## DEC-27 invariants
 
 Phone is only an unverified login identifier, no OTP confirmation. Passwords hashed Argon2id; access/refresh sessions can be revoked; no silent account recovery by phone alone. Notification Center is a distinct projection from seller Inbox: reading one doesn't mark the other or affect business state. [Security contract](AUTH-NOTIFICATIONS.md).
+
+## MVP consistency decisions (R0 recommendations)
+
+[TECHNICAL-REVIEW-MVP.md](TECHNICAL-REVIEW-MVP.md) определяет canonical Negotation enum, buyer-only command создания Order после AGREED, различие Fulfillment READY_FOR_RECEIPT и Order COMPLETED, независимые seller/product ratings. **Пять встречных сообщений** как определение лимита — PROPOSED до S2. Состояния `ORDER_CREATED` не являются заказом, пока транзакция Order+Outbox не закоммичена.
