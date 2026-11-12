@@ -68,3 +68,7 @@ Per PR: scope, approved decisions and scenarios, RED evidence, S2 reviewer verdi
 - Business test-oracles reviewed independently.
 - Type-specific fulfillment/claim rules, offer round semantics, session/callback privacy decisions resolved.
 - Prioritized execution slices, exact resources/owners identified.
+
+## Nightly buyer/seller profile test suite
+
+NPA-01…NPA-20 из [NIGHTLY-PROFILE-AGGREGATION.md](NIGHTLY-PROFILE-AGGREGATION.md) обязательны для отдельного RED → S2 Review: replay, month boundary, snapshots, lease fencing, concurrent writes, ratings moderation, buyer/seller role independence, seller customer privacy and profile fallback. Никакой профиль не показывает искусственно свежие метрики при неудаче job.
