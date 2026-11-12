@@ -206,3 +206,7 @@ Metrics: `profile_aggregation_last_success_epoch`, `profile_aggregation_duration
 **Rollout:** (1) DB/queries/tests; (2) run shadow aggregation without publishing; (3) compare on known test cohort; (4) enable publishing behind feature flag; (5) read-only APIs; (6) UX. Do not grant discounts/deny buyer offers automatically from score.
 
 **Dependencies:** exact Order/Fulfillment historical qualification semantics, seller review eligibility/moderation, seller/customer identity verification, timezone and tier threshold review. **Not yet implemented.**
+
+## Lean MVP reduction (architecture review)
+
+**Required first:** audited qualified-fulfillment projection, eligible-review source, one scheduled worker with buyer/seller/seller-buyer snapshots, atomic publication, anti-replay and privacy checks. **Not required at launch:** materializing separate `customer_daily_stats` and `customer_monthly_stats`, raw event monthly partitions, stream processing, data warehouse. If indexed historical source cannot meet runtime targets, introduce supplemental rollups after profiling. Source data event-time and corrections remain mandatory; snapshot must expose as-of and STALE status. See [TECHNICAL-REVIEW-MVP.md](TECHNICAL-REVIEW-MVP.md).
