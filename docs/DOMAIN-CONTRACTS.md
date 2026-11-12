@@ -6,7 +6,7 @@
 
 | Aggregate root | Модуль | Сущности/состояния | Ключевой инвариант |
 |---|---|---|---|
-| User | identity | roles, phone verification | одно нормализованное телефонное значение на аккаунт |
+| User | identity | roles, phone-as-login, password credential and sessions | одно нормализованное телефонное значение на аккаунт; phone unverified |
 | SellerProfile | seller | name, logoMediaId, slug | только владелец/роль может менять |
 | Product/Category | catalog | products, metric units | модерируемые категории |
 | Listing | listing | translations, media, publication | PUBLIC/UNLISTED только с 3–5 фото, базовой ценой и одной локалью |
@@ -56,7 +56,7 @@
 | NEW | VIEWED | seller | просмотр в кабинете |
 | NEW/VIEWED | CONTACTED | seller | отметка об обратном звонке |
 | NEW/VIEWED/CONTACTED | DECLINED | seller | отказ без заказа |
-| NEW/VIEWED | WITHDRAWN | заявитель | secure token / подтверждение контроля телефона |
+| NEW/VIEWED | WITHDRAWN | заявитель | одноразовый секретный токен, выданный для этой заявки (не доказывает владение телефоном) |
 | NEW/VIEWED | EXPIRED | system | retention/business TTL |
 | CONTACTED | EXPIRED | system | закрытие по retention отдельно от удаления |
 
@@ -107,3 +107,7 @@
 - Строгий tenant/owner predicate во всех seller queries, включая списки, count и cursors.
 - Аудит: actor, action, old/new state, version, timestamp, traceId, без избыточного PII.
 - В R0 проектировать индексы и constraints параллельно с API oracle; не полагаться на in-memory validators.
+
+## DEC-27 invariants
+
+Phone is only an unverified login identifier, no OTP confirmation. Passwords hashed Argon2id; access/refresh sessions can be revoked; no silent account recovery by phone alone. Notification Center is a distinct projection from seller Inbox: reading one doesn't mark the other or affect business state. [Security contract](AUTH-NOTIFICATIONS.md).
