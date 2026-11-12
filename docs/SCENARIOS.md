@@ -137,3 +137,7 @@ AUTH-01…AUTH-10 and NOT-01…NOT-10 from [AUTH-NOTIFICATIONS.md](AUTH-NOTIFICA
 ## Lean MVP consistency review
 
 Сценарии REV-01…REV-13 и canonical flow сведены в [TECHNICAL-REVIEW-MVP.md](TECHNICAL-REVIEW-MVP.md). Для RED обязательны негативные случаи: AGREED не создаёт Order, buyer-only явная конвертация (предложено/S2), продавец не может пометить заказ полученным от имени покупателя, Review отсутствует без подтверждённого receipt, продавец видит только собственную статистику, безошибочная работа без FCM, парольный вход без SMS. SERVICE/DIGITAL запрещено включать без собственных tested fulfillment flows.
+
+## SD-R2 BuyerDemand / SellerBid / Matching
+
+[SMART-DEAL-R2.md](SMART-DEAL-R2.md) adds SD-UX-01…12 user journeys, SD-01…36 RED oracles, Mermaid diagrams and seller/buyer permission rules. Only one selected SellerBid, buyer explicit Order confirmation, atomic Order + Outbox, no matching or bid by anonymous React visitor, graceful degradation without ML or FCM. This is **optional post-core-MVP** design work, not evidence of executable tests.
