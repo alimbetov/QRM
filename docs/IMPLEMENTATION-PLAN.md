@@ -129,3 +129,7 @@ Do **not** build SMS delivery in ID-01 registration or normal auth. Keep `PhoneV
 ## ML-RISK-001 — от smoke к модели
 
 S1: пять временных fold, sufficiency, fallback выбора алгоритма, детерминированные тесты. S2: независимый review качества labels, Stockout censoring, event as-of, версионированных окон и schema manifest. S3: реальные датасеты, group/time holdout, baseline benchmark, распределения ошибок и bootstrap интервалы, дрейф и модель Tribuo. S4: shadow inference, canary, monitoring + rollback, без автоматической закупки. [Техническое решение](DEC-ML-RISK-001-RELIABLE-LEARNING.md).
+
+## ADR-005 — staged nightly intelligence batching
+
+Новые S1/S2 задачи: deterministic bucket assignment и 12 NB тестов → source watermark/period revision → PostgreSQL monthly RANGE events/daily (weekly partitions only after measured size), control run/bucket task schema и worker claim с `FOR UPDATE SKIP LOCKED` → bounded chunks/checkpoints/lease expiry → closed-week revision + 1/4/12/52 feature invalidation → staged whole-run publication / rollback → conditional Tribuo retraining и benchmark против online p95/p99. Нагрузка сначала 16 виртуальных бакетов, 1–2 реальных worker-потока; числа являются гипотезой для k6/pg benchmark. Начать без Kafka/нового микросервиса. [ADR-005](ADR-005-NIGHTLY-BUCKETED-INTELLIGENCE.md).
