@@ -153,3 +153,7 @@ RED → GREEN: тесты подтверждают отклонение чужо
 ## Seller JWT + Flyway → S2 → R2
 
 RED test commits for ACL/migration → GREEN: JWT issuer+scope, issuer+sub membership DB authorization, HTTP seller publication endpoint; Flyway complete V1–V4 fresh PostgreSQL schema and JPA validation, existing schema fail-closed; RSA-signed JWT integration test. Independent reviewer: issue [#3](https://github.com/alimbetov/QRM/issues/3); cannot be replaced by developer self-audit. R2 scenario design and 20 acceptance oracles: issue [#4](https://github.com/alimbetov/QRM/issues/4). Before R2 RED implementation: approve migration of any existing database and issuer/JWKS + membership provisioning integration. [S2 package](S2-REVIEW-SELLER-AUTH-FLYWAY-R2-GATE.md), [R2 oracles](R2-BUYER-DEMAND-BID-ORDER-RESERVATION-SCENARIOS.md).
+
+## R2.0A — BuyerDemand / SellerBid persisted snapshots
+
+RED contract tests → JPA snapshot entities/repositories, internal `DealPersistenceService`, Flyway V5 historical basket and immutable bid revisions, Flyway V6 PostgreSQL append-only triggers; fast H2 + real PostgreSQL qualification tests. Next S2 gate: verified units, immutable quote (price+shipping), buyer identity and bid acceptance/idempotency; then CustomerOrder(PLACED) → seller confirmation → atomic reservation/outbox. Do not expose public endpoints without real auth / stock authority. [Evidence/remaining scope](R2-0A-DEMAND-BID-SNAPSHOT-IMPLEMENTATION.md).
