@@ -113,3 +113,7 @@ R03-01…R03-18 from [MVP-DECISIONS-R03.md](MVP-DECISIONS-R03.md): identity alia
 - REC-SMS-05 reused phone/SIM reassignment -> require independent stronger proof; no takeover.
 
 These are RED acceptance expectations, not executed tests. Security S2 before any phone recovery is enabled.
+
+## Smart Deal R2 test-first gate
+
+[SMART-DEAL-R2.md](SMART-DEAL-R2.md) defines 36 independent SD-* RED test oracles: permission isolation, no Web guest Order, allowed matching, bid versioning/expiry, one selected bid, one atomic CustomerOrder+Outbox under concurrency, pricing and fulfillment integrity, low-data baseline, optional FCM/ML failure, and matching load. Do not mark S1/S2 passed until actual test evidence is recorded against a commit SHA.
