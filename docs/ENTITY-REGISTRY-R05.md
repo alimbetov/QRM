@@ -162,4 +162,8 @@ erDiagram
 - `QR-01…QR-06`: separate printed locator vs secure receipt proof.
 - Add `REG-01` ArchUnit proof no circular module dependencies, `REG-02` no `EnumType.ORDINAL`, `REG-03` database UNIQUE/CHECK constraints run on PostgreSQL.
 
-**Qualification status:** registry completed at S0 only; no executable Java entities, generator, PostgreSQL migration or CI results are claimed. 
+**Qualification status:** registry completed at S0 only; no executable Java entities, generator, PostgreSQL migration or CI results are claimed.
+
+## Геолокация точек хранения и выдачи (2026-11-12)
+
+`InventoryLocation` хранит необязательную пару координат WGS84 (`latitude`, `longitude`), регион, город, адрес, `LocationType` и разрешение публичного самовывоза. `GeoPoint` — Java value object, а не дополнительная таблица. Закрытые склады не раскрывают точные координаты покупателям. Для будущей доставки исходная точка должна браться из подтверждённого распределения заказа, пункт назначения — только из разрешённого адреса клиента. См. [DEC-LOCATION-GEOPOINT](DEC-LOCATION-GEOPOINT.md). PostGIS и маршрутизация отложены до появления измеренной потребности.
