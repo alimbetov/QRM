@@ -43,14 +43,27 @@ logging.level.org.zalando.logbook=TRACE
 
 Set `logbook.obfuscate.headers`, `logbook.obfuscate.parameters`, `logbook.obfuscate.json-body-fields` and explicit body-exclusion policy if Logbook is installed. Never print passwords, Authorization, session tokens, OTPs, customer phone or PII in debug logs.
 
-## application-test.properties
+## application-test.properties — fast H2 tests only
+
+```properties
+spring.datasource.url=jdbc:h2:mem:qrm_test;DB_CLOSE_DELAY=-1
+spring.datasource.driver-class-name=org.h2.Driver
+spring.datasource.username=sa
+spring.datasource.password=
+spring.jpa.hibernate.ddl-auto=create-drop
+logging.level.org.zalando.logbook=OFF
+```
+
+H2 is test-scoped and used for fast CI checks only. Do not force PostgreSQL compatibility mode as a substitute for actual PostgreSQL behavior. Parallel isolated tests should use distinct in-memory database names/context isolation where necessary.
+
+## application-test-pg.properties — PostgreSQL integration
 
 ```properties
 spring.jpa.hibernate.ddl-auto=create-drop
 logging.level.org.zalando.logbook=OFF
 ```
 
-Use dedicated Testcontainers PostgreSQL databases, never shared/persistent schemas; assert production schema expectations separately. Tests depending on custom SQL constraints, indexes or functions must install them explicitly, since Hibernate DDL is not guaranteed to generate them.
+Integration tests use a dedicated PostgreSQL Testcontainer with dynamic JDBC URL/credentials from Testcontainers (not a hardcoded localhost host). Database schema must be reproducible for each suite. For custom PostgreSQL SQL constraints, functions, indexes and locking statements, install them explicitly in test setup. Do not allow `create-drop` on shared databases. Before production, validate a reviewed SQL schema and migrations in the same PostgreSQL integration gate.
 
 ## application-prod.properties
 
@@ -76,4 +89,5 @@ Spring Cache abstraction can be integrated later with optional Redis for public 
 - Logback rotates at 200MB and retains 7 days; validate archive/active-file semantics.
 - RequestId is propagated into MDC and logs; sensitive data is redacted.
 - Confirm the 5-connection JDBC pool does not become a throughput bottleneck before 5,000-VU testing.
-- Verify correctness and isolation with PostgreSQL integration tests, including inventory atomic UPDATE, unique constraints, order+outbox rollback and failure behavior.
+- H2 fast lane validates unit, API/controller, simple Spring Data JPA mappings and pure service rules; target reproducibility without Docker.
+- Mandatory PostgreSQL lane verifies correctness and isolation, including inventory atomic UPDATE, unique constraints, row locks, concurrency, order+outbox rollback and failure behavior. Do not ship with only H2 green.
