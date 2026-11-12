@@ -10,7 +10,7 @@ Implement reactive authorization filters and service-level policies; unauthorize
 
 ## 2. Identity, Web QR sessions
 
-- Phone OTP for account login with per-number/device/IP throttles, attempt limits and expiry. Web callback leads do **not** require mandatory OTP under DEC-01; separate fraud control.
+- Phone-as-login + password via Argon2id; phone is **UNVERIFIED**. No SMS/OTP dependency. Apply per-account/device/IP throttles, Argon2id credential security, rotating refresh tokens and revocation. Anonymous Web callback leads have separate anti-abuse and per-lead withdrawal capability.
 - QR challenge: cryptographic random opaque value, single-use, TTL initially 90 seconds, bound to initiating browser secret, origin verification, explicit Flutter confirmation, replay/race rejection, no JWT in QR.
 - Store Web session server-side or securely enforce revocation. HttpOnly Secure SameSite cookies, CSRF token on state-changing requests, session rotation on login, idle/absolute timeout, logout/all-devices revocation.
 - Audit login attempts, approvals, denials, revocations, suspicious patterns; minimize captured device fingerprint.
@@ -62,3 +62,7 @@ Backup/restore: scheduled DB PITR-compatible strategy and tested restore; media 
 Define workload before accepting targets: number of active listings, p95 reads, concurrent writes, QR scanning burst, daily events, maximum backlog. Initial hypotheses: p95 listing API ≤300ms, p95 order write ≤800ms under documented load and excluding external provider tails; 99.5% monthly availability target. Verify with load and recovery drills, not inferred from framework.
 
 Graceful degradation: public listing works when analytics/FCM unavailable; order write atomic with outbox; stale effective price avoided via server quote check; scheduled discount recovers activation after restart.
+
+## DEC-27 — no-SMS login and notifications
+
+An FCM push token is **not** an authentication factor. Recovery requires a verified email or still-authorized trusted session, else safe manual procedure pending review. Persistent Notification Center in PostgreSQL is authoritative; push optional and nonblocking. Notification read flags independent from Seller Inbox. Details and RED oracles: [AUTH-NOTIFICATIONS.md](AUTH-NOTIFICATIONS.md).
