@@ -19,7 +19,7 @@ flowchart TD
   WORKER --> FCM[Firebase Cloud Messaging]
 ```
 
-Backend: предлагаемый Java 21 LTS, поддерживаемая версия Spring Boot 3, Spring WebFlux, Spring Security Reactive, Spring Data R2DBC, PostgreSQL, Liquibase как отдельный JDBC migration step, S3 API, Micrometer/OpenTelemetry, REST/OpenAPI. См. ADR-001. Hibernate/JPA не входят в runtime. Frontend: React + TypeScript public storefront; Flutter Android/iOS. Старт — модульный монолит: транзакционная согласованность заказов и предложений важнее разбиения на процессы.
+Backend: утверждён Java 21 LTS, поддерживаемый Spring Boot, Spring MVC REST API без серверного HTML, Spring Security servlet, Spring Data JPA/Hibernate, PostgreSQL JDBC/HikariCP, S3 API, Micrometer/OpenTelemetry, REST/OpenAPI. См. ADR-002. Liquibase отложен на этапе R1; `ddl-auto=update` допускается только в development, production `validate` с контролируемой схемой. Frontend: React + TypeScript public storefront; Flutter Android/iOS. Старт — модульный монолит: транзакционная согласованность заказов и предложений важнее разбиения на процессы.
 
 ## 2. Bounded contexts и ответственность
 
@@ -188,7 +188,7 @@ QR-авторизация кабинета — отдельный контур `
 
 ## 12. Уточнённый стек и контракты
 
-Источник: [ADR-001](ADR-001-REACTIVE-BACKEND.md). Слои: reactive HTTP adapters → application (Mono/Flux boundary) → pure domain rules → R2DBC persistence; Liquibase JDBC допускается только в изолированном процессе миграций, не в event-loop. Для агрегатов и SQL применять индексы, transactional outbox, optimistic locking / SQL conditional updates и integration tests. UI/spec см. [UX-FLOWS.md](UX-FLOWS.md), security [SECURITY-OPERATIONS.md](SECURITY-OPERATIONS.md), contract [API-SPEC.md](API-SPEC.md).
+Источник: [ADR-002](ADR-002-MVC-JPA.md). Слои: Spring MVC REST adapters → application (`@Transactional`) → pure domain rules → JPA/Hibernate persistence. Hibernate schema auto-update допустим только для локальной разработки; для production необходимы проверенные SQL-миграции и `ddl-auto=validate`. Бизнес-часовой пояс: `Asia/Qyzylorda`; timestamps хранятся в UTC. Для агрегатов и SQL применять индексы, transactional outbox, optimistic locking / SQL conditional updates и integration tests. UI/spec см. [UX-FLOWS.md](UX-FLOWS.md), security [SECURITY-OPERATIONS.md](SECURITY-OPERATIONS.md), contract [API-SPEC.md](API-SPEC.md).
 
 ## 13. Customer Activity Aggregator
 
