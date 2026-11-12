@@ -180,3 +180,13 @@ Example per-line response:
 ## Order public number and pickup QR
 
 Authorized Order DTO includes `publicNumber` with display format `ZK-XXXX-XXXX`. It must never grant unauthenticated access to another user's order or receipt confirmation. A persistent printed QR is a link/locator only. Per-FulfillmentGroup expiring receipt challenge is separately authorized, hashed and consumed atomically after explicit authenticated buyer confirmation. Endpoint design and TTL undergo S2. [DEC-ORDER-NUMBER-001](DEC-ORDER-NUMBER-001.md).
+
+## Buyer-led demand / competing seller bids (proposed; not deployed)
+
+- `POST /api/v1/buyer-demands`: only authenticated buyer; 1..N comparable canonical products, quantity, city and optional budget. Public callback remains `PurchaseLead` and must never open a demand/order.
+- `GET /api/v1/buyer-demands/{id}/bids`: only buyer/authorized participants; only valid, nonexpired revisions. Do not reveal buyer contact/address to competing sellers.
+- `POST /api/v1/buyer-demands/{id}/bids`: seller must be server-qualified per listed SKU and delivery/service region; full basket, price snapshots, revision and expiry.
+- `POST /api/v1/buyer-demands/{id}/accept`: requires buyer idempotency key, revalidation of seller/price/availability, explicit buyer acceptance; may start versioned negotiation, never silently place order.
+- `GET /api/v1/recommendations/deals`: eligible ranked offers with verified full delivery quote; no private inventory coordinates. Personalized push requires opt-in and dedup.
+
+The above are **API proposals only**; no HTTP controllers or PostgreSQL tables for these endpoints exist yet. See [DEC-KILLER-FEATURES-R1](DEC-KILLER-FEATURES-R1.md).
