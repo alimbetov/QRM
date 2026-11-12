@@ -1,6 +1,6 @@
 # ADR-001 — Reactive Backend Architecture
 
-**Status:** PROPOSED for R0 approval (user expressed preference for R2DBC).  
+**Status:** SUPERSEDED by [ADR-002](ADR-002-MVC-JPA.md) on 2026-11-12. Retained as historical proposal, not the implementation baseline.  
 **Date:** 2026-11-12
 
 ## Context
