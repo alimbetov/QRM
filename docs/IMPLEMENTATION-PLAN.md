@@ -123,3 +123,7 @@ Do **not** build SMS delivery in ID-01 registration or normal auth. Keep `PhoneV
 ### SD-R2 Audit Gate
 
 [SD-AUD-01](SMART-DEAL-R2-AUDIT.md) describes 20 architectural findings; [Smart Deal spec](SMART-DEAL-R2.md) has 52 proposed RED tests. Required R2-S1 PostgreSQL Testcontainers coverage: SELECTED bid expiry, seller replacement/select race, repeat Outbox/invite, full quantity matching, cost unknown, one accepted-offer+Order+Outbox transaction, no collateral effect on existing QR/Web Lead flow. No independent S2 review or executable tests yet. Extra infrastructure not allowed without evidence.
+
+## SD-R2-S1 isolated PostgreSQL DB contract harness
+
+Created `smartdeal-contract-tests/` (Java 21, Maven, Testcontainers PostgreSQL): seven schema-constraint tests for current bid uniqueness, selected winner, FK cross-demand, conversion/invitation uniqueness and invalid amounts. Proposed database contract is [SMART-DEAL-R2-S1-DB.md](SMART-DEAL-R2-S1-DB.md). **Not executed yet** because Maven/Docker are unavailable in the current execution environment; also **not** a production Liquibase migration or an application-layer RED suite. Next: align real QRM core schema, implement Liquibase changesets and missing R2DBC application interfaces as RED tests, then independent S2 review.
