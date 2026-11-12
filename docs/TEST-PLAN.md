@@ -121,3 +121,7 @@ These are RED acceptance expectations, not executed tests. Security S2 before an
 ## SD-AUD-01 second-pass Smart Deal test gate
 
 In addition to original 36 Smart Deal test scenarios, **SD-37…SD-52** are required: see [audit](SMART-DEAL-R2-AUDIT.md). Do not begin R2-S3 GREEN until exact actor/state/transition assertions are implemented as RED tests against real PostgreSQL and independently reviewed at S2. Concurrency outcome must be atomic Order+Outbox and no orphan accepted offer, with SQL constraints verified under Testcontainers.
+
+## SD-R2-S1 schema contract harness evidence
+
+The standalone `smartdeal-contract-tests` module has seven JUnit/Testcontainers PostgreSQL contract cases for schema constraints; see [SD-R2-S1 DB design](SMART-DEAL-R2-S1-DB.md). These tests are unexecuted in this session (Maven and Docker unavailable), and passing them alone would **not** close SD-01…52 application acceptance or S2. Need actual core Liquibase schema, R2DBC transactional Order conversion, WebTestClient security, concurrency and Outbox rollback before claiming GREEN.
