@@ -161,3 +161,18 @@ The existing `/auth/recovery/request` and `/auth/recovery/complete` endpoints ar
 ## Selected SKU / multi-line order additions (proposed API; S2 pending)
 
 Buyer selects 1..N SKU using UI checkboxes, explicitly adjusts quantities, and submits only selected lines. Do not accept client totals, pricing or sellerId; resolve all server-side. `POST /api/v1/orders/quotes` returns a versioned, expiring authoritative per-line quote; `POST /api/v1/orders` accepts quoted lines and Idempotency-Key. `POST /api/v1/negotiations` accepts selected lines with optional proposedUnitPrice, preserving full immutable per-line PriceOfferLine snapshots; AGREED does not itself create an order; buyer invokes `POST /api/v1/negotiations/{id}/create-order` once. Order enters PLACED and is not reserved until seller confirmation. React anonymous public storefront remains callback-only for actual submissions; Flutter owns ordering. Exact request/response/error schema pending S2. [DEC-SELECTED-SKU-ORDER.md](DEC-SELECTED-SKU-ORDER.md).
+
+## Line origin locality / location privacy contract (approved direction)
+
+Quote, `PriceOfferLine` and `OrderLine` response DTOs include `originCitySnapshot`, `originRegionCodeSnapshot`, and `originProvisional` (true until seller source confirmed). Values are **server-derived**; ignore/reject client-supplied city/location claims as authoritative. On successful confirmation, separately return eligible allocated `originCity`/`regionCode` through authorized fulfillment detail, not via a private warehouse object in a public response. Full pickup street/building is returned only for an explicitly customer-accessible location to order participants. If seller changes origin city in a way that changes delivery or pickup terms, respond with a structured buyer-consent-required outcome; do not reserve/confirm before consent. Exact response codes/state machine require S2.
+
+Example per-line response:
+```json
+{
+  "skuId":"sku-phone",
+  "quantity":"1",
+  "originCitySnapshot":"Алматы",
+  "originRegionCodeSnapshot":"KZ-ALA",
+  "originProvisional":true
+}
+```
