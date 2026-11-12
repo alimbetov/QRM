@@ -107,3 +107,7 @@ Identity must not include SMS/OTP adapter, and notification first must persist i
 ## Second-pass review gate
 
 [TECHNICAL-REVIEW-R2.md](TECHNICAL-REVIEW-R2.md) выявляет R2-01…20. Важные новые блокеры: **OPEN-15** (оспаривание неподтверждённого phone-login), **OPEN-16** (PostgreSQL source snapshot / job fencing), **OPEN-17** (consent/retention для Казахстана). Это должны быть точные S0 бизнес-оракулы и RED-тесты, не повод добавлять микросервисы. Предпочтительно один backend deployment + PostgreSQL + S3 + React + Flutter; очередь Outbox и ночной worker внутри монолита.
+
+## R0.3 post-review decision gates
+
+[Decision pack](MVP-DECISIONS-R03.md) records user direction: no SMS, verified-email recovery, buyer-confirmed receipt using short-lived QR/code, nightly profile job after local midnight (00:30 proposed), data residency in Kazakhstan, proposed buyer/seller tier thresholds, KZT legal cash-rounding separation. **OPEN-15** phone-as-unverified-login remains deferred and **must not** be silently declared safe for broad public signup. R03-01…18 → RED/PostgreSQL integration → S2 review → implementation. No extra infrastructure for QR receipt or nightly job.
