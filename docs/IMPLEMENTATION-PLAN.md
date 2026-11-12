@@ -115,3 +115,7 @@ Identity must not include SMS/OTP adapter, and notification first must persist i
 ## DEC-34 optional recovery provider
 
 Do **not** build SMS delivery in ID-01 registration or normal auth. Keep `PhoneVerificationProvider` as optional recovery-bound port only; implementations may be deferred. A valid SMS code for an unverified phone **must not** reset password. Recovery by previously verified email is first option. Implement testable no-SMS-by-default flow and keep OPEN-15 as public-signup blocker. [Auth design](AUTH-NOTIFICATIONS.md).
+
+## SD-R2 — Smart Deal optional differentiator
+
+[SMART-DEAL-R2.md](SMART-DEAL-R2.md): SD-R2-S0 → S1 RED (SD-01…SD-36) → independent S2 → S3 BuyerDemand/SQL Matching → SellerBid/one Order conversion → S4 E2E → S5 optional Tribuo shadow. Depends on working Identity, Listing, Pricing, Negotiation, Order, Fulfillment, Outbox and Notification Center. **SD-R2 is a feature milestone, distinct from the existing R2 catalog stage**; avoid implementing parallel Order/payment/notification services. React guest callback remains Lead-only.
