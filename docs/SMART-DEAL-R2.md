@@ -298,3 +298,7 @@ Currency is always KZT in MVP. In total calculation: unit price × quantity plus
 [SMART-DEAL-R2-AUDIT.md](SMART-DEAL-R2-AUDIT.md) is the detailed review of 20 issues. It defines **SD-37…SD-52** as additional RED cases covering selection expiry, immutable bids, bid version races, UNLISTED exclusion, full quantity matching, replay with changed payload, conversion concurrency, shipping fees, invitation dedup, missing seller delivery coverage, explicit release-selection, feature flag isolation, privacy and fallback. This expands **SD-01…SD-36 to SD-01…SD-52**; none are executable yet. S2 must approve the technical assumptions.
 
 **Canonical corrections:** no accepted NegotiationOffer on selection, no Order before explicit buyer command, all matching sourced from PUBLIC listings, one current bid revision per seller+demand, no inventory reservation guarantee, cost unknown != cheapest, use same domain Order/outbox transaction. No extra queue, ML service or duplicated Order state machine.
+
+## 13. S1 persistence harness (partial)
+
+[SMART-DEAL-R2-S1-DB.md](SMART-DEAL-R2-S1-DB.md) and `smartdeal-contract-tests/` provide a self-contained PostgreSQL SQL fixture and seven Java JUnit/Testcontainers constraint cases for initial DB qualification. **This is not a production Liquibase migration or executable application RED tests**; existing SD-01…52 remain planned. Need actual upstream User/Seller/Listing/Negotiation/Order/Outbox schema and independent S2 before integrating.
