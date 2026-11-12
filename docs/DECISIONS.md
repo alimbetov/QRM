@@ -59,3 +59,7 @@
 
 - [ADR-001 Reactive Backend](ADR-001-REACTIVE-BACKEND.md): WebFlux + R2DBC + PostgreSQL; статус **PROPOSED** до технического spike/approval. Пользователь предпочёл R2DBC, но исполняемая квалификация ещё не проведена.
 - Детальные контракты и R0 open questions: [DOMAIN-CONTRACTS.md](DOMAIN-CONTRACTS.md), [API-SPEC.md](API-SPEC.md).
+
+| DEC-24 | Девятимесячный Customer Activity Aggregator, раздельные торговый уровень/активность/отношения к продавцу; отсутствие записи текущего месяца не обнуляет историю; продавец видит только допустимую собственную статистику | APPROVED (концепция; пороги PROPOSED) |
+
+Подробная спецификация: [CUSTOMER-ACTIVITY-AGGREGATOR.md](CUSTOMER-ACTIVITY-AGGREGATOR.md).
