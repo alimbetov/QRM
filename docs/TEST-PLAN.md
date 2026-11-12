@@ -150,3 +150,20 @@ S0 specifications only; executable RED tests and S2 review remain pending.
 ## Human-readable Order Number / Receipt QR
 
 S0 tests `NUM-01…NUM-06`, `QR-01…QR-06` are documented in [DEC-ORDER-NUMBER-001](DEC-ORDER-NUMBER-001.md). Fast H2 formatting/mapping; mandatory PostgreSQL concurrency, UNIQUE and one-time QR redemption. These are test specifications, not runnable assertions.
+
+## New trade differentiation domain acceptance (KILL-01…KILL-12)
+
+- KILL-01 buyer request stores product-neutral criteria, not a merchant SKU.
+- KILL-02 multiple eligible sellers may respond independently; offers ranked by validated total.
+- KILL-03 duplicate product or incompatible/partial basket rejected.
+- KILL-04 expired requests and offers rejected.
+- KILL-05 immutable bid version lines: counteroffer cannot rewrite prior revision.
+- KILL-06 only buyer can accept offer; one accepted bid and at most one CustomerOrder under concurrent duplicate requests (**PostgreSQL pending**).
+- KILL-07 seller SKU ownership verified against published catalog (**PostgreSQL pending**).
+- KILL-08 no order or inventory reserve on a posted bid (**PostgreSQL pending**).
+- KILL-09 SmartDealFinder excludes withdrawn/unpublished/ineligible or unknown-shipping offers.
+- KILL-10 compare all-in price (including delivery) rather than headline SKU price.
+- KILL-11 no marketing push without consent; quotas/dedup required (**future ML/notification slice**).
+- KILL-12 private address/phone/warehouse coordinates hidden from competing sellers (**API security pending**).
+
+Java unit subset exists in `backend/src/test/java/kz/zakaz/deal`; PostgreSQL/authorization tests are future RED work. See [DEC-KILLER-FEATURES-R1](DEC-KILLER-FEATURES-R1.md).
