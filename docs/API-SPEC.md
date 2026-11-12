@@ -176,3 +176,7 @@ Example per-line response:
   "originProvisional":true
 }
 ```
+
+## Order public number and pickup QR
+
+Authorized Order DTO includes `publicNumber` with display format `ZK-XXXX-XXXX`. It must never grant unauthenticated access to another user's order or receipt confirmation. A persistent printed QR is a link/locator only. Per-FulfillmentGroup expiring receipt challenge is separately authorized, hashed and consumed atomically after explicit authenticated buyer confirmation. Endpoint design and TTL undergo S2. [DEC-ORDER-NUMBER-001](DEC-ORDER-NUMBER-001.md).
