@@ -179,3 +179,7 @@ QRM использует один управляемый **Nightly Profile Aggre
 ## 21. Итоги архитектурного review MVP
 
 [TECHNICAL-REVIEW-MVP.md](TECHNICAL-REVIEW-MVP.md) — единый перечень обнаруженных несоответствий, согласованная модель Order/Negotiation/Rating, минимальное разбиение на vertical slices и gates. При расхождении старых описаний статусов ориентироваться на [DOMAIN-CONTRACTS.md](DOMAIN-CONTRACTS.md) и канонические инварианты review; числовые политики требуют S2. Реализация отсутствует.
+
+## 22. R0.2 повторный технический аудит
+
+[TECHNICAL-REVIEW-R2.md](TECHNICAL-REVIEW-R2.md) — второй цикл согласованности. Приоритетные замечания: право на номер без SMS не подтверждено и может быть захвачено регистрацией; `READY_FOR_RECEIPT` не равно `RECEIVED`; продавец/товар оцениваются раздельно; для ночной агрегации одного wall-clock source watermark недостаточно. Рекомендовано фиксировать согласованный PostgreSQL read snapshot или корректный committed journal cursor, не создавать отдельную инфраструктуру. Новые OPEN-15…17 должны пройти S2/legal review перед релизом соответствующих функций.
