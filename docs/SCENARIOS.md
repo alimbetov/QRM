@@ -95,3 +95,25 @@
 5. **S4 Qualification** — regression, security, exact-SHA CI, real-media/storage, native UI, backup/restore evidence.
 
 No automatic merge into main without approved PR review. This repository currently contains specifications, not finished software.
+
+
+## Seller Inbox — сценарии DEC-19…23
+
+| ID | Given / when | Expected |
+|---|---|---|
+| INB-01 | новая Web-заявка продавцу | непрочитанная, счётчик +1 |
+| INB-02 | продавец открывает детализацию | прочитана текущая версия, счётчик уменьшается |
+| INB-03 | продавец вручную отмечает как непрочитанное | запись снова в UNREAD на Web и Flutter |
+| INB-04 | продавец добавляет закладку | в BOOKMARKED, бизнес-статус не меняется |
+| INB-05 | продавец снимает закладку | из BOOKMARKED исчезает, запись не удаляется |
+| INB-06 | новое входящее предложение после прочтения | становится непрочитанным, закладка сохраняется |
+| INB-07 | продавец читает старую версию, параллельно приходит новая | новая активность остаётся непрочитанной, гонка не теряет событие |
+| INB-08 | смена Web → Flutter | метки и счётчики совпадают после синхронизации |
+| INB-09 | другой продавец запрашивает чужие inbox ID | 403/404 без утечки данных |
+| INB-10 | повторное PUT read/bookmark | идемпотентно, без ложного увеличения счётчиков |
+| INB-11 | cursor pagination при 1000+ записях | нет дублей в статическом наборе, есть детерминированный tie-break |
+| INB-12 | сочетание type, unread, bookmarked и статуса | корректная серверная фильтрация и nextCursor |
+| INB-13 | отзыв/отмена заявки покупателем | входящее изменение непрочитано, закладка сохраняется |
+| INB-14 | собственное действие продавца | не создаёт для него новое непрочитанное событие |
+
+**Test-first:** R2DBC Testcontainers/PostgreSQL для индексов и конкурентного versioned read, API authz, React/Flutter UI фильтров и badge counters, QR-auth replay/expiry/security. R0 независимо утверждает семантику read state и точный контракт cursor.
