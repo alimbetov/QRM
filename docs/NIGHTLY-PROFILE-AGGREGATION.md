@@ -33,7 +33,7 @@ Do not infer payment completion from QRM status: QRM does not process money. A q
 | Old staging cleanup | delete stale unpublished runs only after configured safety retention |
 | Previous snapshot | continue serving until new run is published |
 
-**Concurrency:** `unique(job_name, as_of_date, rules_version)` logical job key; claim with atomic compare-and-set lease. Transaction-scope advisory locks cannot cover long async jobs; use durable lease + heartbeat and compare-and-set publish. Lease ownership + epoch fencing is validated before stage writes and publish, so expired worker cannot overwrite a successor.
+**Concurrency:** `unique(job_name, as_of_date, rules_version, generation)` for physical run generation, and a separately enforced logical active claim/lease for the job/date; allow a privileged rerun with a new `generation`. Claim with atomic compare-and-set lease. Transaction-scope advisory locks cannot cover long async jobs; use durable lease + heartbeat and compare-and-set publish. Lease ownership + epoch fencing is validated before stage writes and publish, so expired worker cannot overwrite a successor.
 
 **Time:** QRM serves Kazakhstan first; daylight-saving assumptions are not hardcoded. Java `ZoneId.of("Asia/Almaty")`, not fixed UTC offset.
 
@@ -56,7 +56,7 @@ CREATE TABLE profile_aggregation_run (
   finished_at timestamptz,
   lease_owner varchar(128),
   lease_until timestamptz,
-  source_watermark timestamptz,
+  source_watermark timestamptz, -- diagnostic only; not a consistent transaction snapshot by itself
   error_code varchar(100),
   CHECK (state IN ('RUNNING','STAGED','PUBLISHED','FAILED','SUPERSEDED'))
 );
@@ -117,7 +117,7 @@ Schema details to finalize: UUID types matching identity/order models, rating so
 
 **Relationship:** each seller/buyer pair with verified history from approved orders; `NEW_TO_SELLER` (no qualified past order), `BOUGHT_BEFORE` (1–2), `REGULAR` (>=3) for the 9M proposal. A seller may only read their own rows; do not derive account identity from an anonymous Web callback phone.
 
-**Event-time versus state:** current Order state alone is insufficient to reconstruct historical windows after returns/corrections. Aggregator must read an audited source of fulfillment state transitions (versioned event journal) or a qualified-order projection carrying `qualified_at`, `reversed_at`, and source versions. Design must pin a repeatable `source_watermark` before calculation so concurrent writes cannot produce partial cross-table snapshots.
+**Event-time versus state:** current Order state alone is insufficient to reconstruct historical windows after returns/corrections. Read an audited state-transition journal or qualified-order projection with `qualified_at`, `reversed_at` and source versions. **A mere timestamp watermark cannot provide PostgreSQL multi-query consistency.** MVP implementation must extract source facts under one PostgreSQL `REPEATABLE READ READ ONLY` snapshot (stream/temporary staging bounded by memory and transaction age) **or** use a verified monotonically committed journal cursor. After the source extraction commits, write aggregates in chunks, reconcile counts, then publish atomically. Choose and test one method in S2; reject a mixture of independent READ COMMITTED queries.
 
 **Partitioning:** raw business events MAY use monthly PostgreSQL RANGE partitions, but for initial MVP normal indexes are sufficient. Daily/monthly summaries may be materialized later; nightly worker can aggregate 9M through indexed transactional projections. Do not require current-month partition membership to qualify a buyer/seller. Do not drop old partitions based only on 9M score window.
 
@@ -210,3 +210,7 @@ Metrics: `profile_aggregation_last_success_epoch`, `profile_aggregation_duration
 ## Lean MVP reduction (architecture review)
 
 **Required first:** audited qualified-fulfillment projection, eligible-review source, one scheduled worker with buyer/seller/seller-buyer snapshots, atomic publication, anti-replay and privacy checks. **Not required at launch:** materializing separate `customer_daily_stats` and `customer_monthly_stats`, raw event monthly partitions, stream processing, data warehouse. If indexed historical source cannot meet runtime targets, introduce supplemental rollups after profiling. Source data event-time and corrections remain mandatory; snapshot must expose as-of and STALE status. See [TECHNICAL-REVIEW-MVP.md](TECHNICAL-REVIEW-MVP.md).
+
+## R2 verification: source snapshot and publish policy
+
+A `source_watermark TIMESTAMPTZ` field is **diagnostic**, not the definition of DB-consistent reads. For the MVP choose one coherent `REPEATABLE READ` extraction of qualified orders and eligible reviews or a journal cursor with proven commit semantics, then stage as runId; avoid hours-long R2DBC transactions. Rerun uses new generation; old run stays immutable. Atomic publish refuses older `cutoff_at` or stale fencing token, and same-cutoff replacement requires explicit operator approval. Test backfills and worker split-brain. [R2 technical review](TECHNICAL-REVIEW-R2.md).
