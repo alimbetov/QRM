@@ -22,7 +22,7 @@ public class InventoryLocation {
  @Column(precision=10,scale=7) private BigDecimal latitude;
  @Column(precision=10,scale=7) private BigDecimal longitude;
  @Column(nullable=false)private boolean active;
- @Version private long version;
+ @Version private Long version;
  protected InventoryLocation(){}
  public static InventoryLocation create(UUID sellerId,String code,String name,String regionCode,String regionName,
                                             String city,String addressLine,LocationType type,GeoPoint point,boolean publicPickup){
