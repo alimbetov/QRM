@@ -11,7 +11,7 @@
 | R2 | category, product, listing, translation, image, YouTube | public visibility + media validations |
 | R3 | quantity pricing and scheduled discounts | price boundary/time/concurrency tests |
 | R4 | QR attribution and React storefront | QR→page and public views E2E |
-| R5 | Web purchase lead, withdrawal, OTP | spam/PII/withdrawal tests |
+| R5 | Web purchase lead, withdrawal, callback consent/anti-spam | spam/PII/withdrawal tests |
 | R6 | Flutter, App Links, Seller and Buyer UI | device E2E |
 | R7 | favorites, price watch, push | effective-price notification idempotency |
 | R8 | price negotiation, orders, buyer cancellation | transaction/state-machine regression |
@@ -117,3 +117,7 @@ No automatic merge into main without approved PR review. This repository current
 | INB-14 | собственное действие продавца | не создаёт для него новое непрочитанное событие |
 
 **Test-first:** R2DBC Testcontainers/PostgreSQL для индексов и конкурентного versioned read, API authz, React/Flutter UI фильтров и badge counters, QR-auth replay/expiry/security. R0 независимо утверждает семантику read state и точный контракт cursor.
+
+## Дополнительные S0/S1 test specs
+
+Доменная state matrix и concurrency: [DOMAIN-CONTRACTS.md](DOMAIN-CONTRACTS.md). API error and cursor: [API-SPEC.md](API-SPEC.md). Reactive transaction/replay/security test plan: [TEST-PLAN.md](TEST-PLAN.md). Утверждение tests требует независимого S2 Review; этот документ не является отчётом об их выполнении.
