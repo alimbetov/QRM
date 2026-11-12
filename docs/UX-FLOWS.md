@@ -1,3 +1,5 @@
+> **Обновление решения 2026-11-12:** [DEC-BUYER-WEB-CATALOG](DEC-BUYER-WEB-CATALOG.md) разрешает покупательский React Web каталог и авторизованное серверное Избранное. Старые запреты Web Favorites ниже исторические и заменены этим решением. Демо Web хранит закладки локально, но не является рабочей синхронизацией; создание заказов остаётся вне Web MVP.
+
 # QRM — React Web и Flutter UX / navigation specification
 
 **Статус:** UX acceptance specification; макеты и E2E ещё не реализованы.
