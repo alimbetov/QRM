@@ -126,3 +126,7 @@ These are RED acceptance expectations, not executed tests. Security S2 before an
 ## Multi-SKU / multi-line / warehouse RED contract
 
 Обязательные **INV-01…INV-18**: [DEC-ENTITY-MULTI-SKU-LOCATION.md](DEC-ENTITY-MULTI-SKU-LOCATION.md). H2 — быстрое JPA/API smoke; PostgreSQL Testcontainers — обязательная проверка атомарного резервирования после подтверждения, многопозиционного rollback, конкурентности, location ownership и Outbox. Это пока S0-оракулы, не исполняемые тесты.
+
+## Checkbox-selected SKU orders / negotiated multi-line prices
+
+Required S0 oracles `SELSKU-01…SELSKU-14` are specified in [DEC-SELECTED-SKU-ORDER.md](DEC-SELECTED-SKU-ORDER.md). Validate checkbox selection and disabled empty order in Flutter/React UI, API against price tampering and cross-seller products, H2 basic mapping, PostgreSQL Testcontainers for versioned quote, duplicate conversion and reserve-on-seller-confirm. No runnable tests implemented yet.
