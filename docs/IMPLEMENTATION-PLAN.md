@@ -157,3 +157,7 @@ RED test commits for ACL/migration → GREEN: JWT issuer+scope, issuer+sub membe
 ## R2.0A — BuyerDemand / SellerBid persisted snapshots
 
 RED contract tests → JPA snapshot entities/repositories, internal `DealPersistenceService`, Flyway V5 historical basket and immutable bid revisions, Flyway V6 PostgreSQL append-only triggers; fast H2 + real PostgreSQL qualification tests. Next S2 gate: verified units, immutable quote (price+shipping), buyer identity and bid acceptance/idempotency; then CustomerOrder(PLACED) → seller confirmation → atomic reservation/outbox. Do not expose public endpoints without real auth / stock authority. [Evidence/remaining scope](R2-0A-DEMAND-BID-SNAPSHOT-IMPLEMENTATION.md).
+
+## R2.0B → R2.1 — executed vertical transaction slices
+
+RED → GREEN R2.0B: canonical sales unit per SKU/demand, immutable seller quote including delivery, server-verified buyer account link, idempotent bid acceptance, one CustomerOrder(PLACED) per demand, Flyway V7–V9. RED → GREEN R2.1: InventoryBalance / InventoryReservation, SELLER_ADMIN verified confirmation, ordered PostgreSQL row locking and atomic status/outbox, V10, V11 SQL economic immutability. PostgreSQL IT includes last-unit concurrent confirmation and multiline full rollback. Further P0: independent S2, real identity/onboarding, seller stock movements, cancellation/release, outbox delivery/reconciliation, load test 5000 sessions. [R2.0B](R2-0B-BID-ACCEPTANCE-IMPLEMENTATION.md) · [R2.1](R2-1-INVENTORY-RESERVATION-OUTBOX-IMPLEMENTATION.md).
