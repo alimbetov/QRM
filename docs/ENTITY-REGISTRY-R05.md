@@ -187,3 +187,7 @@ See [DEC-UCE-001-UNIVERSAL-CLASSIFICATION.md](DEC-UCE-001-UNIVERSAL-CLASSIFICATI
 ### DEC-UCE-002 strict positional HCC + feature schema
 
 Идентификатор DictionaryNode (BIGINT generator) не равен опубликованному ClassificationPath (фиксированные строковые сегменты). Общие справочники SIZE_SYSTEM, SIZE_VALUE, COLOR, MATERIAL и другие типизированные значения связываются с категориями через ClassAttributeRule. FeatureSchemaVersion хранит неизменные позиции/поля, схемы нормализации и categorical encoding в Tribuo, предотвращая ordinal interpretation числовых кодов. Новые кандидаты не означают автоматического создания физических таблиц. См. [UCE-001 / UCE-002](DEC-UCE-001-UNIVERSAL-CLASSIFICATION.md).
+
+### DEC-UCE-003 — nullable buyer city and birthYear
+
+Дополнительные поля **BuyerProfile**, а не новые сущности: `residenceCityAreaId` (FK на versioned area dictionary, выбранный город) и `birthYear` (опционально). Сегменты возраста и совпадения зоны доставки — вычисляемые value/features с фиксированной схемой; не переносить персональные данные покупателя в HCC товарной таксономии и не показывать продавцам. Нужны consent/retention/delete и защита несовершеннолетних; точный возраст по одному году рождения неизвестен. См. [UCE-003](DEC-UCE-001-UNIVERSAL-CLASSIFICATION.md).
