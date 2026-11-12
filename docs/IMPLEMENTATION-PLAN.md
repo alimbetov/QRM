@@ -117,3 +117,7 @@ Identity must not include SMS/OTP adapter, and notification first must persist i
 ## DEC-34 optional recovery provider
 
 Do **not** build SMS delivery in ID-01 registration or normal auth. Keep `PhoneVerificationProvider` as optional recovery-bound port only; implementations may be deferred. A valid SMS code for an unverified phone **must not** reset password. Recovery by previously verified email is first option. Implement testable no-SMS-by-default flow and keep OPEN-15 as public-signup blocker. [Auth design](AUTH-NOTIFICATIONS.md).
+
+## ADR-004 — roadmap гибридных движков
+
+Целевой портфель из десяти продуктовых функций утверждён в [ADR-004-HYBRID-INTELLIGENCE-ENGINES.md](ADR-004-HYBRID-INTELLIGENCE-ENGINES.md). Порядок срезов: P0-F1 HCC/атрибуты/проверка совместимости и FeatureRegistry → P0-F2 реальный каталог/запрос/однопродавцовый заказ → P1-F3 языковой поиск и аналоги → P1-F4 Demand Radar и Bargaining Advisor → P1-F5 размеченные события/Tribuo baseline → P2-F6 симуляция мультипродавцового набора и комплекты (Timefold при оправданной сложности) → P2-F7 AI Shopping Assistant / сегментация → P3-F8 GIS Delivery Optimizer. Физическое включение библиотек только после RED → S2 Review, тестов совместимости Java 21, лицензий и оценок производительности.
