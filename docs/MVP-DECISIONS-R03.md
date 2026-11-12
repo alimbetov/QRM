@@ -117,3 +117,7 @@ These counts intentionally do **not** require a minimum active-month count in MV
 | R03-18 | versioned consent withdrawn | restrict processing per legal retention policy; audit |
 
 **Ship gate:** Scenario Design → executable RED → independent S2 → GREEN → regression + actual PostgreSQL/Testcontainers + security/privacy review. No runnable code asserted.
+
+## DEC-34 subsequent clarification
+
+Earlier R0.3 says no SMS in MVP; the updated product direction is **SMS only as an optional recovery channel**, not as a registration or routine-auth requirement. SMS recovery is disabled for UNVERIFIED phone aliases pending independent binding verification and risk review. A correctly entered recovery SMS code alone must not take over an account created with someone else's number. Verified-email recovery remains the default. See [AUTH-NOTIFICATIONS.md](AUTH-NOTIFICATIONS.md) and [DECISIONS.md](DECISIONS.md).
