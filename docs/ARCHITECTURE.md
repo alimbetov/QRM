@@ -1,3 +1,5 @@
+> **Актуальный функциональный scope и разрешённые противоречия:** [мастер-ТЗ v2.0](REQUIREMENTS.md), включая BuyerDemand/SellerBid, Web Favorites, многопозиционные OrderLine, SmartDealFinder и Tribuo ML. Историческая ER-диаграмма ниже неполна; расширения перечислены в [Entity Registry](ENTITY-REGISTRY-R05.md).
+
 # QRM — архитектура и доменная модель (R0 draft)
 
 **Статус:** proposed architecture; не код и не утверждённая SQL-схема. Источник функциональных требований — [REQUIREMENTS.md](REQUIREMENTS.md).
