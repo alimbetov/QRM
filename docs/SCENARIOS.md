@@ -133,3 +133,7 @@ AUTH-01…AUTH-10 and NOT-01…NOT-10 from [AUTH-NOTIFICATIONS.md](AUTH-NOTIFICA
 ## Единая карта пользовательских сценариев MVP
 
 [USER-JOURNEYS-MVP.md](USER-JOURNEYS-MVP.md) объединяет 16 сквозных UX-сценариев и 20 негативных/конкурентных случаев, диаграммы Web→Flutter→Order, PurchaseLead, торговых переговоров, получения/отзыва, QR Web login, уведомлений и ночных агрегатов. До implementation нужно закрыть явно обозначенные OPEN-01/03/04/11/13/14 и проверить диаграммы независимым S2 Review. Схемы описывают проект, не реализованный Backend.
+
+## Lean MVP consistency review
+
+Сценарии REV-01…REV-13 и canonical flow сведены в [TECHNICAL-REVIEW-MVP.md](TECHNICAL-REVIEW-MVP.md). Для RED обязательны негативные случаи: AGREED не создаёт Order, buyer-only явная конвертация (предложено/S2), продавец не может пометить заказ полученным от имени покупателя, Review отсутствует без подтверждённого receipt, продавец видит только собственную статистику, безошибочная работа без FCM, парольный вход без SMS. SERVICE/DIGITAL запрещено включать без собственных tested fulfillment flows.
