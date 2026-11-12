@@ -109,7 +109,7 @@ stateDiagram-v2
 
 ### Negotiation interoperability: one contract, not two engines
 
-The winning bid becomes a linked **accepted offer** of the existing negotiation/order workflow. Implement an application adapter `SmartDealOrderConversion` that creates/links the accepted negotiation snapshot and CustomerOrder **inside one transactional command** with Outbox. Do not create a second SmartDeal order table and do not call two independent public APIs with an inconsistent intermediate state.
+Only at explicit **Create Order** does the selected bid become a linked **accepted offer** of the existing negotiation/order workflow. Implement an application adapter `SmartDealOrderConversion` that creates/links the accepted negotiation snapshot and CustomerOrder **inside one transactional command** with Outbox. Do not create a second SmartDeal order table and do not call two independent public APIs with an inconsistent intermediate state.
 
 The buyer always performs the final **explicit Create Order** action. A selected bid must still be valid and Seller Listing available at conversion time; locked terms are not silently replaced by a fresh catalog quote. If conditions invalidate the bid, return 409 with a safe reselect/new-bid path. Payment stays outside QRM.
 
@@ -238,9 +238,9 @@ Currency is always KZT in MVP. In total calculation: unit price × quantity plus
 | SD-16 | Seller withdraws selected bid after buyer selection | cannot silently invalidate selected terms; guarded outcome |
 | SD-17 | Bid expires before buyer selects | rejected; cannot create Order |
 | SD-18 | Buyer sees price + known delivery, unknown delivery separately | no false all-in cheapest label |
-| SD-19 | Buyer selects seller A and B concurrently | exactly one SELECTED and one accepted offer |
+| SD-19 | Buyer selects seller A and B concurrently | exactly one SELECTED bid; no accepted NegotiationOffer or Order before explicit conversion |
 | SD-20 | Buyer tries select other buyer's bid | 403/404 |
-| SD-21 | Buyer selects bid | demand SELECTED but **no CustomerOrder** |
+| SD-21 | Buyer selects bid | demand SELECTED but **no CustomerOrder and no accepted NegotiationOffer yet** |
 | SD-22 | Buyer creates Order once, 20 concurrent retries | one CustomerOrder + one acceptedOffer link + one Outbox event |
 | SD-23 | DB Outbox write fails during conversion | full rollback, no orphan accepted offer/Order |
 | SD-24 | Listing archived while Order conversion | 409, no order |
