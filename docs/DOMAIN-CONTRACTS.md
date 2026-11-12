@@ -152,3 +152,7 @@ Buyer sees region and city for each SKU/line. `originCitySnapshot` and `originRe
 ## Canonical Entity Registry R0.5
 
 Единый каталог 46 кандидатов в сущности, модели enum/value object, владельцы, ключи, ограничения и приоритеты: [ENTITY-REGISTRY-R05.md](ENTITY-REGISTRY-R05.md). Реестр — спецификация S0, не перечень 46 обязательных PostgreSQL таблиц; отдельные supporting storage модели требуют S2 решения.
+
+## Геолокация точек хранения и выдачи (2026-11-12)
+
+`InventoryLocation` хранит необязательную пару координат WGS84 (`latitude`, `longitude`), регион, город, адрес, `LocationType` и разрешение публичного самовывоза. `GeoPoint` — Java value object, а не дополнительная таблица. Закрытые склады не раскрывают точные координаты покупателям. Для будущей доставки исходная точка должна браться из подтверждённого распределения заказа, пункт назначения — только из разрешённого адреса клиента. См. [DEC-LOCATION-GEOPOINT](DEC-LOCATION-GEOPOINT.md). PostGIS и маршрутизация отложены до появления измеренной потребности.
