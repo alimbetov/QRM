@@ -191,3 +191,7 @@ See [DEC-UCE-001-UNIVERSAL-CLASSIFICATION.md](DEC-UCE-001-UNIVERSAL-CLASSIFICATI
 ### DEC-UCE-003 — nullable buyer city and birthYear
 
 Дополнительные поля **BuyerProfile**, а не новые сущности: `residenceCityAreaId` (FK на versioned area dictionary, выбранный город) и `birthYear` (опционально). Сегменты возраста и совпадения зоны доставки — вычисляемые value/features с фиксированной схемой; не переносить персональные данные покупателя в HCC товарной таксономии и не показывать продавцам. Нужны consent/retention/delete и защита несовершеннолетних; точный возраст по одному году рождения неизвестен. См. [UCE-003](DEC-UCE-001-UNIVERSAL-CLASSIFICATION.md).
+
+### TRIBUO-HCC-001 — проверка совместимости HCC и Tribuo
+
+Проведён проектный анализ [REVIEW-TRIBUO-HCC-001.md](REVIEW-TRIBUO-HCC-001.md): HCC и числовые DictionaryNode.id используются как идентификаторы иерархии, а не ordinal ML значения; типизированные глобальные атрибуты, реестр frozen feature schema, чистые as-of признаки и безопасный deterministic fallback обязательны. Город запроса отделён от добровольно указанного города проживания, год рождения — необязательный персональный атрибут с ограничениями обработки. Результат **архитектурно совместимо при выполнении S2-gates**, не доказательство обученной модели или реализованного модуля.
