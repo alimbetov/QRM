@@ -16,7 +16,7 @@ public class CustomerOrder {
  @Column(name="total_amount",nullable=false,precision=19,scale=2,updatable=false) private BigDecimal totalAmount;
  @Column(name="currency_code",nullable=false,length=3,updatable=false) private String currencyCode;
  @Column(name="created_at",nullable=false,updatable=false) private Instant createdAt;
- @Version private long version;
+ @Version private Long version;
  @OneToMany(mappedBy="order",cascade=CascadeType.PERSIST,fetch=FetchType.LAZY)
  @OrderBy("lineNumber ASC") private List<OrderLine> lines=new ArrayList<>();
  protected CustomerOrder(){}
