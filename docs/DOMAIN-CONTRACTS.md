@@ -125,3 +125,9 @@ Phone is only an unverified login identifier, no OTP confirmation. Passwords has
 - **Identities:** телефон без подтверждения — alias для логина, не гарантирует владение и не допускает восстановления доступа по номеру.
 
 [R2 technical review](TECHNICAL-REVIEW-R2.md).
+
+## R0.3 fulfillment / prices
+
+- Наличные расчёты: отдельно от immutable Order total вычисляется **округлённый итог платежа** для информирования сторон; QRM не подтверждает внешнюю оплату. По проектной денежной политике сохраняются KZT 2 decimals, сумма округляется после quantity × price/discount, а не по каждой единице. Формула и налоговые правила требуют S2/legal Review.
+- Продавец переводит Fulfillment в READY_FOR_RECEIPT, создаёт одноразовый привязанный к Order QR challenge; **только аутентифицированный покупатель данного заказа** после явной команды подтверждения переводит в RECEIVED/Order COMPLETED. Проверить TTL, rate-limit, replay и конкурентные обращения. Само сканирование или ввод кода продавцом не является подтверждением. Отказ покупателя ведёт к dispute, без автоувеличения уровня.
+- Детали схемы и оракулы: [MVP-DECISIONS-R03.md](MVP-DECISIONS-R03.md).
