@@ -46,3 +46,7 @@ This dataset is **engineered to test invariants**, not evidence of predictive po
 - No age/birthYear needed for procurement. Language may segment **aggregated requested service language** but must not reveal individual shoppers.
 
 See [ADR-004](ADR-004-HYBRID-INTELLIGENCE-ENGINES.md) and [task segmentation](DEC-INTELLIGENCE-001-TASK-SEGMENTATION.md).
+
+## Night batch / partition follow-up (ADR-005)
+
+Недельные snapshot являются слоем L2, строятся из подтверждённых дневных метрик L1 посредством ночных логических bucket jobs; период считается закрытым только после водяного знака источника и проверки полноты событий. Физическое PostgreSQL partitioning по датам (RANGE) — отдельная опция для крупных таблиц; не следует создавать партицию на каждый вычислительный бакет. Поздние события вызывают новую revision-версию недели и пересчёт затронутых rolling окон, никогда бесконтрольный rewrite уже использованного dataset/model. Полная схема: [ADR-005](ADR-005-NIGHTLY-BUCKETED-INTELLIGENCE.md).
