@@ -99,3 +99,7 @@ All AUTH-01…10 and NOT-01…10 from [AUTH-NOTIFICATIONS.md](AUTH-NOTIFICATIONS
 | R2-T12 | optional push unavailable | notification persisted, order/lead succeeds |
 
 [R2 audit](TECHNICAL-REVIEW-R2.md). **Ни один тест в этом документе ещё не реализован.**
+
+## R0.3 acceptance suite (S0 oracles)
+
+R03-01…R03-18 from [MVP-DECISIONS-R03.md](MVP-DECISIONS-R03.md): identity alias squatting/recovery, KZT arithmetic and cash-rounding final total, seller-generated one-time QR for buyer-confirmed receipt, dispute/refusal, after-midnight 9M window, PostgreSQL consistent source reads, tier threshold boundaries, Kazakhstan data residency/logs and optional FCM failures. Tests have **not** been implemented. Independent S2 review before enabling affected functionality.
