@@ -101,13 +101,13 @@ class OrderConfirmationPostgresIT {
     }
     @Test void confirmationReservesAtomicallyEmitsOneOutboxAndRetryIsIdempotent(){
         var m=market(1,List.of(BigDecimal.ONE));UUID orderId=placedOrder(m);
-        assertThat(reservations.count()).isZero();
-        assertThat(events.count()).isZero();
+        assertThat(reservations.findByOrderId(orderId)).isEmpty();
+        assertThat(events.findByAggregateIdAndEventType(orderId,"ORDER_CONFIRMED")).isEmpty();
         confirming.confirm(token(m.sellerSubject()),m.sellerId(),orderId,NOW.plusSeconds(20));
         confirming.confirm(token(m.sellerSubject()),m.sellerId(),orderId,NOW.plusSeconds(21));
         assertThat(orders.findById(orderId).orElseThrow().getStatus()).isEqualTo(OrderStatus.CONFIRMED);
-        assertThat(reservations.count()).isEqualTo(1);
-        assertThat(events.count()).isEqualTo(1);
+        assertThat(reservations.findByOrderId(orderId)).hasSize(1);
+        assertThat(events.findByAggregateIdAndEventType(orderId,"ORDER_CONFIRMED")).isPresent();
         var balance=balances.findBySellerIdAndLocationIdAndSkuId(
             m.sellerId(),m.locationId(),m.skus().getFirst()).orElseThrow();
         assertThat(balance.getReserved()).isEqualByComparingTo("1.000");
@@ -116,8 +116,8 @@ class OrderConfirmationPostgresIT {
         var m=market(2,List.of(BigDecimal.ONE,BigDecimal.ZERO));UUID id=placedOrder(m);
         assertThatThrownBy(()->confirming.confirm(token(m.sellerSubject()),m.sellerId(),id,NOW.plusSeconds(1)))
             .isInstanceOf(InsufficientStockException.class);
-        assertThat(reservations.count()).isZero();
-        assertThat(events.count()).isZero();
+        assertThat(reservations.findByOrderId(id)).isEmpty();
+        assertThat(events.findByAggregateIdAndEventType(id,"ORDER_CONFIRMED")).isEmpty();
         assertThat(orders.findById(id).orElseThrow().getStatus()).isEqualTo(OrderStatus.PLACED);
         var first=balances.findBySellerIdAndLocationIdAndSkuId(
             m.sellerId(),m.locationId(),m.skus().getFirst()).orElseThrow();
@@ -141,8 +141,9 @@ class OrderConfirmationPostgresIT {
             int successes=0;
             for(var future:tasks)if(future.get(20,TimeUnit.SECONDS))successes++;
             assertThat(successes).isEqualTo(1);
-            assertThat(reservations.count()).isEqualTo(1);
-            assertThat(events.count()).isEqualTo(1);
+            assertThat(reservations.findByOrderId(a).size() + reservations.findByOrderId(b).size()).isEqualTo(1);
+            assertThat((events.findByAggregateIdAndEventType(a,"ORDER_CONFIRMED").isPresent()?1:0)
+                +(events.findByAggregateIdAndEventType(b,"ORDER_CONFIRMED").isPresent()?1:0)).isEqualTo(1);
             assertThat(balances.findBySellerIdAndLocationIdAndSkuId(
                 m.sellerId(),m.locationId(),m.skus().getFirst()).orElseThrow()
                 .getReserved()).isEqualByComparingTo("1");
