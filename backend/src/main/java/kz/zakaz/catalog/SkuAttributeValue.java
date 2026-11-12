@@ -3,7 +3,7 @@ package kz.zakaz.catalog;
 import jakarta.persistence.*;
 import java.util.*;
 
-/** Typed canonical value, subject-scoped FK. Applicability is enforced by service rule validation. */
+/** Typed canonical SKU attribute, bound by category rule. */
 @Entity @Table(name="catalog_sku_attribute_value",uniqueConstraints=@UniqueConstraint(name="uk_sku_attribute",columnNames={"sku_id","attribute_id"}))
 public class SkuAttributeValue {
     @Id @Column(nullable=false) private UUID id;
@@ -20,4 +20,6 @@ public class SkuAttributeValue {
     }
     public String getCanonicalValue(){return canonicalValue;}
     public UUID getId(){return id;}
+    public SellerSku getSku(){return sku;}
+    public AttributeDefinition getAttribute(){return attribute;}
 }

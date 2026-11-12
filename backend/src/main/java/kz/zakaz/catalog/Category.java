@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import java.util.*;
 import kz.zakaz.domain.types.ProductType;
 
-/** One HCC/category hierarchy. The fixed-width code is a string, never a numeric ML metric. */
+/** A single versioned category/HCC tree. HCC is a string, never an ML ordinal. */
 @Entity
 @Table(name="catalog_category", uniqueConstraints=@UniqueConstraint(name="uk_catalog_category_code",columnNames="hcc_code"))
 public class Category {
@@ -17,16 +17,11 @@ public class Category {
     @Version private Long version;
     protected Category() {}
     public static Category create(String hccCode,ProductType type,String label,Category parent) {
-        if(hccCode==null || !hccCode.matches("[0-9]{20}") || hccCode.chars().allMatch(c->c=='0'))
-            throw new IllegalArgumentException("HCC must contain 20 nonzero-identity positional digits");
+        HccPath.depth(hccCode);
         Objects.requireNonNull(type);
         if(label==null || label.isBlank() || label.length()>160) throw new IllegalArgumentException("Category label required");
-        if(parent!=null) {
-            if(parent.type!=type || parent.hccCode.equals(hccCode))
-                throw new IllegalArgumentException("Invalid category parent/type");
-            if(!hccCode.startsWith(parent.hccCode.replaceFirst("0+$","")))
-                throw new IllegalArgumentException("HCC child must share parent prefix");
-        }
+        if(parent!=null && (parent.type!=type || !HccPath.isDescendant(hccCode,parent.hccCode)))
+            throw new IllegalArgumentException("Invalid category parent/type");
         var c=new Category();c.id=UUID.randomUUID();c.hccCode=hccCode;c.type=type;c.label=label;c.parent=parent;c.active=true;return c;
     }
     public UUID getId(){return id;}

@@ -1,5 +1,5 @@
--- R1 catalog foundation: reviewed PostgreSQL 17 DDL; NOT auto-executed.
--- Apply in a controlled migration tool after schema review; Hibernate prod ddl-auto=validate.
+-- R1B PostgreSQL 17 review candidate: manual DDL, NOT auto-executed in prod.
+-- This file must be applied via a controlled migration process before ddl-auto=validate.
 CREATE TABLE catalog_category (
     id uuid PRIMARY KEY,
     hcc_code varchar(20) NOT NULL,
@@ -9,7 +9,14 @@ CREATE TABLE catalog_category (
     active boolean NOT NULL,
     version bigint,
     CONSTRAINT uk_catalog_category_code UNIQUE(hcc_code),
-    CONSTRAINT chk_hcc_digits CHECK (hcc_code ~ '^[0-9]{20}$' AND hcc_code <> '00000000000000000000'),
+    CONSTRAINT chk_hcc_digits CHECK (
+        hcc_code ~ '^[0-9]{20}$'
+        AND substring(hcc_code,1,2)<>'00'
+        AND (substring(hcc_code,3,2)<>'00' OR substring(hcc_code,5,16)='0000000000000000')
+        AND (substring(hcc_code,5,3)<>'000' OR substring(hcc_code,8,13)='0000000000000')
+        AND (substring(hcc_code,8,5)<>'00000' OR substring(hcc_code,13,8)='00000000')
+        AND (substring(hcc_code,13,8)<>'00000000' OR substring(hcc_code,8,5)<>'00000')
+    ),
     CONSTRAINT chk_catalog_type CHECK (product_type IN ('PHYSICAL','SERVICE','DIGITAL'))
 );
 CREATE INDEX idx_catalog_category_parent ON catalog_category(parent_id);
@@ -61,5 +68,5 @@ CREATE TABLE catalog_sku_attribute_value (
     canonical_value varchar(256) NOT NULL,
     CONSTRAINT uk_sku_attribute UNIQUE(sku_id,attribute_id)
 );
--- Ownership, required attribute completeness, global HCC path segmentation and allowed
--- enumerated values need application validation + subsequent S2-approved constraints.
+-- DB cannot yet enforce parent depth, enum vocabulary, category attribution and seller ACL;
+-- authoritative transactional services and S2 schema review must cover these cases.

@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import java.util.*;
 import kz.zakaz.domain.types.ListingStatus;
 
-/** Seller-owned publication; status never proves SKU stock availability. */
+/** Seller-owned publication. Mutation is package restricted to audited application service. */
 @Entity @Table(name="catalog_listing")
 public class SellerListing {
     @Id @Column(nullable=false) private UUID id;
@@ -16,6 +16,10 @@ public class SellerListing {
     public static SellerListing draft(UUID sellerId,CanonicalProduct product){
         Objects.requireNonNull(sellerId);Objects.requireNonNull(product);
         var l=new SellerListing();l.id=UUID.randomUUID();l.sellerId=sellerId;l.product=product;l.status=ListingStatus.DRAFT;return l;
+    }
+    void publish(){
+        if(status!=ListingStatus.DRAFT) throw new IllegalStateException("Only draft can be published");
+        status=ListingStatus.PUBLIC;
     }
     public UUID getId(){return id;}
     public UUID getSellerId(){return sellerId;}
