@@ -10,10 +10,10 @@ S0 Scenario Design → S1 executable RED tests → S2 independent Test Review �
 
 | Layer | Stack | Purpose |
 |---|---|---|
-| Unit | JUnit 5, AssertJ, Reactor Test StepVerifier | invariant calculation, reactive signals, pure rules |
-| DB integration | Testcontainers PostgreSQL, Spring Data R2DBC, Liquibase | actual SQL schema, transactions, isolation, locking, indices |
-| API contract | WebTestClient, OpenAPI validator, security tests | verbs, status, DTO, problem details, authz |
-| Architecture | ArchUnit | dependency direction/domain isolation; no JPA |
+| Unit | JUnit 5, AssertJ, Mockito | invariant calculation, reactive signals, pure rules |
+| DB integration | Testcontainers PostgreSQL, Spring Data JPA, reproducible test schema | actual SQL schema, transactions, isolation, locking, indices |
+| API contract | MockMvc, OpenAPI validator, security tests | verbs, status, DTO, problem details, authz |
+| Architecture | ArchUnit | dependency direction/domain isolation; JPA entities confined to persistence |
 | React | component tests, Playwright | public pages, lead, seller inbox, QR login |
 | Flutter | unit/widget/integration | favorites, negotiations, App Links, notifications |
 | System/E2E | deployed backend + PostgreSQL + S3 compatible + controlled FCM stub | real flows, retries, QR redirects |
@@ -53,13 +53,13 @@ S0 Scenario Design → S1 executable RED tests → S2 independent Test Review �
 | P0-PUSH-001 | discount worker restarts/replays event | at most one logical notification for same watcher/event |
 | P0-AUTH-001 | QR login challenge replay/other browser | denied, no Web session leak |
 | P0-SEC-001 | seller A requests seller B's lead details | no phone disclosure |
-| P0-R2DBC-001 | tx creates Order but outbox insert fails | both rollback |
-| P0-R2DBC-002 | blocking provider call on event-loop | architecture/static test or BlockHound-inspired test rejects blocking |
+| P0-JPA-001 | tx creates Order but outbox insert fails | both rollback |
+| P0-JPA-002 | external provider call inside Order DB transaction | integration/architecture tests reject network calls in transaction |
 | P0-ANA-001 | analytics insert fails | public page still returns normally |
 
 ## 5. Release evidence requirements
 
-Per PR: scope, approved decisions and scenarios, RED evidence, S2 reviewer verdict, GREEN and regression results, DB migration check, security tests, exact commit SHA. Release: complete E2E on actual Web and Flutter Android/iOS, backup/restore rehearsal, tracing and alert checks, authorized test of real S3 storage, load profile, explicit known limitations and rollback plan.
+Per PR: scope, approved decisions and scenarios, RED evidence, S2 reviewer verdict, GREEN and regression results, schema validation / versioned migration review, security tests, exact commit SHA. Release: complete E2E on actual Web and Flutter Android/iOS, backup/restore rehearsal, tracing and alert checks, authorized test of real S3 storage, load profile, explicit known limitations and rollback plan.
 
 ## 6. Gate for R0 → R1
 
