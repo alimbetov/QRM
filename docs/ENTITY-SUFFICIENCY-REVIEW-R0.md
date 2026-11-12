@@ -81,3 +81,7 @@ CustomerOrder -- OutboxEvent (via aggregate_id/event, not hard required FK)
 8. Decide whether fulfilled qualified event can be represented entirely by existing OrderStatusHistory.
 
 **Do not mark entity model S2-approved until these are resolved and reviewed.**
+
+## Updated owner decisions (2026-11-12)
+
+Earlier one-SKU, one-line and reserve-at-order-creation proposals are **superseded**. Approved: Listing 1..N SKU, CustomerOrder 1..N OrderLine, seller opt-in/out stock tracking per SKU, reservation on seller confirmation, InventoryLocation now with region and structured address (multiple locations per seller). One seller per order, one stock location per line, and all-or-nothing confirm are recommended R1 scope for independent S2. [Canonical contracts and RED scenarios](DEC-ENTITY-MULTI-SKU-LOCATION.md).
