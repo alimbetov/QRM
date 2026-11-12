@@ -161,3 +161,7 @@ The existing `/auth/recovery/request` and `/auth/recovery/complete` endpoints ar
 ## Smart Deal R2 (future opt-in API group)
 
 See [SMART-DEAL-R2.md](SMART-DEAL-R2.md) for scoped REST draft under `/api/v1/smart-deals`: buyer-owned demands, eligible seller invitations/bids, one winner selection and explicit idempotent conversion to the existing CustomerOrder. Seller identity is taken from authenticated session, not request body. Published BuyerDemand is immutable; bid changes are versioned and comparisons display shipping cost separately. This group is **not part of shipped API until SD-R2 RED/S2/GREEN**. Web public callback stays PurchaseLead only.
+
+## Smart Deal SD-AUD-01 API corrections
+
+Smart Deal v1 candidate matching только для PUBLIC Listing; UNLISTED без отдельного sharing ACL не подбирается. SellerBid revisions immutable; seller replace/withdraw only when bid ACTIVE and demand OPEN. `POST /api/v1/smart-deals/demands/{id}/release-selection` buyer-only before Order, returns selected bid to ACTIVE only if valid. `SELECTED` не создаёт NegotiationOffer, Order or reservation. `POST .../create-order` runs one DB transaction for accepted-offer snapshot + Order + conversion link + Outbox; rejects expiry/archived listing. `Idempotency-Key` stored with actor/action/requestHash and response, conflicting replay returns 409. See [audit](SMART-DEAL-R2-AUDIT.md).
