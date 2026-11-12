@@ -71,6 +71,8 @@ erDiagram
   PRODUCT_SKU ||--o{ ORDER_LINE : selected
   ORDER_LINE ||--o| INVENTORY_RESERVATION : reserves
   NEGOTIATION_SESSION ||--|{ PRICE_OFFER : proposes
+  PRICE_OFFER ||--|{ PRICE_OFFER_LINE : includes
+  PRODUCT_SKU ||--o{ PRICE_OFFER_LINE : quotes
   PRICE_OFFER o|--o| CUSTOMER_ORDER : accepted_into
   CUSTOMER_ORDER ||--o{ ORDER_STATUS_HISTORY : tracks
   CUSTOMER_ORDER ||--o| FULFILLMENT : fulfills
@@ -105,6 +107,8 @@ POST   /api/v1/public/leads
 GET    /api/v1/me/seller/leads
 POST   /api/v1/negotiations
 POST   /api/v1/negotiations/{id}/offers
+POST   /api/v1/negotiations/{id}/create-order
+POST   /api/v1/orders/quotes
 POST   /api/v1/orders
 POST   /api/v1/orders/{id}/confirm
 GET    /api/v1/me/inventory-locations
