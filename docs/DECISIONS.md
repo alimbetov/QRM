@@ -68,3 +68,7 @@
 | DEC-26 | Единый ночной сборщик профилей покупателей, продавцов и seller-buyer relationships; публикация согласованного snapshot; profile API читает агрегат, не первичные события | APPROVED (концепция; расписание и retention PROPOSED) |
 
 Реализация: [NIGHTLY-PROFILE-AGGREGATION.md](NIGHTLY-PROFILE-AGGREGATION.md). Не трактовать число завершённых заказов как подтверждённую оплату.
+
+| DEC-27 | Без SMS и OTP: телефон как неподтверждённый логин + пароль, необязательный проверенный email для восстановления; внутренний Notification Center обязателен, Push/FCM — необязательный канал, QR Web login подтверждается авторизованным Flutter | APPROVED |
+
+**Supersession:** DEC-27 replaces any earlier OTP/phone-verification registration requirement (including old mentions in historical sections). Новый источник требований: [AUTH-NOTIFICATIONS.md](AUTH-NOTIFICATIONS.md).
