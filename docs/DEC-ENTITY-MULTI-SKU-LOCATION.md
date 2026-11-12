@@ -85,3 +85,10 @@ erDiagram
 | INV-18 | Location region/address has sensitive unit/contact detail | Public API omits full private warehouse address | API security |
 
 **Test process:** S0 approved oracles → S1 actual failing JUnit 5/H2 + PostgreSQL Testcontainers tests → independent S2 Test Review → S3 JPA implementation → S4 race/load regression. None have been run.
+
+## Approved location visibility extension — 2026-11-12
+
+- Both `OrderLine` and `PriceOfferLine` expose buyer-visible origin city/region snapshots. Before seller confirmation they are provisional; `InventoryLocation` remains the source of actual location details.
+- `InventoryLocation` keeps structured region/address, and records whether a location is an explicitly published customer pickup point. Do not expose full private warehouse address on public listing, quote or negotiation APIs.
+- At confirmation, TRACKED source is resolved through `InventoryReservation.locationId`; UNTRACKED lines require explicit fulfillment/source assignment if an origin city was promised. Preserve original locality snapshots as historical evidence, while confirmed dispatch/pickup details are represented separately in fulfillment response.
+- A seller change of origin city affecting delivery/pickup cost, ETA or agreed terms requires fresh buyer consent **before** stock is reserved or order is transitioned to CONFIRMED. No automatic substitution without consent.
