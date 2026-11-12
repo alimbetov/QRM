@@ -167,3 +167,7 @@ erDiagram
 ## Геолокация точек хранения и выдачи (2026-11-12)
 
 `InventoryLocation` хранит необязательную пару координат WGS84 (`latitude`, `longitude`), регион, город, адрес, `LocationType` и разрешение публичного самовывоза. `GeoPoint` — Java value object, а не дополнительная таблица. Закрытые склады не раскрывают точные координаты покупателям. Для будущей доставки исходная точка должна браться из подтверждённого распределения заказа, пункт назначения — только из разрешённого адреса клиента. См. [DEC-LOCATION-GEOPOINT](DEC-LOCATION-GEOPOINT.md). PostGIS и маршрутизация отложены до появления измеренной потребности.
+
+## Buyer Web catalog follow-up (2026-11-12)
+
+See [DEC-BUYER-WEB-CATALOG](DEC-BUYER-WEB-CATALOG.md). Dynamic category characteristics may require `CategoryAttributeDefinition` plus typed `ListingAttributeValue` / `SkuAttributeValue` **additional candidates beyond 46**. Their cardinality and mapping must be decided in S2 after catalog API contract and indexing tests. Current React prototype has no server entities and does not increase implemented JPA table count.
