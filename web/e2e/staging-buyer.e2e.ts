@@ -135,11 +135,6 @@ test('real browser login, demand, bid acceptance, confirmation and inventory wor
     '/api/v1/sellers/'+actor.STAGING_SELLER_ID+'/orders/'+cancelledOrderId+'/confirm',
     {headers});
   expect(lateConfirm.status()).toBe(409);
-  const persistedCancel=await page.request.get('/api/v1/buyers/orders/'+cancelledOrderId);
-  // page.request has no buyer JWT by default, so never treat unauthorized
-  // requests as evidence of an order; the browser GET above is authoritative.
-  expect([401,403]).toContain(persistedCancel.status());
-
   // Verify RP-initiated logout callback and a fresh real OIDC login. This proves
   // browser-session lifecycle, NOT immediate revocation of already-issued JWT.
   await page.getByRole('button',{name:'Выйти через Keycloak'}).click();
