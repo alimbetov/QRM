@@ -11,7 +11,7 @@ npm test
 npm run build
 ```
 
-**Important limitations:** Demo item descriptions/prices are placeholders, not marketplace listings. Favorites persist in this browser via localStorage only for demo; approved production contract is server-side Favorite unique(userId,listingId) synced between authenticated Web and Flutter. No backend catalog/facet/favorite endpoints are implemented. No order creation, negotiation, phone-based authentication or stock reservation is exposed in this prototype. Public React callback/QR listing flow is implemented behind Backend `zakaz.qr.http.enabled` and not approved for production yet. Opening `/q/{token}` fetches live published catalog fields, permits contact callback (not a purchase), and shows failures accurately.
+**Important limitations:** Demo item descriptions/prices are placeholders, not marketplace listings. Favorites persist in this browser via localStorage only for demo; approved production contract is server-side Favorite unique(userId,listingId) synced between authenticated Web and Flutter. No backend catalog/facet/favorite endpoints are implemented. No order creation, negotiation, phone-based authentication or stock reservation is exposed in this prototype. Public React callback/QR listing flow is implemented behind Backend `zakaz.qr.http.enabled` and not approved for production yet. Opening `/q/{token}` fetches live published catalog fields, including the optional exact KZT unit price as a decimal string, permits contact callback (not a purchase), and shows failures accurately. Missing historical SKU prices are explicitly labeled "Цена уточняется"; this is not an order quote.
 
 ## Next server slice
 
