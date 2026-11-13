@@ -96,5 +96,30 @@ test('real browser login, demand, bid acceptance, confirmation and inventory wor
   expect(confirmation.status()).toBe(204);
   await page.getByRole('button',{name:'Обновить статус'}).click();
   await expect(page.getByText('CONFIRMED',{exact:true})).toBeVisible();
+  // Verify RP-initiated logout callback and a fresh real OIDC login. This proves
+  // browser-session lifecycle, NOT immediate revocation of already-issued JWT.
+  await page.getByRole('button',{name:'Выйти через Keycloak'}).click();
+  await expect(page).toHaveURL(/\/auth\/signed-out/);
+  await expect(page.getByText(/Вы вышли из учётной записи/)).toBeVisible();
+  await page.goto('/buy?orderId='+orderId);
+  await page.getByRole('button',{name:'Войти через OIDC'}).click();
+  await expect(page).toHaveURL(/\/identity\/realms\/zakaz-staging\//);
+  await page.locator('input[name="username"]').fill(env('STAGING_BROWSER_BUYER_USERNAME'));
+  await page.locator('input[name="password"]').fill(env('STAGING_BROWSER_BUYER_PASSWORD'));
+  await page.locator('#kc-login').click();
+  await expect(page).toHaveURL(/\/buy\?orderId=/);
+  await expect(page.getByText('CONFIRMED',{exact:true})).toBeVisible();
   // Separate authorized SQL check-order.sql proves exact stock and Outbox invariants.
+});
+
+test('Keycloak OIDC registration front door uses prompt=create', async ({page}) => {
+  test.skip(process.env.STAGING_SIGNUP_ENABLED!=='true',
+    'Run only after real SMTP verification, approved public registration and mailbox UAT.');
+  await page.goto('/buy?productId=11111111-1111-1111-1111-111111111111&unit=PCS');
+  await page.getByRole('button',{name:'Создать аккаунт через Keycloak'}).click();
+  await expect(page).toHaveURL(/\/identity\/realms\/zakaz-staging\//);
+  expect(new URL(page.url()).searchParams.get('prompt')).toBe('create');
+  await expect(page.locator('input[name="email"]')).toBeVisible();
+  // Registering a unique user + clicking the verification link in the *real*
+  // mailbox is a separate operator-run manual UAT, not faked in CI.
 });
