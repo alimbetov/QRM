@@ -197,5 +197,6 @@
         "order:read"
       ]
     }
-  ]
+  ],
+  "verifyEmail": true
 }
