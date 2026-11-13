@@ -44,6 +44,7 @@ class SellerLeadInboxPostgresIT {
     @Autowired PublicListingLinkRepository links;
     @Autowired SellerMembershipRepository members;
     @Autowired LeadReadAuditRepository reads;
+    @Autowired PurchaseLeadRepository leads;
     @MockitoBean JwtDecoder decoder;
 
     @Test void onlySellerAdminCanReadEncryptedGuestContactWithAuditableAccess() throws Exception {
@@ -78,6 +79,34 @@ class SellerLeadInboxPostgresIT {
             .andExpect(jsonPath("$[0].listingId").value(listing.getId().toString()))
             .andExpect(jsonPath("$[0].phone").value("+77011234567"))
             .andExpect(jsonPath("$[0].buyerId").doesNotExist());
+
         assertThat(reads.count()).isEqualTo(1);
+        UUID leadId=leads.findByListingId(listing.getId()).getFirst().getId();
+        String leadStatus=inbox+"/"+leadId+"/status";
+        mvc.perform(put(leadStatus)
+            .header("Authorization","Bearer merchant-token")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"status\":\"CONTACTED\"}"))
+            .andExpect(status().isNoContent());
+        mvc.perform(put(leadStatus)
+            .header("Authorization","Bearer merchant-token")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"status\":\"CONTACTED\"}"))
+            .andExpect(status().isNoContent());
+        mvc.perform(put(leadStatus)
+            .header("Authorization","Bearer merchant-token")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"status\":\"DECLINED\"}"))
+            .andExpect(status().isConflict());
+        mvc.perform(put("/api/v1/sellers/"+UUID.randomUUID()+"/leads/"+leadId+"/status")
+            .header("Authorization","Bearer merchant-token")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"status\":\"DECLINED\"}"))
+            .andExpect(status().isForbidden());
+        mvc.perform(get(inbox).header("Authorization","Bearer merchant-token"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].leadId").value(leadId.toString()))
+            .andExpect(jsonPath("$[0].status").value("CONTACTED"));
+        assertThat(reads.count()).isEqualTo(2);
     }
 }

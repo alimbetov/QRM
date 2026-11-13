@@ -38,7 +38,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
     "zakaz.buyer.enrollment.enabled=true",
     "zakaz.identity.require-verified-email=true",
     "zakaz.identity.phone-key-base64=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
-    "zakaz.ml.r2.consent-api.enabled=true"
+    "zakaz.ml.r2.consent-api.enabled=true",
+    "zakaz.seller.studio.enabled=true"
 })
 class AuthenticatedDealHttpPostgresIT {
     @Container static PostgreSQLContainer<?> db=new PostgreSQLContainer<>("postgres:17-alpine");
@@ -511,6 +512,73 @@ class AuthenticatedDealHttpPostgresIT {
         } finally {
             pool.shutdownNow();
         }
+    }
+
+    @Test void sellerStudioListsOnlyOwnedOrdersAndKeepsMoneyAsDecimalStrings() throws Exception {
+        var f=seed();
+        ReadyBid ready=createBuyerReadyBid(f);
+        var created=mvc.perform(post("/api/v1/buyers/demands/"+ready.demandId()+
+            "/bids/"+ready.bidId()+"/accept")
+            .header("Authorization","Bearer "+f.buyerToken())
+            .header("Idempotency-Key","studio-order-"+UUID.randomUUID()))
+            .andExpect(status().isCreated()).andReturn();
+        UUID orderId=idFrom(created.getResponse().getContentAsString(),"orderId");
+
+        mvc.perform(get("/api/v1/sellers/me")).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/v1/sellers/me")
+            .header("Authorization","Bearer "+f.buyerToken()))
+            .andExpect(status().isForbidden());
+        mvc.perform(get("/api/v1/sellers/me")
+            .header("Authorization","Bearer "+f.sellerToken()))
+            .andExpect(status().isOk())
+            .andExpect(header().string("Cache-Control",
+                org.hamcrest.Matchers.containsString("no-store")))
+            .andExpect(jsonPath("$[0].sellerId").value(f.sellerId().toString()))
+            .andExpect(jsonPath("$[0].role").value("SELLER_ADMIN"));
+
+        String ordersUrl="/api/v1/sellers/"+f.sellerId()+"/orders";
+        mvc.perform(get(ordersUrl).header("Authorization","Bearer "+f.sellerToken()))
+            .andExpect(status().isOk())
+            .andExpect(header().string("Cache-Control",
+                org.hamcrest.Matchers.containsString("no-store")))
+            .andExpect(jsonPath("$.total").value(1))
+            .andExpect(jsonPath("$.items[0].orderId").value(orderId.toString()))
+            .andExpect(jsonPath("$.items[0].status").value("PLACED"))
+            .andExpect(jsonPath("$.items[0].totalAmount").value("100.00"))
+            .andExpect(jsonPath("$.items[0].lines[0].quantity").isString())
+            .andExpect(jsonPath("$.items[0].buyerId").doesNotExist());
+        mvc.perform(get(ordersUrl+"?status=CONFIRMED")
+            .header("Authorization","Bearer "+f.sellerToken()))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(0));
+        mvc.perform(get(ordersUrl+"?page=-1")
+            .header("Authorization","Bearer "+f.sellerToken()))
+            .andExpect(status().isUnprocessableEntity());
+        mvc.perform(get(ordersUrl+"?status=INVALID")
+            .header("Authorization","Bearer "+f.sellerToken()))
+            .andExpect(status().isUnprocessableEntity());
+        mvc.perform(get("/api/v1/sellers/"+UUID.randomUUID()+"/orders")
+            .header("Authorization","Bearer "+f.sellerToken()))
+            .andExpect(status().isForbidden());
+        mvc.perform(get(ordersUrl).header("Authorization","Bearer "+f.buyerToken()))
+            .andExpect(status().isForbidden());
+
+        mvc.perform(post("/api/v1/sellers/"+f.sellerId()+"/orders/"+orderId+"/confirm")
+            .header("Authorization","Bearer "+f.sellerToken()))
+            .andExpect(status().isNoContent());
+        mvc.perform(get(ordersUrl+"?status=CONFIRMED")
+            .header("Authorization","Bearer "+f.sellerToken()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.total").value(1))
+            .andExpect(jsonPath("$.items[0].orderId").value(orderId.toString()));
+        mvc.perform(post("/api/v1/sellers/"+f.sellerId()+"/orders/"+orderId+"/cancel")
+            .header("Authorization","Bearer "+f.sellerToken()))
+            .andExpect(status().isNoContent());
+        mvc.perform(get(ordersUrl+"?status=CANCELLED_BY_SELLER")
+            .header("Authorization","Bearer "+f.sellerToken()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.items[0].status").value("CANCELLED_BY_SELLER"));
+        assertThat(reservations.findByOrderId(orderId).getFirst().getStatus())
+            .isEqualTo("RELEASED");
     }
 
 }
