@@ -23,7 +23,7 @@
 | `JdbcOrderEventProjectionSink` | durable idempotent internal projection only |
 | `OutboxDispatcher` | no long transaction over delivery; exception goes to retry/DEAD_LETTER |
 | `OutboxWorkerConfiguration` | polling only with explicit `outbox-worker` Spring profile |
-| `OutboxWorkerPostgresIT` | two competing workers, token/reclaim, crash/replay dedupe, poison retry and causal order, dispatcher recovery |
+| `OutboxWorkerPostgresIT` | two competing workers, token/reclaim, crash/replay dedupe, poison retry and causal order, dispatcher recovery, queue health counters |
 
 ### Deployment
 
@@ -48,8 +48,12 @@ The `outbox-worker` profile enables the **internal DB projection sink**, not a p
 | OX-04 | bounded retry and poison event -> DEAD_LETTER | Yes |
 | OX-05 | no deliverable event on rolled-back stock transaction | Prior R2.1 tests |
 | OX-06 | one-order confirmed before cancelled | Yes |
-| OX-07 | migration from a populated pre-V15 DB | **Open / intentionally fail closed** |
+| OX-07 | migration from a populated pre-V15 DB | **Fail-closed guard tested**; approved adoption plan still open |
 | OX-08 | multi-process/pod restarts and production metrics | **Open** |
+
+### Observability and migration tests
+
+`JdbcOutboxQueue.health()` reports persisted PENDING/IN_FLIGHT/DEAD_LETTER/PUBLISHED counts and age of oldest undelivered event; there is no HTTP Actuator/Micrometer export yet. `OutboxLegacyMigrationGuardIT` verifies Flyway V15 rejects pre-existing unsequenced outbox history rather than assigning arbitrary causal order.
 
 ## Remaining S2 / production blockers
 
