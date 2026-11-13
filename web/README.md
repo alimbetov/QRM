@@ -42,3 +42,8 @@ See `docs/R2-3C-REAL-CATALOG-BUYER-CLIENTS.md`, Draft PR #2 and S2 issue #3. Do 
 ### R2.3E verified buyer profile onboarding
 
 After Keycloak PKCE login, the client calls authenticated `GET /api/v1/buyers/me`. When the backend returns 404, the user may complete a profile with nickname, E.164 contact phone and explicit storage consent via `POST /api/v1/buyers/enroll`. All ids and email-verification claims come from the **signed token and backend**; the UI never supplies a buyerId. This functionality requires staging `zakaz.buyer.enrollment.enabled=true` and an independent buyer phone encryption key, plus Keycloak email verification. The phone is not SMS-verified and may not be used for recovery. When the profile cannot be verified (403/503), checkout remains blocked.
+
+
+### R2.3F — real signup and Keycloak logout
+
+The buyer screen now offers a **Create account** flow via OIDC `prompt=create`, and normal Authorization Code+S256 login. Staging signup is intentionally disabled until real SMTP and verified mailbox acceptance pass. The **Logout** button invokes Keycloak's RP-initiated end session and redirects to the registered `/auth/signed-out`; the callback is validated before removing the in-browser session. An expired access token blocks further buyer API calls until a new login. This is not immediate revocation of an already minted bearer JWT at the Backend. Staging Playwright checks the logout/re-login lifecycle; execution against real Keycloak remains an operator UAT gate. See [R2.3F](../docs/R2-3F-KEYCLOAK-SMTP-SESSION-E2E.md).
