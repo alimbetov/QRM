@@ -10,6 +10,8 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -40,6 +42,7 @@ class BuyerEnrollmentPostgresIT {
     @Autowired MockMvc mvc;
     @Autowired JdbcTemplate jdbc;
     @Autowired BuyerAccountLinkRepository links;
+    @Autowired BuyerIdentityService buyerIdentity;
     @MockitoBean JwtDecoder decoder;
     private static final String ISSUER="https://keycloak.example.test/identity/realms/zakaz-staging";
     private static final String VALID_BODY=
@@ -155,6 +158,22 @@ class BuyerEnrollmentPostgresIT {
         } finally {
             pool.shutdownNow();
         }
+    }
+
+    @Test void deactivatingBuyerLinkImmediatelyBlocksValidSignedSubjectFromCheckout() throws Exception {
+        String bearer=identity(true,"deal:write");
+        mvc.perform(register(bearer)).andExpect(status().isCreated());
+        var linked=links.findByIssuerAndSubject(ISSUER,issuerSubject(bearer)).orElseThrow();
+        // Decoder still accepts the original bearer; business authorization
+        // must use the CURRENT database link, not stale token claims.
+        var authenticated=new JwtAuthenticationToken(decoder.decode(bearer));
+        assertThat(buyerIdentity.requireBuyer(authenticated)).isEqualTo(linked.getBuyerId());
+        jdbc.update("UPDATE buyer_account_link SET active=false WHERE issuer=? AND subject=?", ISSUER,issuerSubject(bearer));
+        assertThatThrownBy(()->buyerIdentity.requireBuyer(authenticated))
+            .isInstanceOf(AccessDeniedException.class);
+        mvc.perform(get("/api/v1/buyers/me")
+            .header("Authorization","Bearer "+bearer))
+            .andExpect(status().isNotFound());
     }
 
     @Test void existingBuyerLinkCanCompleteProfileWithoutChangingBuyerIdentity() throws Exception{
