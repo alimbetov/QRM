@@ -4,7 +4,7 @@
 
 ## Architecture and security boundaries
 
-- Two independent PostgreSQL 17 volumes: `app-db` for ZAKAZ/Flyway V1–V18, `iam-db` for Keycloak. Neither DB exposes a host port.
+- Two independent PostgreSQL 17 volumes: `app-db` for ZAKAZ/Flyway V1–V19, `iam-db` for Keycloak. Neither DB exposes a host port.
 - Keycloak 26 with *real RSA-signed* OIDC access tokens, a fixed HTTPS issuer at `https://<STAGING_DOMAIN>/identity/realms/zakaz-staging` and an access-token `aud=zakaz-api` mapper. Separate public PKCE clients: `zakaz-buyer-web`, `zakaz-buyer-cli`, `zakaz-seller-cli`, `zakaz-mobile`. Password/direct-access grant is disabled.
 - Keycloak admin URLs are not publicly proxied; administration runs through `docker compose exec keycloak` and local `kcadm.sh`. There are no hardcoded users, passwords, demo tokens or public seller-membership writes.
 - Caddy terminates real public HTTPS, proxies `/identity/*` to Keycloak, `/api/*` to Java and serves the built React SPA. Requires DNS + ACME validation (TCP 80/443). **Do not disable TLS verification to make the backend JWT discovery work.**
@@ -129,3 +129,7 @@ The staging test is explicitly opt-in: it does not run in normal npm unit CI, an
 5. **Operations:** external Outbox sink, metrics/alerts, controlled DLQ replay, lead key rotation, restore drills and production-specific capacity controls.
 
 **Stop if real OIDC issuer/audience cannot be validated, if staging is accessible without HTTPS, or if any post-run invariant fails.** Do not merge PR #2 to `main` until independent approvals and E2E evidence exist.
+
+## R2.3E — buyer enrollment during real staging E2E
+
+The OIDC-backed buyer profile is now a mandatory step in the staging E2E script. Flyway V19 creates `buyer_profile`. Configure a separate `ZAKAZ_IDENTITY_PHONE_KEY_BASE64` in `private.env` (32 random bytes, different from the guest lead key). The API is enabled in this isolated stack by `ZAKAZ_BUYER_ENROLLMENT_ENABLED=true` and the buyer can self-enroll with a verified JWT after Keycloak login. **The test actor must have `email_verified=true` from actual Keycloak email proof** (not a manually fabricated claim). The self-registration screen in Keycloak remains disabled until you configure trusted SMTP, tested mailbox verification and abuse controls. See [R2.3E design](../../docs/R2-3E-KEYCLOAK-VERIFIED-BUYER-ENROLLMENT.md). No remote E2E PASS yet.
