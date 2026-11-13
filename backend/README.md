@@ -57,3 +57,8 @@ Protected `GET /api/v1/buyers/demands/{demandId}/bids` requires `zakaz.commerce.
 ## R2.3E — verified Keycloak buyer enrollment (default OFF)
 
 Flyway **V19** adds `buyer_profile`, linked through the existing unique OIDC `buyer_account_link(issuer,subject)`. After a cryptographically verified scoped JWT with `email_verified=true`, `POST /api/v1/buyers/enroll` creates an internal buyerId and a profile atomically, and `GET /api/v1/buyers/me` reads only the caller's profile. Nickname and contact phone are supplied by the buyer; the contact is AES-GCM encrypted, remains `phone_verified=false` and cannot establish account ownership or SMS recovery. A trusted inactive buyer link cannot be reopened by self-registration. Enable only with `zakaz.buyer.enrollment.enabled=true` and the **separate** `zakaz.identity.phone-key-base64` secret. See `docs/R2-3E-KEYCLOAK-VERIFIED-BUYER-ENROLLMENT.md`. Remote SMTP/UAT/S2 and privacy retention gates are still open.
+
+
+### R2.3F — verified-email buyer authorization
+
+Staging now sets `zakaz.identity.require-verified-email=true`: every BuyerDemand/BuyerOrder and other buyer authorization path rejects a signed JWT with missing/false `email_verified`, even if the buyer had a previously linked account. Production rollout must explicitly adopt this gate after confirming the external IdP maps the claim into **access tokens**. A deactivated `buyer_account_link` is checked per sensitive operation: a still cryptographically valid JWT is denied for that internal buyer. No JWT token blacklist or global RP-initiated token revocation is claimed. See [R2.3F](../docs/R2-3F-KEYCLOAK-SMTP-SESSION-E2E.md).
