@@ -21,7 +21,8 @@ const orders=new SharedArray('prepared distinct PLACED orders',()=>{
     return rows;
 });
 if(orders.length<vus)throw new Error(`Need at least ${vus} distinct pre-created orders; got ${orders.length}`);
-const orderIds=new Set(orders.slice(0,vus).map(o=>o.orderId));
+const orderIds=new Set();
+for(let i=0;i<vus;i++)orderIds.add(orders[i].orderId);
 if(orderIds.size!==vus)throw new Error('Duplicate order IDs in fixture; benchmark would measure replay instead of concurrency');
 
 const confirmed=new Counter('zakaz_confirm_success');
