@@ -1,6 +1,6 @@
 # SEARCH-001 — Единый поиск товаров и услуг, фотокаталог и поиск по изображению
 
-**Статус:** DRAFT / техническое задание на доработку, НЕ реализовано и НЕ означает S2 APPROVE. **Технический аудит:** CONDITIONAL S0, [SEARCH-AUD-001](SEARCH-AUD-001-TECHNICAL-REVIEW.md). **Нормативный handoff к RED-тестам:** [SEARCH-001 Implementation Contract](SEARCH-001-IMPLEMENTATION-CONTRACT.md). При противоречии технических деталей исполнения приложение Implementation Contract уточняет план реализации, не отменяя бизнес-правила этого ТЗ.
+**Статус:** DRAFT / ТЗ на развитие; SEARCH-S1 Backend/SQL и RED→candidate GREEN tests добавлены в единую ветку, feature OFF, independent S2 pending; SEARCH-S2…S7 ещё НЕ реализованы. [SEARCH-S1 implementation status](SEARCH-S1-IMPLEMENTATION-STATUS.md). **Технический аудит:** CONDITIONAL S0, [SEARCH-AUD-001](SEARCH-AUD-001-TECHNICAL-REVIEW.md). **Нормативный handoff к RED-тестам:** [SEARCH-001 Implementation Contract](SEARCH-001-IMPLEMENTATION-CONTRACT.md). При противоречии технических деталей исполнения приложение Implementation Contract уточняет план реализации, не отменяя бизнес-правила этого ТЗ.
 **Дата:** 2026-11-13.
 **Репозиторий:** alimbetov/QRM; единая рабочая ветка docs/adr-002-jpa-architecture-review.
 **Приоритет источников:** docs/REQUIREMENTS.md v2.0; ADR-002 MVC+JPA; ADR-004 Hybrid Intelligence; DEC-BUYER-WEB-001; действующие Flyway/Java-контракты. Это дополнение, а не замена.

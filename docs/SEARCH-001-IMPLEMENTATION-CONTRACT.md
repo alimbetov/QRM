@@ -1,23 +1,23 @@
 # SEARCH-001 — контракт реализации (S0 handoff для RED-тестов)
 
-**Статус:** PROPOSED / реализации нет. **Основа:** технический аудит [SEARCH-AUD-001](SEARCH-AUD-001-TECHNICAL-REVIEW.md); `docs/SEARCH-001-UNIFIED-DISCOVERY.md`; master-TZ v2.0, ADR-002, ADR-004, DEC-27, DEC-BUYER-WEB-001. Любая миграция/endpoint — отдельный RED→S2→GREEN. Дата: 2026-11-13.
+**Статус:** SEARCH-S1 candidate code committed (Flyway V20–V21, public search/suggest APIs, RED→candidate GREEN PostgreSQL tests), **S2 NOT APPROVED, feature OFF by default**. SEARCH-S2…S7 remain PROPOSED. **Основа:** технический аудит [SEARCH-AUD-001](SEARCH-AUD-001-TECHNICAL-REVIEW.md); `docs/SEARCH-001-UNIFIED-DISCOVERY.md`; master-TZ v2.0, ADR-002, ADR-004, DEC-27, DEC-BUYER-WEB-001. Любая миграция/endpoint — отдельный RED→S2→GREEN. Дата: 2026-11-13.
 
 ## 1. Рекомендуемые решения (на подтверждение владельцем на S0)
 
 - Существующие JPA Aggregate не меняются для поиска. PostgreSQL 17 + JDBC `NamedParameterJdbcTemplate` read projection допустим на основании уже реализованного PublicCatalogReadService; JPA для транзакционных сущностей Favorite/ListingMedia. Elasticsearch, Redis и новый микросервис не требуются.
-- Данные: Catalog единственный source of truth; Projection/index не раскрывает private записи; в P0 обновление SearchDocument — в одной БД-транзакции при изменении/публикации + backfill/reconciliation; General Outbox только при появлении потребителя, не встраивать события в `order_outbox_event`.
+- Данные: Catalog единственный source of truth. **Фактический S1:** индексированы `catalog_product` и `catalog_search_term`, а live READ SQL заново проверяет PUBLIC/Category/QR; никакой отдельный SearchDocument не материализован, чтобы не допустить утечку из stale index или неверной event-синхронизации. Materialized SearchDocument — только после замеров и отдельного transactional backfill design. General Outbox — при появлении потребителя, `order_outbox_event` не использовать для Catalog.
 - P0 группы сохранённого — вычисляемый HCC parent/child, не новая папка и не дублирующая категория. P1 CategoryWatch только по явному opt-in.
 - Основной checkout в первой фазе **рыночный BuyerDemand**, который не гарантирует продавца исходного SellerListing. Публичная карточка может сохранять referral source для аналитики, но buyerId/sellerId/productId/skuId не доверять параметрам клиента. Seller-specific purchase — отдельный согласуемый контракт.
 - `/q/{token}` остаётся точкой входа в SellerListing для P0, без разрушения существующего QR; no auto order on double click. Touch: «Подробнее» через single tap/Enter — обязательный fallback.
 
 ## 2. Миграционный план (не исполняемый SQL)
 
-**Предложенные последовательные Flyway V20+** (перед первым SQL проверить фактический HEAD и checksum V1–V19; номера фиксируются только непосредственно перед реализацией):
+**S1 Flyway V20/V21 уже добавлены** в единую рабочую ветку без правок V1–V19; номера V22+ ниже — только план, сверять с HEAD перед созданием:
 
 | Slice / пример миграции | Таблицы и ограничения | Особые условия |
 | --- | --- | --- |
 | S1 / V20 | `catalog_search_term(id UUID PK, term, normalized_term, locale, status, revision, created_at)`; `catalog_term_category(term_id FK, category_id FK, relation_type, weight, UNIQUE(term_id,category_id,relation_type))` | Locale `ru/kk/en/zh`, status `ACTIVE/INACTIVE`, relation allowlist. Не выдумывать category links |
-| S1 / V21 | `catalog_search_document(listing_id UUID PK FK, product_id FK, category_id FK, normalized_title, search_tsv tsvector, projection_version, updated_at)`; `pg_trgm`; GIN tsv/trgm | Published-only read filter в SQL; projection хранит link, но не является ACL |
+| S1 / V21 | **Реализовано:** GIN FTS/trgm индексы на `catalog_product` и `catalog_search_term`, partial indexes публичных Listing/активных Category, `pg_trgm`. `catalog_search_document` пока НЕ создаётся | Live read JOIN против Catalog/Category/QR исключает stale индекс и старые приватные объявления; материализация — будущая оптимизация после EXPLAIN |
 | S2 / V22 | `catalog_listing_media(id PK, listing_id FK, object_key UNIQUE, sha256, status, sort_position, is_cover, mime, width, height, created_at, version)` | Partial UNIQUE cover per listing, prevent foreign ownership via service, immutable object variants; old PUBLIC without media supported |
 | S4 / V23 | `buyer_favorite(id PK, buyer_id, listing_id FK, created_at, UNIQUE(buyer_id,listing_id))` | Buyer ID server resolved from active buyer_account_link; ownership index `(buyer_id,created_at DESC,id DESC)`; нет notification consent |
 | S5 / V24+ | `buyer_category_watch`, `buyer_price_watch`, `user_notification`, `notification_preference`, `push_device`, `notification_delivery` и review-approved general domain event outbox | НЕ использовать `order_outbox_event` как есть, поскольку aggregate_id FK customer_order; no auto opt-in |
@@ -97,4 +97,4 @@
 - DEC-S07: query language morph/normalization acceptance for KK/RU/EN/ZH and curated lexicon data owner.
 - DEC-S08: low-risk read-only Search may be developed in Draft branch without releasing other flags, but production still blocked by R2.3F and independent S2.
 
-**Definition of Ready S1:** DDL/DTO decisions above accepted, exact baseline SHA pinned, approved PostgreSQL RED tests, migration roll-forward/dry-run, no branch proliferation. **Not** implementation complete on delivery of this document.
+**Статус S1:** RED `d5cc36d` → schema/API candidate `70fd78d` → MockMvc Unicode fix `da36afd` → 4-locale/cursor-revision tests `3f4c08e`. Кандидат не равен принятому GREEN: независимое S2 и отдельные security/load/staging gates необходимы до включения. Операционный отчёт: [SEARCH-S1 implementation status](SEARCH-S1-IMPLEMENTATION-STATUS.md).
