@@ -20,7 +20,7 @@
 ## Initial proof
 
 - Commit `46f015c043786fbfa99dfcfdaeb5d2f0768f1080`: Java 21 Backend, Buyer Web, Flutter Mobile, Staging Configuration — **all CI PASS**.
-- Subsequent commit `f1e9b9ccf747d136e4d520b4ebfd48869bc685c9`: V23 audit, upload preflight, QR gallery and extended tests; **CI proof must be checked on this exact commit before GREEN declaration**.
+- Subsequent commit `f1e9b9ccf747d136e4d520b4ebfd48869bc685c9`: V23 audit, upload preflight, QR gallery and extended tests; **all four workflows PASS**. Java 21 Backend PostgreSQL job `132131702900` / run `43496744230`: Flyway V1–V23 applied, `mvn verify` BUILD SUCCESS, **66 integration tests, 0 failures, 0 errors**; Browser Web, Flutter Mobile, Staging Configuration PASS.
 - Real RustFS and ClamAV staged service E2E, 10+ pages in a real browser, model accuracy, 5k load tests and an independent GitHub APPROVE remain open.
 
 ## Proposed isolated staging configuration (NOT automatic rollout)
