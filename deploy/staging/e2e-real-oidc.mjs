@@ -99,7 +99,7 @@ assert.equal(replay.orderId,accepted.orderId,'Idempotent accept must reuse order
 const orderUrl='/api/v1/buyers/orders/'+accepted.orderId;
 const placed=await api('GET',orderUrl,buyer);
 assert.equal(placed.status,'PLACED');
-assert.equal(String(placed.totalAmount),'125000.5', 'Do not make assumptions about JSON decimal scale'); // corrected below
+assert.equal(Number(placed.totalAmount),125000.50,'Accepted all-in quote must match order total')
 console.log('PASS: exactly one PLACED order after explicit acceptance');
 
 await api('POST',
