@@ -36,6 +36,8 @@ public class ApiSecurityConfig {
                     .hasAuthority("SCOPE_order:read")
                 .requestMatchers(HttpMethod.POST,"/api/v1/buyers/demands")
                     .hasAuthority("SCOPE_deal:write")
+                .requestMatchers(HttpMethod.GET,"/api/v1/buyers/demands/*/bids")
+                    .hasAuthority("SCOPE_deal:write")
                 .requestMatchers(HttpMethod.POST,"/api/v1/buyers/demands/*/bids/*/accept")
                     .hasAuthority("SCOPE_deal:write")
                 .requestMatchers(HttpMethod.POST,"/api/v1/sellers/*/demands/*/bids")
