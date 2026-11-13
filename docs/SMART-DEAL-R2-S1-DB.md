@@ -62,3 +62,7 @@ Testcontainers starts an ephemeral PostgreSQL. It does not need the QRM app or a
 6. Owner/approver review of SD-DEC-01…10 and SD-ACT-01…07.
 
 No production code, successful test execution or full RED qualification is implied.
+
+## Architecture correction — ADR-002 ACCEPTED (2026-11-13 review)
+
+**Supersedes any WebFlux/R2DBC/Liquibase-first directions in this document.** The authoritative backend baseline is [ADR-002 MVC+JPA](https://github.com/alimbetov/QRM/blob/docs/adr-002-jpa-architecture-review/docs/ADR-002-MVC-JPA.md): Java 21, Spring MVC, Spring Data JPA/Hibernate, PostgreSQL JDBC, HikariCP, `@Transactional`, H2 unit tests and PostgreSQL Testcontainers. The implementation branch already contains **Flyway V1–V11**, historical demand/bid snapshots, accepted bid/order and seller confirmation with InventoryReservation/Outbox. Do **not** apply the isolated fixture or create a new Smart Deal schema until these JPA entities and Flyway migrations are reconciled at exact commit SHA. This standalone contract is only a historical experiment; the correct next S1 task is **additional JPA/Flyway integration RED tests** covering missing SD-R2 scenarios and existing inventory/Outbox transaction boundaries. Existing spec's simplistic one-line/one-seller model also requires reconciliation with implemented multi-line buyer-demand and bid snapshots before implementation. The old 'no backend exists' claims refer to the obsolete main-only view, not the implementation branch.
