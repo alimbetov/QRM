@@ -457,4 +457,60 @@ class AuthenticatedDealHttpPostgresIT {
             .isEmpty();
     }
 
+
+    /** QA03-009: buyer cancellation and seller confirmation serialize on
+     * the same PostgreSQL order lock. No partial stock release or double event. */
+    @Test void buyerCancellationRacingSellerConfirmationLeavesOneLegalOutcome() throws Exception {
+        ReadyBid sale=createBuyerReadyBid(seed());
+        String accept="/api/v1/buyers/demands/"+sale.demandId()+"/bids/"+sale.bidId()+"/accept";
+        var placed=mvc.perform(post(accept)
+            .header("Authorization","Bearer "+sale.fixture().buyerToken())
+            .header("Idempotency-Key","qa03-cancel-confirm-"+UUID.randomUUID()))
+            .andExpect(status().isCreated()).andReturn();
+        UUID orderId=idFrom(placed.getResponse().getContentAsString(),"orderId");
+        String cancel="/api/v1/buyers/orders/"+orderId+"/cancel";
+        String confirm="/api/v1/sellers/"+sale.fixture().sellerId()+"/orders/"+orderId+"/confirm";
+
+        var pool=java.util.concurrent.Executors.newFixedThreadPool(2);
+        var start=new java.util.concurrent.CountDownLatch(1);
+        try {
+            var buyer=pool.submit(()->{
+                start.await();
+                return mvc.perform(post(cancel)
+                    .header("Authorization","Bearer "+sale.fixture().buyerToken()))
+                    .andReturn().getResponse().getStatus();
+            });
+            var seller=pool.submit(()->{
+                start.await();
+                return mvc.perform(post(confirm)
+                    .header("Authorization","Bearer "+sale.fixture().sellerToken()))
+                    .andReturn().getResponse().getStatus();
+            });
+            start.countDown();
+            int buyerCode=buyer.get(30,java.util.concurrent.TimeUnit.SECONDS);
+            int sellerCode=seller.get(30,java.util.concurrent.TimeUnit.SECONDS);
+            assertThat(List.of(buyerCode,sellerCode)).containsExactlyInAnyOrder(204,409);
+            var status=orders.findById(orderId).orElseThrow().getStatus();
+            var held=reservations.findByOrderId(orderId);
+            boolean buyerEvent=events.findByAggregateIdAndEventType(
+                orderId,"ORDER_CANCELLED_BY_BUYER").isPresent();
+            boolean confirmedEvent=events.findByAggregateIdAndEventType(
+                orderId,"ORDER_CONFIRMED").isPresent();
+            if(buyerCode==204){
+                assertThat(status).isEqualTo(OrderStatus.CANCELLED_BY_BUYER);
+                assertThat(held).isEmpty();
+                assertThat(buyerEvent).isTrue();
+                assertThat(confirmedEvent).isFalse();
+            } else {
+                assertThat(status).isEqualTo(OrderStatus.CONFIRMED);
+                assertThat(held).hasSize(1);
+                assertThat(held.getFirst().getStatus()).isEqualTo("RESERVED");
+                assertThat(buyerEvent).isFalse();
+                assertThat(confirmedEvent).isTrue();
+            }
+        } finally {
+            pool.shutdownNow();
+        }
+    }
+
 }
