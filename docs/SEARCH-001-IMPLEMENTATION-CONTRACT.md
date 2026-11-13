@@ -1,6 +1,6 @@
 # SEARCH-001 — контракт реализации (S0 handoff для RED-тестов)
 
-**Статус:** SEARCH-S1 PostgreSQL Search и SEARCH-S2A Media Backend candidate committed (Flyway V20–V22, public search/suggest/media APIs, RED→candidate GREEN PostgreSQL tests), **independent S2 NOT APPROVED, features OFF by default**. S2B S3…S7 remain PROPOSED. **Основа:** технический аудит [SEARCH-AUD-001](SEARCH-AUD-001-TECHNICAL-REVIEW.md); `docs/SEARCH-001-UNIFIED-DISCOVERY.md`; master-TZ v2.0, ADR-002, ADR-004, DEC-27, DEC-BUYER-WEB-001. Любая миграция/endpoint — отдельный RED→S2→GREEN. Дата: 2026-11-13.
+**Статус:** SEARCH-S1/S2A PostgreSQL validated; SEARCH-S2B RustFS/S3/ClamAV/V23 audit и SEARCH-S3 feed/React/QR gallery code committed, **independent S2 NOT APPROVED, real RustFS/ClamAV UAT pending, flags OFF**. S4–S7 remain PROPOSED. **Основа:** технический аудит [SEARCH-AUD-001](SEARCH-AUD-001-TECHNICAL-REVIEW.md); `docs/SEARCH-001-UNIFIED-DISCOVERY.md`; master-TZ v2.0, ADR-002, ADR-004, DEC-27, DEC-BUYER-WEB-001. Любая миграция/endpoint — отдельный RED→S2→GREEN. Дата: 2026-11-13.
 
 ## 1. Рекомендуемые решения (на подтверждение владельцем на S0)
 
@@ -19,8 +19,9 @@
 | S1 / V20 | `catalog_search_term(id UUID PK, term, normalized_term, locale, status, revision, created_at)`; `catalog_term_category(term_id FK, category_id FK, relation_type, weight, UNIQUE(term_id,category_id,relation_type))` | Locale `ru/kk/en/zh`, status `ACTIVE/INACTIVE`, relation allowlist. Не выдумывать category links |
 | S1 / V21 | **Реализовано:** GIN FTS/trgm индексы на `catalog_product` и `catalog_search_term`, partial indexes публичных Listing/активных Category, `pg_trgm`. `catalog_search_document` пока НЕ создаётся | Live read JOIN против Catalog/Category/QR исключает stale индекс и старые приватные объявления; материализация — будущая оптимизация после EXPLAIN |
 | S2A / V22 | **Реализовано в девелоперской ветке:** `catalog_listing_media(id PK, listing_id FK, object_key UNIQUE, content_type, sha256, status, sort_position, is_cover, width, height, created_at, version)`, UNIQUE READY cover, draft-only trigger | Dev/test filesystem store, sanitizer JPEG/PNG, public visibility API, 3 SQL + 2 HTTP PG tests; **production S3/scanning not implemented** |
-| S4 / V23 | `buyer_favorite(id PK, buyer_id, listing_id FK, created_at, UNIQUE(buyer_id,listing_id))` | Buyer ID server resolved from active buyer_account_link; ownership index `(buyer_id,created_at DESC,id DESC)`; нет notification consent |
-| S5 / V24+ | `buyer_category_watch`, `buyer_price_watch`, `user_notification`, `notification_preference`, `push_device`, `notification_delivery` и review-approved general domain event outbox | НЕ использовать `order_outbox_event` как есть, поскольку aggregate_id FK customer_order; no auto opt-in |
+| S2B / V23 | **Реализовано:** append-only `catalog_media_audit_event`, `catalog_media_orphan_gc_event` с DB triggers, миграцией старых медиа | Записи UPLOADED/REVOKED/MIGRATED и технический GC аудит; реальный actor JWT subject ещё не сохраняется |
+| S4 / V24 (план) | `buyer_favorite(id PK, buyer_id, listing_id FK, created_at, UNIQUE(buyer_id,listing_id))` | Buyer ID server resolved from active buyer_account_link; ownership index `(buyer_id,created_at DESC,id DESC)`; нет notification consent |
+| S5 / V25+ | `buyer_category_watch`, `buyer_price_watch`, `user_notification`, `notification_preference`, `push_device`, `notification_delivery` и review-approved general domain event outbox | НЕ использовать `order_outbox_event` как есть, поскольку aggregate_id FK customer_order; no auto opt-in |
 | S6 / later | `catalog_media_embedding(media_id, model_version, embedding)` и `pgvector` extension | Только после выбора licensed encoder/dimension, отдельная миграция и backfill |
 
 **Не меняем Flyway V1–V19**, DRAFT-only SKU trigger, Order snapshots или InventoryReservation. Не ссылаться на старые SQL/Liquibase fixture `smartdeal-contract-tests`.
@@ -105,3 +106,9 @@
 - `zakaz.catalog.media.enabled=false` by default; dev/test profile requires `zakaz.media.storage.provider=filesystem` and `zakaz.media.storage.root`. This filesystem implementation must NEVER be used as a production multi-node blob store.
 - New media API `POST /api/v1/sellers/{sellerId}/listings/{listingId}/media` (JWT `SCOPE_catalog:write`, DB membership, DRAFT-only); GET `/api/v1/public/catalog/{listingId}/media` and `/api/v1/public/media/{mediaId}?size=thumb|full` (PUBLIC/Category/QR live gate).
 - Missing S2B production concerns: S3-compatible adapter, malware/decoder fuzzing, crash-orphan reconciliation, moderation, CDN revocation, async scan; independent S2 reviewer required before rollout. [Implementation status](SEARCH-S2-IMPLEMENTATION-STATUS.md).
+
+## SEARCH-S2B/S3 integration note (2026-11-14)
+
+- RustFS/S3 adapter, ClamAV TCP scanner fail-closed, conservative orphan sweeper, Flyway V23 media audit, authenticated upload preflight, feed API and React photo grid/galleries committed; [status and UAT checklist](SEARCH-S2B-S3-IMPLEMENTATION-STATUS.md).
+- No independent S2 APPROVE or real RustFS/ClamAV staging E2E; gate all SEARCH/Media/Feed OFF. On Web require `VITE_CATALOG_FEED_ENABLED=true` / `VITE_CATALOG_MEDIA_ENABLED=true` only during isolated acceptance.
+- S3 independent load/availability proof, signed secret handling, image parser fuzz, rate-limits and GC lease are mandatory before production promotion. `V23` is allocated to media audit; buyer Favorite future migration starts at `V24` or next free exact HEAD version.

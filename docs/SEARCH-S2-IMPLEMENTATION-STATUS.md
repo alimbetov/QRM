@@ -42,3 +42,7 @@ Requires verified JWT with `catalog:write` and active SellerMembership. To uploa
 5. Real staged SMTP/OIDC UAT and independent 5000-VU load/order qualification remain separate release gates.
 
 **No merge to main or claim of S2 APPROVE.**
+
+## SEARCH-S2B continuation
+
+RustFS/S3 and ClamAV adapter, media audit V23, QR gallery and React feed work-in-progress are recorded separately in [SEARCH-S2B/S3 status](SEARCH-S2B-S3-IMPLEMENTATION-STATUS.md). This S2A report remains the historical DEV filesystem qualification and is not production S2 approval.
