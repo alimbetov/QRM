@@ -28,3 +28,7 @@ The test suite initializes a fresh PostgreSQL container using `src/test/resource
 ## Migration integration
 
 Once baseline QRM tables are defined, convert the fixture into versioned Liquibase changeSets, replace placeholders for `buyer_user_id`, `seller_id`, `listing_id`, `order_id`, `negotiation_id` with real foreign keys and adopt the same named constraints/indexes. Do not run this fixture in prod. The DB design and qualification gates are documented in [SMART-DEAL-R2-S1-DB.md](../docs/SMART-DEAL-R2-S1-DB.md).
+
+## IMPORTANT — obsolete architecture fork
+
+Do **not** treat this fixture as production schema, do **not** copy its SQL into Flyway or implement R2DBC from it. The accepted QRM backend architecture is **Spring MVC + JPA/Hibernate + JDBC** per [ADR-002](https://github.com/alimbetov/QRM/blob/docs/adr-002-jpa-architecture-review/docs/ADR-002-MVC-JPA.md), with existing Flyway **V1–V11** and domain implementation in that architecture branch. This folder is a detached contract experiment from the old Smart Deal documentation branch and must be retired or compared against the **existing** JPA constraints. For real S1 work add tests to the actual backend's Maven module, using the existing Testcontainers/PostgreSQL suite; do not fork another persistence model.
