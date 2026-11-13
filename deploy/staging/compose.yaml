@@ -1,0 +1,123 @@
+name: zakaz-staging
+
+services:
+  app-db:
+    image: postgres:17.6-alpine
+    environment:
+      POSTGRES_DB: zakaz
+      POSTGRES_USER: zakaz
+      POSTGRES_PASSWORD: ${ZAKAZ_DB_PASSWORD:?set ZAKAZ_DB_PASSWORD in private.env}
+    volumes:
+      - app_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U zakaz -d zakaz"]
+      interval: 5s
+      retries: 20
+    restart: unless-stopped
+    networks: [private]
+
+  iam-db:
+    image: postgres:17.6-alpine
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: ${KC_DB_PASSWORD:?set KC_DB_PASSWORD in private.env}
+    volumes:
+      - iam_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak -d keycloak"]
+      interval: 5s
+      retries: 20
+    restart: unless-stopped
+    networks: [private]
+
+  realm-config:
+    image: python:3.13-alpine
+    command: ["python","/staging/render_realm.py"]
+    environment:
+      STAGING_DOMAIN: ${STAGING_DOMAIN:?set STAGING_DOMAIN}
+    volumes:
+      - ./realm-template.json:/staging/realm-template.json:ro
+      - ./render_realm.py:/staging/render_realm.py:ro
+      - realm_import:/out
+    restart: "no"
+    networks: [private]
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.8.2
+    command: ["start","--import-realm"]
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://iam-db:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: ${KC_DB_PASSWORD:?set KC_DB_PASSWORD}
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_ADMIN_USER:?set KC_ADMIN_USER}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_ADMIN_PASSWORD:?set KC_ADMIN_PASSWORD}
+      KC_HOSTNAME: https://${STAGING_DOMAIN:?set STAGING_DOMAIN}/identity
+      KC_HTTP_RELATIVE_PATH: /identity
+      KC_HTTP_ENABLED: "true"
+      KC_PROXY_HEADERS: xforwarded
+      KC_HOSTNAME_STRICT: "true"
+    depends_on:
+      iam-db:
+        condition: service_healthy
+      realm-config:
+        condition: service_completed_successfully
+    volumes:
+      - realm_import:/opt/keycloak/data/import:ro
+    restart: unless-stopped
+    networks: [private]
+
+  backend:
+    build:
+      context: ../..
+      dockerfile: backend/Dockerfile.staging
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_URL: jdbc:postgresql://app-db:5432/zakaz
+      DB_USERNAME: zakaz
+      DB_PASSWORD: ${ZAKAZ_DB_PASSWORD:?set ZAKAZ_DB_PASSWORD}
+      ZAKAZ_JWT_ISSUER: https://${STAGING_DOMAIN:?set STAGING_DOMAIN}/identity/realms/zakaz-staging
+      ZAKAZ_JWT_AUDIENCE: zakaz-api
+      ZAKAZ_CATALOG_HTTP_ENABLED: "true"
+      ZAKAZ_QR_HTTP_ENABLED: "true"
+      ZAKAZ_COMMERCE_HTTP_ENABLED: "true"
+      ZAKAZ_QR_PUBLIC_BASE_URL: https://${STAGING_DOMAIN:?set STAGING_DOMAIN}
+      ZAKAZ_LEADS_PHONE_KEY_BASE64: ${ZAKAZ_LEADS_PHONE_KEY_BASE64:?set AES-256 key}
+    depends_on:
+      app-db:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+    restart: unless-stopped
+    networks: [private]
+
+  gateway:
+    build:
+      context: ../..
+      dockerfile: web/Dockerfile.staging
+      args:
+        VITE_OIDC_AUTHORITY: https://${STAGING_DOMAIN:?set STAGING_DOMAIN}/identity/realms/zakaz-staging
+        VITE_OIDC_CLIENT_ID: zakaz-buyer-web
+    environment:
+      STAGING_DOMAIN: ${STAGING_DOMAIN:?set STAGING_DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+    networks: [private]
+
+networks:
+  private:
+    internal: false
+
+volumes:
+  app_pg:
+  iam_pg:
+  realm_import:
+  caddy_data:
+  caddy_config:
