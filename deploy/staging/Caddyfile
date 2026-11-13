@@ -2,6 +2,8 @@
 # A real DNS record and ports 80/443 are required. No TLS bypass or HTTP-only app.
 {$STAGING_DOMAIN} {
   encode zstd gzip
+  @admin path /identity/admin /identity/admin/*
+  respond @admin "Not Found" 404
   @identity path /identity /identity/*
   handle @identity {
     reverse_proxy keycloak:8080
