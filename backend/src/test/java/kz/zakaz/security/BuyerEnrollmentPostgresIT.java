@@ -12,6 +12,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -61,6 +62,13 @@ class BuyerEnrollmentPostgresIT {
     }
     private String issuerSubject(String bearer){
         return decoder.decode(bearer).getSubject();
+    }
+    /** Unit-level actor simulating a completed Spring Security JWT filter chain. */
+    private JwtAuthenticationToken authenticated(String bearer){
+        var actor=new JwtAuthenticationToken(decoder.decode(bearer),
+            List.of(new SimpleGrantedAuthority("SCOPE_deal:write")));
+        actor.setAuthenticated(true);
+        return actor;
     }
     private org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder register(String bearer){
         return post("/api/v1/buyers/enroll").header("Authorization","Bearer "+bearer)
@@ -167,7 +175,7 @@ class BuyerEnrollmentPostgresIT {
         var linked=links.findByIssuerAndSubject(ISSUER,issuerSubject(bearer)).orElseThrow();
         // Decoder still accepts the original bearer; business authorization
         // must use the CURRENT database link, not stale token claims.
-        var authenticated=new JwtAuthenticationToken(decoder.decode(bearer));
+        var authenticated=authenticated(bearer);
         assertThat(buyerIdentity.requireBuyer(authenticated)).isEqualTo(linked.getBuyerId());
         jdbc.update("UPDATE buyer_account_link SET active=false WHERE issuer=? AND subject=?", ISSUER,issuerSubject(bearer));
         assertThatThrownBy(()->buyerIdentity.requireBuyer(authenticated))
@@ -181,7 +189,7 @@ class BuyerEnrollmentPostgresIT {
         String token=identity(false,"deal:write order:read");
         UUID buyerId=UUID.randomUUID();
         links.saveAndFlush(BuyerAccountLink.provision(ISSUER,issuerSubject(token),buyerId));
-        var authenticated=new JwtAuthenticationToken(decoder.decode(token));
+        var authenticated=authenticated(token);
         assertThatThrownBy(()->buyerIdentity.requireBuyer(authenticated))
             .isInstanceOf(AccessDeniedException.class)
             .hasMessageContaining("Verified email");
