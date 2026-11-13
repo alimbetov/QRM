@@ -203,4 +203,35 @@ class PublicQrJourneyPostgresIT {
             .isNull();
     }
 
+
+    /**
+     * QA03-003 / EDGE-01: a QR opened while PUBLIC cannot be used to create
+     * a callback after the listing becomes ARCHIVED. This also proves
+     * that the public read guard and the lead submission guard agree.
+     */
+    @Test void archivedBetweenQrViewAndLeadSubmitCannotCreateLeadOrOrder() throws Exception {
+        var listing=createListing(true);
+        String publicPath=path(listing);
+        long ordersBefore=orders.count();
+        int leadsBefore=leads.findByListingId(listing.getId()).size();
+
+        mvc.perform(get(publicPath))
+            .andExpect(status().isOk());
+        assertThat(jdbc.update("""
+            UPDATE catalog_listing SET status='ARCHIVED'
+            WHERE id=? AND status='PUBLIC'
+            """,listing.getId())).isEqualTo(1);
+
+        mvc.perform(get(publicPath))
+            .andExpect(status().isNotFound());
+        mvc.perform(post(publicPath+"/leads")
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("Idempotency-Key","archived-after-view")
+                .content("{\\"phone\\":\\"+77011234567\\",\\"consent\\":true}"))
+            .andExpect(status().isNotFound());
+
+        assertThat(leads.findByListingId(listing.getId())).hasSize(leadsBefore);
+        assertThat(orders.count()).isEqualTo(ordersBefore);
+    }
+
 }

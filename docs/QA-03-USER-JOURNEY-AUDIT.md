@@ -62,7 +62,7 @@
 
 | ID | Negative/race-case | Уровень | Проверка / оставшаяся работа |
 |---|---|---|---|
-| EDGE-01 | ARCHIVED между QR view и Lead POST | **P** | PUBLIC guard есть; написать явный PG state-transition race test |
+| EDGE-01 | ARCHIVED между QR view и Lead POST | **P** | Добавлен `PublicQrJourneyPostgresIT.archivedBetweenQrViewAndLeadSubmitCannotCreateLeadOrOrder`; проверить новый тест в exact-SHA CI, параллельный race пока не измерен |
 | EDGE-02 | Tier/Discount изменился до order quote | **M** | Нет PricingTier/DiscountCampaign |
 | EDGE-03 | Два одновременных order create | **P** | Есть retry/uniqueness; нужен отдельный two-thread HTTP acceptance PostgreSQL race |
 | EDGE-04 | Flutter App Link сохраняет exact listing после login | **P** | `hybrid_route_policy_test.dart`; нет реального Android/iOS App Link + PKCE context-return |
@@ -83,7 +83,7 @@
 | EDGE-19 | Nightly job stage failure сохраняет previous published | **M** | Нет durable scheduled profile publication |
 | EDGE-20 | Double review за одну покупку | **M** | Нет Review/PG uniqueness |
 
-**Итого по EDGE:** **4 A / 3 P / 13 M / 0 R**. Не отмечать EDGE-03 как полностью проверенный без реального concurrent PostgreSQL API теста.
+**Итого по EDGE:** **4 A / 4 P / 12 M / 0 R**. Не отмечать EDGE-03 как полностью проверенный без реального concurrent PostgreSQL API теста.
 
 ## 5. Дополнительные реализованные сценарии текущего приложения
 
@@ -175,4 +175,4 @@
 - **Wave 4 — Shared UX и notifications:** QA03-015/016/017/018, включить WebView только после device S2.
 - **Wave 5 — operational qualification:** QA03-002/019/020/021/022, затем ML-R2 delivery ledger и ML-R3.
 
-**Следующий исполняемый шаг:** добавить **PostgreSQL RED** на архивацию Listing между публичным QR GET и Guest Lead POST, двухпоточное принятие SellerBid и buyer cancellation (пока RED, если отсутствует API). Пройти независимый S2 review точных оракулов; затем реализовать минимальный GREEN. Это точка входа в доказуемый user-journey coverage, а не ещё один документ со списком возможностей.
+**Следующий исполняемый шаг:** проверить новый PostgreSQL тест архивации Listing между публичным QR GET и Guest Lead POST, затем написать **PostgreSQL RED** для двухпоточного принятия SellerBid и buyer cancellation (пока RED, если отсутствует API). Пройти независимый S2 review точных оракулов; затем реализовать минимальный GREEN. Это точка входа в доказуемый user-journey coverage, а не ещё один документ со списком возможностей.
