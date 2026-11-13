@@ -1,0 +1,59 @@
+.seller-shell{max-width:1140px;margin:0 auto;padding:2.2rem 1.25rem 4rem;
+  color:#1d3340;min-height:65vh}
+.seller-intro{max-width:820px;margin-bottom:2rem}
+.seller-intro h1{font-size:clamp(1.8rem,3.8vw,2.65rem);letter-spacing:-.035em;
+  margin:.4rem 0 .75rem}
+.seller-intro p{line-height:1.65;color:#617784}
+.seller-eyebrow{font-size:.75rem;font-weight:800;color:#087884;letter-spacing:.08em}
+.seller-content{display:grid;gap:1.25rem}
+.seller-panel{background:#fff;border:1px solid #dce7eb;border-radius:15px;padding:1.5rem}
+.seller-panel h2{font-size:1.25rem;margin:0 0 1rem}
+.seller-panel h3{font-size:1.1rem;margin:.3rem 0}
+.seller-panel p{line-height:1.55}
+.seller-panel button{background:#0a7280;color:white;border:0;border-radius:9px;
+  padding:.73rem 1rem;font-weight:700;cursor:pointer}
+.seller-panel button:disabled{opacity:.45;cursor:not-allowed}
+.seller-panel input,.seller-panel select{border:1px solid #bfcfd7;border-radius:8px;
+  font:inherit;padding:.73rem;width:100%;min-width:0;color:#1b394a;background:#fff}
+.seller-panel label{display:grid;gap:.4rem;font-size:.88rem;font-weight:650;color:#345562}
+.seller-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem}
+.seller-form button{align-self:end;min-height:45px}
+.seller-inline{display:flex;gap:.75rem;align-items:end}
+.seller-inline label{flex:1}
+.seller-hint{color:#69808d;font-size:.83rem}
+.seller-account{display:flex;justify-content:space-between;align-items:center;gap:1rem;
+  color:#407582;font-size:.85rem}
+.seller-account button{background:transparent;border:1px solid #a9c2cc;border-radius:9px;
+  color:#255c66;padding:.6rem .9rem}
+.seller-section-title,.seller-listing-head,.seller-listing-actions,.seller-file-row{
+  display:flex;justify-content:space-between;gap:1rem;align-items:center;flex-wrap:wrap}
+.seller-section-title{margin-bottom:1rem}
+.seller-listing{border:1px solid #e0eaee;border-radius:12px;padding:1rem;margin:1rem 0}
+.seller-listing-head{align-items:flex-start}
+.seller-listing-head p{font-size:.76rem;color:#617788;overflow-wrap:anywhere}
+.seller-listing-head code{font-size:.75rem}
+.seller-status{border-radius:8px;background:#edf0f3;color:#526775;padding:.3rem .65rem;
+  font-size:.73rem;font-weight:800}
+.seller-status.seller-public{background:#e5f4ed;color:#136c42}
+.seller-sku{display:flex;align-items:end;flex-wrap:wrap;gap:.75rem;
+  border-top:1px solid #eaf0f3;padding:.9rem 0}
+.seller-sku>span{font-size:.86rem}
+.seller-sku>label{flex:1;min-width:180px;max-width:270px}
+.seller-current-price{font-weight:700}
+.seller-file-row{padding:.8rem 0;border-top:1px solid #eaf0f3}
+.seller-file-row>label:first-child{min-width:220px;flex:1}
+.seller-file-row .seller-check{display:flex;align-items:center;gap:.5rem}
+.seller-check input{width:auto}
+.seller-listing-actions{justify-content:flex-start;margin-top:.8rem}
+.seller-listing-actions a{color:#07677a;text-decoration:underline}
+.seller-error{background:#fff1ec;border:1px solid #e9c4ae;color:#8a4029;
+  border-radius:10px;padding:1rem}
+.seller-feedback{color:#17633e;background:#f0f8f2;border-radius:8px;padding:.7rem}
+.seller-pagination{display:flex;gap:.8rem;align-items:center;justify-content:center}
+@media(max-width:700px){
+  .seller-shell{padding:1.25rem .75rem 3rem}
+  .seller-panel{padding:1rem}
+  .seller-form{grid-template-columns:1fr}
+  .seller-inline{flex-direction:column;align-items:stretch}
+  .seller-sku>label{max-width:none}
+}

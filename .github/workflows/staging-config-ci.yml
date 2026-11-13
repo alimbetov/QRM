@@ -45,8 +45,8 @@ jobs:
           assert realm['realm']=='zakaz-staging'
           assert not realm['registrationAllowed']
           assert realm['verifyEmail'] is True
-          assert {'zakaz-api','zakaz-buyer-web','zakaz-buyer-cli','zakaz-seller-cli','zakaz-mobile'} <= clients.keys()
-          for name in ('zakaz-buyer-web','zakaz-buyer-cli','zakaz-seller-cli','zakaz-mobile'):
+          assert {'zakaz-api','zakaz-buyer-web','zakaz-buyer-cli','zakaz-seller-cli','zakaz-mobile','zakaz-seller-web'} <= clients.keys()
+          for name in ('zakaz-buyer-web','zakaz-buyer-cli','zakaz-seller-cli','zakaz-seller-web','zakaz-mobile'):
               client=clients[name]
               assert client['publicClient'] and client['standardFlowEnabled']
               assert not client['directAccessGrantsEnabled'] and not client['implicitFlowEnabled']
@@ -56,6 +56,11 @@ jobs:
           assert web['redirectUris']==['https://ci.example.org/auth/callback']
           assert web['webOrigins']==['https://ci.example.org']
           assert web['attributes']['post.logout.redirect.uris']=='https://ci.example.org/auth/signed-out'
+          seller_web=clients['zakaz-seller-web']
+          assert seller_web['redirectUris']==['https://ci.example.org/seller/auth/callback']
+          assert seller_web['webOrigins']==['https://ci.example.org']
+          assert seller_web['attributes']['post.logout.redirect.uris']=='https://ci.example.org/seller/auth/signed-out'
+          assert {'catalog:write','deal:bid','order:confirm','leads:read'} <= set(seller_web['defaultClientScopes'])
           mobile=clients['zakaz-mobile']
           assert mobile['attributes']['post.logout.redirect.uris']=='kz.zakaz.mobile:/logout'
           assert '__STAGING_DOMAIN__' not in json.dumps(realm)

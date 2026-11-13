@@ -149,6 +149,37 @@
       ]
     },
     {
+      "clientId": "zakaz-seller-web",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "https://__STAGING_DOMAIN__/seller/auth/callback"
+      ],
+      "webOrigins": [
+        "https://__STAGING_DOMAIN__"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "https://__STAGING_DOMAIN__/seller/auth/signed-out"
+      },
+      "defaultClientScopes": [
+        "profile",
+        "email",
+        "roles",
+        "web-origins",
+        "zakaz-audience",
+        "catalog:write",
+        "deal:bid",
+        "order:confirm",
+        "leads:read"
+      ]
+    },
+    {
       "clientId": "zakaz-mobile",
       "enabled": true,
       "protocol": "openid-connect",

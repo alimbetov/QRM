@@ -80,6 +80,7 @@ services:
       ZAKAZ_JWT_ISSUER: https://${STAGING_DOMAIN:?set STAGING_DOMAIN}/identity/realms/zakaz-staging
       ZAKAZ_JWT_AUDIENCE: zakaz-api
       SERVER_FORWARD_HEADERS_STRATEGY: native
+      ZAKAZ_SELLER_WORKSPACE_ENABLED: ${ZAKAZ_SELLER_WORKSPACE_ENABLED:-false}
       ZAKAZ_CATALOG_HTTP_ENABLED: "true"
       ZAKAZ_QR_HTTP_ENABLED: "true"
       ZAKAZ_COMMERCE_HTTP_ENABLED: "true"
@@ -103,6 +104,9 @@ services:
       args:
         VITE_OIDC_AUTHORITY: https://${STAGING_DOMAIN:?set STAGING_DOMAIN}/identity/realms/zakaz-staging
         VITE_OIDC_CLIENT_ID: zakaz-buyer-web
+        VITE_SELLER_OIDC_AUTHORITY: https://${STAGING_DOMAIN:?set STAGING_DOMAIN}/identity/realms/zakaz-staging
+        VITE_SELLER_OIDC_CLIENT_ID: zakaz-seller-web
+        VITE_SELLER_WORKSPACE_ENABLED: ${ZAKAZ_SELLER_WORKSPACE_ENABLED:-false}
     environment:
       STAGING_DOMAIN: ${STAGING_DOMAIN:?set STAGING_DOMAIN}
     ports:
