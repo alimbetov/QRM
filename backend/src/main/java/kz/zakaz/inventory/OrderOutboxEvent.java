@@ -20,6 +20,9 @@ public class OrderOutboxEvent {
     @Column(name="occurred_at",nullable=false,updatable=false) private Instant occurredAt;
     @Column(name="published_at") private Instant publishedAt;
     protected OrderOutboxEvent(){}
+    public static OrderOutboxEvent orderCancelledByBuyer(CustomerOrder order,Instant now) {
+        return event(order,"ORDER_CANCELLED_BY_BUYER",now);
+    }
     public static OrderOutboxEvent orderCancelledBySeller(CustomerOrder order,Instant now) {
         return event(order,"ORDER_CANCELLED_BY_SELLER",now);
     }

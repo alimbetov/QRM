@@ -50,6 +50,8 @@ public class ApiSecurityConfig {
                     .hasAuthority("SCOPE_deal:write")
                 .requestMatchers(HttpMethod.POST,"/api/v1/buyers/demands/*/bids/*/accept")
                     .hasAuthority("SCOPE_deal:write")
+                .requestMatchers(HttpMethod.POST,"/api/v1/buyers/orders/*/cancel")
+                    .hasAuthority("SCOPE_deal:write")
                 .requestMatchers(HttpMethod.PUT,"/api/v1/buyers/demands/*/invitation-sharing")
                     .hasAuthority("SCOPE_deal:write")
                 .requestMatchers(HttpMethod.PUT,"/api/v1/sellers/*/invitation-preference")

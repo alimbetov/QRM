@@ -52,6 +52,11 @@ public class CustomerOrder {
   if(status!=OrderStatus.PLACED)throw new IllegalStateException("Order not PLACED");
   status=OrderStatus.CONFIRMED;
  }
+ public void cancelByBuyer(){
+   if(status!=OrderStatus.PLACED)
+       throw new IllegalStateException("Only unconfirmed PLACED orders can be cancelled by buyer");
+   status=OrderStatus.CANCELLED_BY_BUYER;
+ }
  public void cancelBySeller(){
    if(status!=OrderStatus.PLACED && status!=OrderStatus.CONFIRMED)
        throw new IllegalStateException("Order is not seller-cancellable");

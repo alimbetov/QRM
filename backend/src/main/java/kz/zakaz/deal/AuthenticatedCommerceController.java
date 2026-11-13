@@ -103,6 +103,11 @@ public class AuthenticatedCommerceController {
                                                   JwtAuthenticationToken actor){
         return orderReads.read(actor,orderId);
     }
+    @PostMapping("/buyers/orders/{orderId}/cancel")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void cancelBuyerOrder(@PathVariable UUID orderId,JwtAuthenticationToken actor) {
+        cancellation.cancelByBuyer(actor,orderId,Instant.now());
+    }
     @PostMapping("/sellers/{sellerId}/orders/{orderId}/confirm")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void confirmOrder(@PathVariable UUID sellerId,@PathVariable UUID orderId,

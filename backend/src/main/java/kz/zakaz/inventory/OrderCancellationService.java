@@ -5,6 +5,7 @@ import java.util.*;
 import kz.zakaz.domain.types.OrderStatus;
 import kz.zakaz.order.*;
 import kz.zakaz.security.SellerIdentityService;
+import kz.zakaz.security.BuyerIdentityService;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,16 +17,43 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class OrderCancellationService {
     private final SellerIdentityService identity;
+    private final BuyerIdentityService buyerIdentity;
     private final CustomerOrderRepository orders;
     private final InventoryReservationRepository reservations;
     private final InventoryBalanceRepository balances;
     private final InventoryMovementRepository movements;
     private final OrderOutboxEventRepository outbox;
-    public OrderCancellationService(SellerIdentityService identity,CustomerOrderRepository orders,
+    public OrderCancellationService(SellerIdentityService identity,BuyerIdentityService buyerIdentity,
+        CustomerOrderRepository orders,
         InventoryReservationRepository reservations,InventoryBalanceRepository balances,
         InventoryMovementRepository movements,OrderOutboxEventRepository outbox){
-        this.identity=identity;this.orders=orders;this.reservations=reservations;
+        this.identity=identity;this.buyerIdentity=buyerIdentity;this.orders=orders;this.reservations=reservations;
         this.balances=balances;this.movements=movements;this.outbox=outbox;
+    }
+
+    /**
+     * A buyer may cancel only before seller confirmation and stock reservation.
+     * Locking order first serializes buyer cancellation against seller confirmation.
+     * A completed cancellation can be retried; foreign buyers remain forbidden.
+     * CONFIRMED/PROCESSING cancellation requires a separate consent workflow.
+     */
+    @Transactional
+    public UUID cancelByBuyer(JwtAuthenticationToken actor,UUID orderId,Instant now) {
+        Objects.requireNonNull(orderId);Objects.requireNonNull(now);
+        UUID buyerId=buyerIdentity.requireBuyer(actor);
+        var order=orders.findForUpdate(orderId)
+            .orElseThrow(()->new NoSuchElementException("Order not found"));
+        if(!order.getBuyerId().equals(buyerId))
+            throw new org.springframework.security.access.AccessDeniedException("Buyer does not own order");
+        if(order.getStatus()==OrderStatus.CANCELLED_BY_BUYER)return orderId;
+        if(order.getStatus()!=OrderStatus.PLACED)
+            throw new IllegalStateException("Buyer cancellation requires unconfirmed order");
+        if(!reservations.findByOrderId(orderId).isEmpty())
+            throw new IllegalStateException("PLACED order unexpectedly has inventory reservations");
+        order.cancelByBuyer();
+        orders.flush();
+        outbox.saveAndFlush(OrderOutboxEvent.orderCancelledByBuyer(order,now));
+        return orderId;
     }
 
     @Transactional
