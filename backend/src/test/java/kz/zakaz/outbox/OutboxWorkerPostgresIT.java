@@ -144,4 +144,19 @@ class OutboxWorkerPostgresIT {
             .isEqualTo(1);
     }
 
+    @Test void healthCountsPendingInFlightDeadAndPublishedRows() {
+        var first=event(UUID.randomUUID(),"ORDER_CONFIRMED");
+        var second=event(UUID.randomUUID(),"ORDER_CONFIRMED");
+        var third=event(UUID.randomUUID(),"ORDER_CONFIRMED");
+        var claimed=queue.claim("health-pod",3,Duration.ofSeconds(30),3);
+        assertThat(claimed).hasSize(3);
+        assertThat(queue.ack(claimed.getFirst())).isTrue();
+        assertThat(queue.fail(claimed.get(1),"poison",Duration.ZERO,1)).isTrue();
+        var metrics=queue.health();
+        assertThat(metrics.published()).isEqualTo(1);
+        assertThat(metrics.deadLetter()).isEqualTo(1);
+        assertThat(metrics.inFlight()).isEqualTo(1);
+        assertThat(metrics.pending()).isZero();
+        assertThat(metrics.oldestPendingSeconds()).isGreaterThanOrEqualTo(0);
+    }
 }

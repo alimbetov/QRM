@@ -101,4 +101,21 @@ public class JdbcOutboxQueue {
                 AND status='IN_FLIGHT' AND lease_until>clock_timestamp()
             """,next,reason,retryDelay.toMillis(),claim.id(),claim.token(),claim.generation())==1;
     }
+    @Transactional(readOnly=true)
+    public OutboxQueueHealth health() {
+        return jdbc.queryForObject("""
+            SELECT COUNT(*) FILTER (WHERE status='PENDING') AS pending,
+                   COUNT(*) FILTER (WHERE status='IN_FLIGHT') AS in_flight,
+                   COUNT(*) FILTER (WHERE status='DEAD_LETTER') AS dead_letter,
+                   COUNT(*) FILTER (WHERE status='PUBLISHED') AS published,
+                   COALESCE(EXTRACT(EPOCH FROM
+                       (clock_timestamp()-MIN(occurred_at) FILTER
+                           (WHERE status IN ('PENDING','IN_FLIGHT','DEAD_LETTER')))),0)
+                       AS oldest_seconds
+              FROM order_outbox_event
+            """,(rs,row)->new OutboxQueueHealth(
+               rs.getLong("pending"),rs.getLong("in_flight"),
+               rs.getLong("dead_letter"),rs.getLong("published"),
+               rs.getDouble("oldest_seconds")));
+    }
 }
