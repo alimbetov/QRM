@@ -113,6 +113,17 @@ class AuthenticatedDealHttpPostgresIT {
                 .contentType(MediaType.APPLICATION_JSON).content(bidBody))
             .andExpect(status().isCreated()).andReturn();
         UUID bidId=idFrom(bidCreated.getResponse().getContentAsString(),"bidId");
+        String quotesUrl="/api/v1/buyers/demands/"+demandId+"/bids";
+        mvc.perform(get(quotesUrl).header("Authorization","Bearer "+f.buyerToken()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.acceptedOrderId").value(org.hamcrest.Matchers.nullValue()))
+            .andExpect(jsonPath("$.bids[0].bidId").value(bidId.toString()))
+            .andExpect(jsonPath("$.bids[0].totalKzt").value("100.00"))
+            .andExpect(jsonPath("$.bids[0].method").value("PICKUP"))
+            .andExpect(jsonPath("$.bids[0].lines[0].skuId").value(f.skuId().toString()));
+        mvc.perform(get(quotesUrl).header("Authorization","Bearer "+f.sellerToken()))
+            .andExpect(status().isForbidden());
+
         String accept="/api/v1/buyers/demands/"+demandId+"/bids/"+bidId+"/accept";
         var accepted=mvc.perform(post(accept)
                 .header("Authorization","Bearer "+f.buyerToken())
@@ -134,6 +145,11 @@ class AuthenticatedDealHttpPostgresIT {
         buyerLinks.saveAndFlush(BuyerAccountLink.provision(
             "https://idp.example.test",anotherSubject,UUID.randomUUID()));
         when(decoder.decode(anotherToken)).thenReturn(jwt(anotherSubject,"order:read"));
+        String unauthorizedBuyer="foreign-bid-"+UUID.randomUUID();
+        when(decoder.decode(unauthorizedBuyer)).thenReturn(jwt(anotherSubject,"deal:write"));
+        mvc.perform(get(quotesUrl).header("Authorization","Bearer "+unauthorizedBuyer))
+            .andExpect(status().isForbidden());
+
         mvc.perform(get("/api/v1/buyers/orders/"+orderId)
                 .header("Authorization","Bearer "+anotherToken))
             .andExpect(status().isForbidden());
