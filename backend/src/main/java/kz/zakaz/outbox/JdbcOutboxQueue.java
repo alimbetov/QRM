@@ -44,8 +44,7 @@ public class JdbcOutboxQueue {
                          AND earlier.status <> 'PUBLISHED'
                    )
                  ORDER BY e.event_sequence
-                 FOR UPDATE OF e SKIP LOCKED
-                 LIMIT ?
+                 LIMIT ? FOR UPDATE OF e SKIP LOCKED
             )
             UPDATE order_outbox_event e
                SET status='IN_FLIGHT',lease_owner=?,lease_token=?,
