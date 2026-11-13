@@ -35,6 +35,19 @@ public class InventoryBalance {
         if(q==null||q.scale()>3 || q.precision()>19 || (allowZero?q.signum()<0:q.signum()<=0))
             throw new IllegalArgumentException("Invalid inventory quantity");
     }
+    public void receive(BigDecimal quantity){
+        checkQuantity(quantity,false);
+        var next=onHand.add(quantity);
+        checkQuantity(next,true);
+        onHand=next.setScale(3);
+    }
+    public void release(BigDecimal quantity){
+        checkQuantity(quantity,false);
+        if(reserved.compareTo(quantity)<0)
+            throw new IllegalStateException("Release exceeds reserved units");
+        reserved=reserved.subtract(quantity).setScale(3);
+    }
+    public BigDecimal getOnHand(){return onHand;}
     public BigDecimal available(){return onHand.subtract(reserved);}
     public BigDecimal getReserved(){return reserved;}
     public UUID getId(){return id;}

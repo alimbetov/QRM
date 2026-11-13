@@ -52,6 +52,11 @@ public class CustomerOrder {
   if(status!=OrderStatus.PLACED)throw new IllegalStateException("Order not PLACED");
   status=OrderStatus.CONFIRMED;
  }
+ public void cancelBySeller(){
+   if(status!=OrderStatus.PLACED && status!=OrderStatus.CONFIRMED)
+       throw new IllegalStateException("Order is not seller-cancellable");
+   status=OrderStatus.CANCELLED_BY_SELLER;
+ }
  public UUID getId(){return id;}
  public String getPublicNumber(){return publicNumber;}
  public OrderStatus getStatus(){return status;}

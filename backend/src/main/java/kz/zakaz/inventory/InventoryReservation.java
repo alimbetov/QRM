@@ -18,6 +18,17 @@ public class InventoryReservation {
     @Column(nullable=false,precision=19,scale=3,updatable=false) private BigDecimal quantity;
     @Column(nullable=false,length=16) private String status;
     protected InventoryReservation(){}
+    public String getStatus(){return status;}
+    public UUID getOrderLineId(){return orderLineId;}
+    public UUID getSellerId(){return sellerId;}
+    public UUID getLocationId(){return locationId;}
+    public UUID getSkuId(){return skuId;}
+    public BigDecimal getQuantity(){return quantity;}
+    public void release(){
+        if(!"RESERVED".equals(status))
+            throw new IllegalStateException("Reservation is not active");
+        status="RELEASED";
+    }
     public static InventoryReservation hold(UUID orderId,UUID orderLineId,UUID sellerId,
                                 UUID locationId,UUID skuId,BigDecimal quantity){
         Objects.requireNonNull(orderId);Objects.requireNonNull(orderLineId);

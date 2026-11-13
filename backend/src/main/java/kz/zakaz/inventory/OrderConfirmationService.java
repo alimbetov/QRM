@@ -31,16 +31,19 @@ public class OrderConfirmationService {
     private final InventoryBalanceRepository balances;
     private final InventoryReservationRepository reservations;
     private final OrderOutboxEventRepository outbox;
+    private final InventoryMovementRepository movements;
 
     public OrderConfirmationService(SellerIdentityService identity,CustomerOrderRepository orders,
             BidAcceptanceRepository acceptances,SellerBidSnapshotRepository bids,
             SellerBidQuoteRepository quotes,InventoryLocationRepository locations,
             SellerDeliveryAreaRepository deliveryAreas,CatalogSkuFactsResolver catalog,
             SellerSkuRepository skus,InventoryBalanceRepository balances,
-            InventoryReservationRepository reservations,OrderOutboxEventRepository outbox) {
+            InventoryReservationRepository reservations,OrderOutboxEventRepository outbox,
+            InventoryMovementRepository movements) {
         this.identity=identity;this.orders=orders;this.acceptances=acceptances;this.bids=bids;
         this.quotes=quotes;this.locations=locations;this.deliveryAreas=deliveryAreas;this.catalog=catalog;
         this.skus=skus;this.balances=balances;this.reservations=reservations;this.outbox=outbox;
+        this.movements=movements;
     }
 
     @Transactional
@@ -96,6 +99,12 @@ public class OrderConfirmationService {
                 line.getSkuId(),line.getQuantity()));
         }
         reservations.saveAllAndFlush(held);
+        var audit=new ArrayList<InventoryMovement>();
+        for(var r:held) audit.add(InventoryMovement.reservation(
+            orderId,r.getOrderLineId(),sellerId,r.getLocationId(),r.getSkuId(),r.getQuantity(),
+            verifiedSeller.getToken().getIssuer().toString(),
+            verifiedSeller.getToken().getSubject(),now));
+        movements.saveAllAndFlush(audit);
         order.confirm();
         orders.flush();
         outbox.saveAndFlush(OrderOutboxEvent.orderConfirmed(order,now));

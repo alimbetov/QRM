@@ -20,10 +20,16 @@ public class OrderOutboxEvent {
     @Column(name="occurred_at",nullable=false,updatable=false) private Instant occurredAt;
     @Column(name="published_at") private Instant publishedAt;
     protected OrderOutboxEvent(){}
+    public static OrderOutboxEvent orderCancelledBySeller(CustomerOrder order,Instant now) {
+        return event(order,"ORDER_CANCELLED_BY_SELLER",now);
+    }
     public static OrderOutboxEvent orderConfirmed(CustomerOrder order,Instant now) {
+        return event(order,"ORDER_CONFIRMED",now);
+    }
+    private static OrderOutboxEvent event(CustomerOrder order,String eventType,Instant now) {
         Objects.requireNonNull(order);Objects.requireNonNull(now);
         var e=new OrderOutboxEvent();e.id=UUID.randomUUID();e.aggregateId=order.getId();
-        e.eventType="ORDER_CONFIRMED";
+        e.eventType=eventType;
         e.payload="{\"eventId\":\""+e.id+"\",\"orderId\":\""+order.getId()
                  +"\",\"sellerId\":\""+order.getSellerId()+"\"}";
         e.occurredAt=now;return e;
