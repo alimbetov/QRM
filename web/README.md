@@ -47,3 +47,20 @@ After Keycloak PKCE login, the client calls authenticated `GET /api/v1/buyers/me
 ### R2.3F — real signup and Keycloak logout
 
 The buyer screen now offers a **Create account** flow via OIDC `prompt=create`, and normal Authorization Code+S256 login. Staging signup is intentionally disabled until real SMTP and verified mailbox acceptance pass. The **Logout** button invokes Keycloak's RP-initiated end session and redirects to the registered `/auth/signed-out`; the callback is validated before removing the in-browser session. An expired access token blocks further buyer API calls until a new login. This is not immediate revocation of an already minted bearer JWT at the Backend. Staging Playwright checks the logout/re-login lifecycle; execution against real Keycloak remains an operator UAT gate. See [R2.3F](../docs/R2-3F-KEYCLOAK-SMTP-SESSION-E2E.md).
+
+### React Workspace R1 — Seller Studio (feature-gated)
+
+The live Buyer Web now uses explicit React Router routes, a shared responsive navigation header, and an isolated seller workspace. The old `web/src/App.tsx` prototype is still **not active**. See [R1 technical specification](../docs/REACT-WORKSPACE-R1-IMPLEMENTATION.md).
+
+**Seller endpoints (Backend `zakaz.seller.workspace.enabled=false` by default):** `GET /api/v1/sellers/{sellerId}/listings` and `GET /.../listings/{listingId}` show only the verified merchant's bounded list; `POST /api/v1/sellers/{sellerId}/listings` creates DRAFT + one tracked physical SKU from an existing CanonicalProduct (no new HCC, no stock reservation). Existing price/media/publish/QR endpoints are reused.
+
+**Seller SPA OIDC configuration:** separate public client `zakaz-seller-web`, Authorization Code + PKCE S256, exact HTTPS `/seller/auth/callback` and `/seller/auth/signed-out`, scopes `catalog:write deal:bid order:confirm leads:read`; Backend verifies active `seller_membership` for every operation. No tokens in the URL or embedded Flutter WebView. Build with:
+
+```sh
+VITE_SELLER_WORKSPACE_ENABLED=true \
+VITE_SELLER_OIDC_AUTHORITY=https://staging.example/identity/realms/zakaz-staging \
+VITE_SELLER_OIDC_CLIENT_ID=zakaz-seller-web \
+npm run build
+```
+
+Also configure Backend `ZAKAZ_SELLER_WORKSPACE_ENABLED=true` in a reviewed **private** staging environment. React and backend flags default **OFF**; use real verified seller membership and a known canonical physical Product UUID. The R1 form accepts Seller UUID and Canonical Product UUID only as temporary internal UAT inputs; the next UX slice must provide seller membership discovery and product picker. Publication may need taxonomy/SKU attributes and proper stock location prepared separately. Seller bid/order inbox and full fulfillment remain missing. Enable real Playwright manually using `STAGING_SELLER_BROWSER_UAT=true` plus private seller credentials and product ID; CI uses only `--list`. No Android/iOS production claim.
