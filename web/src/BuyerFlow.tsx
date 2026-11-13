@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import type { User } from 'oidc-client-ts';
-import { buyerAuth, clearBuyerSession, loginBuyer } from './oidc';
+import { buyerAuth, loginBuyer, registerBuyer, logoutBuyer } from './oidc';
 import {
   createBuyerDemand, loadBuyerBids, acceptBuyerBid, loadBuyerOrder,
   type BuyerBids, type BuyerOrder
@@ -51,6 +51,17 @@ export default function BuyerFlow() {
     return ()=>{active=false;};
   },[user]);
 
+  useEffect(()=>{
+    if (!buyerAuth) return;
+    const expired=()=>{
+      setUser(null);setProfile(null);setProfileReady(false);
+      setQuotes(null);setOrder(null);
+      setError('Срок действия сеанса истёк. Для нового запроса войдите снова.');
+    };
+    buyerAuth.events.addAccessTokenExpired(expired);
+    return ()=>buyerAuth.events.removeAccessTokenExpired(expired);
+  },[]);
+
   const refreshBids=useCallback(async ()=>{
     if (!user || !profile || !demandId || !uuid.test(demandId)) return;
     try{
@@ -77,8 +88,8 @@ export default function BuyerFlow() {
 
   async function register(event:FormEvent<HTMLFormElement>){
     event.preventDefault();
-    if(!user || !/^[\\p{L}\\p{N}][\\p{L}\\p{N}_.-]{2,39}$/u.test(nickname) ||
-       !/^\\+[1-9][0-9]{7,14}$/.test(phone) || !consent){
+    if(!user || !/^[\p{L}\p{N}][\p{L}\p{N}_.-]{2,39}$/u.test(nickname) ||
+       !/^\+[1-9][0-9]{7,14}$/.test(phone) || !consent){
       setError('Укажите ник, номер в международном формате и согласие на сохранение контакта.');
       return;
     }
@@ -121,15 +132,19 @@ export default function BuyerFlow() {
     finally{setBusy(false);}
   }
 
-  async function signOutLocal() {
-    await clearBuyerSession();
-    setUser(null);setProfile(null);setProfileReady(false);setQuotes(null);setOrder(null);
+  async function signOut() {
+    setError('');
+    try {
+      await logoutBuyer();
+    } catch {
+      setError('Не удалось завершить сеанс в Keycloak. Локальный токен не считается отозванным.');
+    }
   }
 
   const configured=Boolean(buyerAuth);
   return <div className="buyer-shell">
     <header className="buyer-topbar"><a href="/">ZAKAZ</a><span>Оформление заказа</span>
-      {user && <button onClick={()=>{void signOutLocal();}}>Очистить локальный сеанс</button>}</header>
+      {user && <button onClick={()=>{void signOut();}}>Выйти через Keycloak</button>}</header>
     <main className="buyer-main">
       <div className="buyer-breadcrumb"><a href="/">Каталог</a> / Согласование предложения</div>
       <h1>Запросить цену и оформить заказ</h1>
@@ -144,6 +159,7 @@ export default function BuyerFlow() {
         <h2>Требуется вход покупателя</h2>
         <p>Для согласования цен необходима подтверждённая учётная запись, привязанная к покупателю на сервере.</p>
         <button onClick={()=>{void loginBuyer(window.location.pathname+window.location.search).catch(()=>setError('Не удалось открыть провайдер входа.'));}}>Войти через OIDC</button>
+        <button onClick={()=>{void registerBuyer(window.location.pathname+window.location.search).catch(()=>setError('Регистрация через Keycloak пока недоступна. Проверьте SMTP и настройку саморегистрации.'));}}>Создать аккаунт через Keycloak</button>
       </section>}
       {user && !profileReady && !error && <p role="status">Проверяем профиль покупателя…</p>}
       {user && profileReady && !profile && <section className="buyer-panel">
