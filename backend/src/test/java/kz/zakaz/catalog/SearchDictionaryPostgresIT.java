@@ -88,8 +88,14 @@ class SearchDictionaryPostgresIT {
     }
 
     private JsonNode search(String q,String extra) throws Exception {
-        var uri="/api/v1/public/catalog/search?q="+java.net.URLEncoder.encode(q,java.nio.charset.StandardCharsets.UTF_8)+extra;
-        var result=mvc.perform(get(uri)).andExpect(status().isOk()).andReturn();
+        var request=get("/api/v1/public/catalog/search").param("q",q);
+        if(extra!=null&&!extra.isBlank()) {
+            for(String pair:extra.replaceFirst("^&","").split("&")) {
+                String[] kv=pair.split("=",2);
+                request.param(kv[0],kv.length==2?kv[1]:"");
+            }
+        }
+        var result=mvc.perform(request).andExpect(status().isOk()).andReturn();
         return json.readTree(result.getResponse().getContentAsString());
     }
 
