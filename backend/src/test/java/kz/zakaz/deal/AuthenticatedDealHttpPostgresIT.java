@@ -333,4 +333,128 @@ class AuthenticatedDealHttpPostgresIT {
             SELECT count(*) FROM ml_seller_invitation_inbox WHERE demand_id=?
             """,Integer.class,demand)).isZero();
     }
+
+    private record ReadyBid(Fixture fixture,UUID demandId,UUID bidId) {}
+
+    private ReadyBid createBuyerReadyBid(Fixture f) throws Exception {
+        String deadline=Instant.now().plusSeconds(900).toString();
+        String demand=json.writeValueAsString(Map.of(
+            "city","Almaty","expiresAt",deadline,
+            "lines",List.of(Map.of("productId",f.productId(),"quantity",1,"unit","PCS"))));
+        var created=mvc.perform(post("/api/v1/buyers/demands")
+            .header("Authorization","Bearer "+f.buyerToken())
+            .contentType(MediaType.APPLICATION_JSON).content(demand))
+            .andExpect(status().isCreated()).andReturn();
+        UUID demandId=idFrom(created.getResponse().getContentAsString(),"demandId");
+        String bid=json.writeValueAsString(Map.of(
+            "revision",1,"expiresAt",deadline,"method","PICKUP",
+            "originLocationId",f.locationId(),"deliveryFee",0,
+            "lines",List.of(Map.of("productId",f.productId(),
+                "skuId",f.skuId(),"quantity",1,"unitPrice",100))));
+        var submitted=mvc.perform(post("/api/v1/sellers/"+f.sellerId()+
+            "/demands/"+demandId+"/bids")
+            .header("Authorization","Bearer "+f.sellerToken())
+            .contentType(MediaType.APPLICATION_JSON).content(bid))
+            .andExpect(status().isCreated()).andReturn();
+        return new ReadyBid(f,demandId,idFrom(submitted.getResponse().getContentAsString(),"bidId"));
+    }
+
+    /**
+     * QA03-007 / EDGE-03: two distinct idempotency keys race through the
+     * actual HTTP controller and PostgreSQL. One demand must produce ONE order.
+     */
+    @Test void twoConcurrentHttpBidAcceptancesCreateExactlyOnePlacedOrder() throws Exception {
+        ReadyBid sale=createBuyerReadyBid(seed());
+        String url="/api/v1/buyers/demands/"+sale.demandId()+"/bids/"+sale.bidId()+"/accept";
+        long before=orders.count();
+        var pool=java.util.concurrent.Executors.newFixedThreadPool(2);
+        var start=new java.util.concurrent.CountDownLatch(1);
+        try {
+            List<java.util.concurrent.Future<org.springframework.mock.web.MockHttpServletResponse>> futures=
+                new ArrayList<>();
+            for (int i=0;i<2;i++) {
+                final int attempt=i;
+                futures.add(pool.submit(()->{
+                    start.await();
+                    return mvc.perform(post(url)
+                        .header("Authorization","Bearer "+sale.fixture().buyerToken())
+                        .header("Idempotency-Key","qa03-concurrent-"+attempt))
+                        .andReturn().getResponse();
+                }));
+            }
+            start.countDown();
+            var first=futures.get(0).get(25,java.util.concurrent.TimeUnit.SECONDS);
+            var second=futures.get(1).get(25,java.util.concurrent.TimeUnit.SECONDS);
+            assertThat(List.of(first.getStatus(),second.getStatus()))
+                .containsExactlyInAnyOrder(201,409);
+            String createdBody=first.getStatus()==201?first.getContentAsString():second.getContentAsString();
+            UUID orderId=idFrom(createdBody,"orderId");
+            assertThat(orders.count()).isEqualTo(before+1);
+            assertThat(orders.findById(orderId).orElseThrow().getStatus())
+                .isEqualTo(OrderStatus.PLACED);
+            assertThat(reservations.findByOrderId(orderId)).isEmpty();
+            assertThat(jdbc.queryForObject(
+                "SELECT count(*) FROM bid_acceptance WHERE demand_id=?",
+                Integer.class,sale.demandId())).isEqualTo(1);
+        } finally {
+            pool.shutdownNow();
+        }
+    }
+
+    @Test void buyerCanCancelPlacedOrderExactlyOnceButCannotCancelConfirmedOrder() throws Exception {
+        ReadyBid sale=createBuyerReadyBid(seed());
+        String accept="/api/v1/buyers/demands/"+sale.demandId()+"/bids/"+sale.bidId()+"/accept";
+        String idem="qa03-cancel-"+UUID.randomUUID();
+        var created=mvc.perform(post(accept)
+            .header("Authorization","Bearer "+sale.fixture().buyerToken())
+            .header("Idempotency-Key",idem))
+            .andExpect(status().isCreated()).andReturn();
+        UUID orderId=idFrom(created.getResponse().getContentAsString(),"orderId");
+        String cancel="/api/v1/buyers/orders/"+orderId+"/cancel";
+        long beforeOrders=orders.count();
+        mvc.perform(post(cancel)).andExpect(status().isUnauthorized());
+        mvc.perform(post(cancel).header("Authorization","Bearer "+sale.fixture().sellerToken()))
+            .andExpect(status().isForbidden());
+        mvc.perform(post(cancel).header("Authorization","Bearer "+sale.fixture().buyerToken()))
+            .andExpect(status().isNoContent());
+        mvc.perform(post(cancel).header("Authorization","Bearer "+sale.fixture().buyerToken()))
+            .andExpect(status().isNoContent());
+        assertThat(orders.findById(orderId).orElseThrow().getStatus())
+            .isEqualTo(OrderStatus.CANCELLED_BY_BUYER);
+        assertThat(orders.count()).isEqualTo(beforeOrders);
+        assertThat(reservations.findByOrderId(orderId)).isEmpty();
+        assertThat(events.findByAggregateIdAndEventType(orderId,"ORDER_CANCELLED_BY_BUYER"))
+            .isPresent();
+        mvc.perform(post("/api/v1/sellers/"+sale.fixture().sellerId()+
+            "/orders/"+orderId+"/confirm")
+            .header("Authorization","Bearer "+sale.fixture().sellerToken()))
+            .andExpect(status().isConflict());
+
+        ReadyBid other=createBuyerReadyBid(seed());
+        var otherOrder=mvc.perform(post("/api/v1/buyers/demands/"+other.demandId()+
+            "/bids/"+other.bidId()+"/accept")
+            .header("Authorization","Bearer "+other.fixture().buyerToken())
+            .header("Idempotency-Key","qa03-other-"+UUID.randomUUID()))
+            .andExpect(status().isCreated()).andReturn();
+        UUID foreignOrder=idFrom(otherOrder.getResponse().getContentAsString(),"orderId");
+        mvc.perform(post("/api/v1/buyers/orders/"+foreignOrder+"/cancel")
+            .header("Authorization","Bearer "+sale.fixture().buyerToken()))
+            .andExpect(status().isForbidden());
+        assertThat(orders.findById(foreignOrder).orElseThrow().getStatus())
+            .isEqualTo(OrderStatus.PLACED);
+
+        mvc.perform(post("/api/v1/sellers/"+other.fixture().sellerId()+
+            "/orders/"+foreignOrder+"/confirm")
+            .header("Authorization","Bearer "+other.fixture().sellerToken()))
+            .andExpect(status().isNoContent());
+        mvc.perform(post("/api/v1/buyers/orders/"+foreignOrder+"/cancel")
+            .header("Authorization","Bearer "+other.fixture().buyerToken()))
+            .andExpect(status().isConflict());
+        assertThat(orders.findById(foreignOrder).orElseThrow().getStatus())
+            .isEqualTo(OrderStatus.CONFIRMED);
+        assertThat(reservations.findByOrderId(foreignOrder)).hasSize(1);
+        assertThat(events.findByAggregateIdAndEventType(foreignOrder,"ORDER_CANCELLED_BY_BUYER"))
+            .isEmpty();
+    }
+
 }
