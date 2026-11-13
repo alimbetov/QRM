@@ -213,4 +213,64 @@ void main() {
     expect(find.text('Отправить обращение'),findsOneWidget);
   });
 
+
+  testWidgets('buyer confirms PLACED cancellation and sees server status',(tester) async {
+    final fake=FakeBuyerAuth();
+    var cancelled=false;
+    var cancellations=0;
+    final api=ZakazApi(endpoint,client:MockClient((req) async {
+      final path=req.url.path;
+      if(path=='/api/v1/buyers/me')return utf8Json(profileFixture());
+      if(path=='/api/v1/buyers/demands' && req.method=='POST') {
+        return http.Response('{"demandId":"demand-1"}',201);
+      }
+      if(path=='/api/v1/buyers/demands/demand-1/bids') {
+        return utf8Json(jsonEncode({
+          'demandId':'demand-1','acceptedOrderId':null,
+          'bids':[{
+            'bidId':'bid-1','sellerId':'seller-1',
+            'totalKzt':'100.00','method':'PICKUP','deliveryFeeKzt':'0.00',
+            'lines':[]
+          }]
+        }));
+      }
+      if(path.endsWith('/bids/bid-1/accept')) {
+        return http.Response('{"orderId":"order-1"}',201);
+      }
+      if(path=='/api/v1/buyers/orders/order-1' && req.method=='GET') {
+        return utf8Json(jsonEncode({
+          'orderId':'order-1','status':cancelled?'CANCELLED_BY_BUYER':'PLACED',
+          'publicNumber':'ZK-0000-0001','currency':'KZT',
+          'totalAmount':'100.00','deliveryFee':'0.00','lines':[]
+        }));
+      }
+      if(path=='/api/v1/buyers/orders/order-1/cancel' && req.method=='POST') {
+        cancellations++;
+        cancelled=true;
+        return http.Response('',204);
+      }
+      return http.Response('',500);
+    }));
+    await tester.pumpWidget(MaterialApp(home:BuyerScreen(
+      api:api,productId:'product-1',unit:'PCS',authGateway:fake)));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Войти через OIDC / PKCE'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Создать BuyerDemand'));
+    await tester.tap(find.text('Создать BuyerDemand'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Принять и создать заказ'));
+    await tester.tap(find.text('Принять и создать заказ'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Отменить заказ'));
+    await tester.tap(find.text('Отменить заказ'));
+    await tester.pumpAndSettle();
+    expect(find.text('Подтвердить отмену'),findsOneWidget);
+    expect(cancellations,0);
+    await tester.tap(find.text('Подтвердить отмену'));
+    await tester.pumpAndSettle();
+    expect(cancellations,1);
+    expect(find.text('Статус: CANCELLED_BY_BUYER'),findsOneWidget);
+    expect(find.text('Отменить заказ'),findsNothing);
+  });
 }

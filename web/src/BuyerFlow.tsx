@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import type { User } from 'oidc-client-ts';
 import { buyerAuth, loginBuyer, registerBuyer, logoutBuyer } from './oidc';
 import {
-  createBuyerDemand, loadBuyerBids, acceptBuyerBid, loadBuyerOrder,
+  createBuyerDemand, loadBuyerBids, acceptBuyerBid, loadBuyerOrder, cancelBuyerOrder,
   type BuyerBids, type BuyerOrder
 } from './buyer-api';
 import { formatPublishedPriceKzt } from './qr-api';
@@ -133,6 +133,19 @@ export default function BuyerFlow() {
     finally{setBusy(false);}
   }
 
+
+  async function cancelPlacedOrder() {
+    if (!user || !profile || !orderId || order?.status!=='PLACED' || busy) return;
+    if (!window.confirm('Отменить заказ до подтверждения продавцом?')) return;
+    try {
+      setBusy(true);setError('');
+      await cancelBuyerOrder(user.access_token,orderId);
+      setOrder(await loadBuyerOrder(user.access_token,orderId));
+    } catch {
+      setError('Не удалось отменить заказ. Возможно, продавец уже подтвердил его. Обновите статус.');
+    } finally {setBusy(false);}
+  }
+
   async function signOut() {
     setError('');
     try {
@@ -204,6 +217,12 @@ export default function BuyerFlow() {
           {order && <div className="buyer-order">
             <p>Номер заказа: <strong>{order.publicNumber}</strong></p>
             <p>Статус: <strong>{order.status}</strong></p>
+            {order.status==='PLACED' && <button type="button"
+              disabled={busy} onClick={()=>{void cancelPlacedOrder();}}>
+              Отменить заказ до подтверждения
+            </button>}
+            {order.status==='CANCELLED_BY_BUYER' &&
+              <p role="status">Заказ отменён покупателем. Резервирование не выполнялось.</p>}
             <p>Сумма заказа: <strong>{String(order.totalAmount)} {order.currency}</strong></p>
             <p className="buyer-muted">Статус PLACED не означает оплату или резервирование товара.</p>
           </div>}

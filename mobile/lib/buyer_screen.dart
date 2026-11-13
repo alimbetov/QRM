@@ -51,6 +51,8 @@ class _BuyerScreenState extends State<BuyerScreen> {
           error='Сервер не ответил. Проверьте сеть и повторите действие.';
         } else if(e is ZakazApiError && e.statusCode==401) {
           error='Срок действия авторизации истёк. Выйдите и войдите снова.';
+        } else if(e is ZakazApiError && e.statusCode==409) {
+          error='Статус заказа изменился. Обновите заказ и повторите действие.';
         } else if(e is ZakazApiError && e.statusCode==403) {
           error='Нет доступа к этой операции. Проверьте подтверждение email и права.';
         } else if(e is FormatException || e is ArgumentError) {
@@ -145,6 +147,31 @@ class _BuyerScreenState extends State<BuyerScreen> {
   }
   Future<void> refreshOrder()=>action(refreshOrderDirect);
 
+  Future<void> cancelPlacedOrder() async {
+    if(busy || token==null || orderId==null || order?['status']!='PLACED')return;
+    final approved=await showDialog<bool>(
+      context:context,
+      builder:(dialogContext)=>AlertDialog(
+        title:const Text('Отменить заказ?'),
+        content:const Text(
+          'Отмена доступна только до подтверждения продавцом. '
+          'После подтверждения потребуется отдельное согласование.'),
+        actions:[
+          TextButton(onPressed:()=>Navigator.of(dialogContext).pop(false),
+            child:const Text('Назад')),
+          FilledButton(onPressed:()=>Navigator.of(dialogContext).pop(true),
+            child:const Text('Подтвердить отмену')),
+        ],
+      ),
+    );
+    if(approved!=true || !mounted)return;
+    await action(()async {
+      await widget.api.cancelOrder(token!,orderId!);
+      await refreshOrderDirect();
+    });
+  }
+
+
   @override Widget build(BuildContext context) {
     final bids=(quotes?['bids'] as List<dynamic>? ?? []);
     return Scaffold(appBar:AppBar(title:const Text('Заказ · ZAKAZ')),
@@ -207,6 +234,12 @@ class _BuyerScreenState extends State<BuyerScreen> {
           if(order!=null) ...[
             Text('Номер: ${order!['publicNumber']}'),
             Text('Статус: ${order!['status']}'),
+            if(order!['status']=='PLACED')
+              OutlinedButton(
+                onPressed:busy?null:cancelPlacedOrder,
+                child:const Text('Отменить заказ')),
+            if(order!['status']=='CANCELLED_BY_BUYER')
+              const Text('Заказ отменён до резервирования товара.'),
             Text('Сумма: ${order!['totalAmount']} ${order!['currency']}'),
           ],
         ],

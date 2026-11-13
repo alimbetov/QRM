@@ -1,5 +1,5 @@
 import {describe,it,expect,vi,afterEach} from 'vitest';
-import {createBuyerDemand,loadBuyerBids,acceptBuyerBid,loadBuyerOrder} from './buyer-api';
+import {createBuyerDemand,loadBuyerBids,acceptBuyerBid,loadBuyerOrder,cancelBuyerOrder} from './buyer-api';
 afterEach(()=>vi.unstubAllGlobals());
 describe('Buyer commerce HTTP contract',()=>{
   it('only sends authenticated demand with canonical product and server-owned buyer identity',async()=>{
@@ -40,5 +40,24 @@ describe('Buyer commerce HTTP contract',()=>{
       deliveryFee:0,lines:[{skuId:'sku',quantity:1,lineTotal:100}]
     })}));
     await expect(loadBuyerOrder('signed','order-1')).rejects.toThrow('Invalid buyer order response');
+  });
+
+  it('cancels only with an authorized 204 POST, without fabricated order',async()=>{
+    const fetchMock=vi.fn().mockResolvedValue({status:204});
+    vi.stubGlobal('fetch',fetchMock);
+    await expect(cancelBuyerOrder('buyer-jwt','order-1')).resolves.toBeUndefined();
+    const [url,request]=fetchMock.mock.calls[0];
+    expect(url).toBe('/api/v1/buyers/orders/order-1/cancel');
+    expect(request.method).toBe('POST');
+    expect(request.credentials).toBe('omit');
+    expect(request.headers.Authorization).toBe('Bearer buyer-jwt');
+    expect(request.body).toBeUndefined();
+  });
+  it('rejects forbidden or conflicting cancellation and missing identity',async()=>{
+    await expect(cancelBuyerOrder('','order-1')).rejects.toThrow('Verified buyer');
+    vi.stubGlobal('fetch',vi.fn().mockResolvedValue({status:409}));
+    await expect(cancelBuyerOrder('buyer-jwt','order-1')).rejects.toThrow('Buyer API HTTP 409');
+    vi.stubGlobal('fetch',vi.fn().mockResolvedValue({status:403}));
+    await expect(cancelBuyerOrder('buyer-jwt','foreign')).rejects.toThrow('Buyer API HTTP 403');
   });
 });

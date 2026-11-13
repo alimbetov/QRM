@@ -250,6 +250,13 @@ class ZakazApi {
     return _nonempty(result,'orderId');
   }
 
+  Future<void> cancelOrder(String bearer,String orderId) async {
+    if(orderId.isEmpty) throw ArgumentError('Order ID required');
+    await request('POST',
+      '/api/v1/buyers/orders/'+Uri.encodeComponent(orderId)+'/cancel',
+      bearer:_requireToken(bearer));
+  }
+
   Future<Map<String,dynamic>> order(String bearer,String orderId) async {
     final data=await request('GET',
       '/api/v1/buyers/orders/'+Uri.encodeComponent(orderId),

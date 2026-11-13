@@ -79,4 +79,26 @@ void main() {
   test('insecure external API address is prohibited', () {
     expect(()=>ZakazApi('http://example.com'),throwsArgumentError);
   });
+
+  test('buyer cancellation uses bearer POST and no fake response', () async {
+    var calls=0;
+    final api=ZakazApi('https://staging.example.test',client:MockClient((req) async {
+      calls++;
+      expect(req.method,'POST');
+      expect(req.url.path,'/api/v1/buyers/orders/order-id/cancel');
+      expect(req.headers['authorization'],'Bearer buyer-jwt');
+      expect(req.body,isEmpty);
+      return http.Response('',204);
+    }));
+    await api.cancelOrder('buyer-jwt','order-id');
+    expect(calls,1);
+    api.dispose();
+  });
+  test('buyer cancellation returns 409 business conflict on confirmed order', () async {
+    final api=ZakazApi('https://staging.example.test',client:MockClient((_) async =>
+      http.Response('{"code":"BUSINESS_CONFLICT"}',409)));
+    await expectLater(api.cancelOrder('buyer-jwt','already-confirmed'),
+      throwsA(isA<ZakazApiError>().having((e)=>e.statusCode,'status',409)));
+    api.dispose();
+  });
 }

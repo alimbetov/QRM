@@ -88,3 +88,14 @@ export async function loadBuyerOrder(token: string, orderId: string): Promise<Bu
   }
   return data;
 }
+
+/** A 204 response confirms an owner-only PLACED cancellation, never a fabricated status. */
+export async function cancelBuyerOrder(token: string, orderId: string): Promise<void> {
+  if (!token || !orderId) throw new Error('Verified buyer and order required');
+  const response=await fetch(publicQrApiBase()+'/api/v1/buyers/orders/'+
+    encodeURIComponent(orderId)+'/cancel',{
+      method:'POST', headers:{Authorization:'Bearer '+token,Accept:'application/json'},
+      credentials:'omit',cache:'no-store'
+    });
+  if (response.status!==204) throw new Error('Buyer API HTTP '+response.status);
+}
