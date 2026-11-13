@@ -47,3 +47,9 @@ Flyway V18 adds nullable `catalog_sku.public_unit_price_kzt numeric(19,2)`. An a
 `PUT /api/v1/sellers/{sellerId}/listings/{listingId}/skus/{skuId}/price`
 
 Body: `{"priceKzt":125000.50}`; response: 204. Requires `SCOPE_catalog:write`, correct seller membership and `zakaz.qr.http.enabled=true` (default false). Ownership and draft state are checked under a listing row lock; V3 protects the SKU price from direct SQL modification after publishing. No silent rounding is permitted. The public QR response contains `variants[].priceKzt` as a decimal **string** or null for legacy listings without a configured price. React displays the string losslessly or "Цена уточняется". It is an indicative unit catalog price, **not** the immutable accepted bid with shipping/discounts/tax; live repricing after publication requires a separate revisioned-price design. Do not imply any checkout is completed by showing the price.
+
+## R2.3C — public catalog and owner-scoped bid-read API
+
+Optional anonymous `GET /api/v1/public/catalog?query=&categoryCode=&page=0&size=12` and `GET /api/v1/public/catalog/categories` require `zakaz.catalog.http.enabled=true` (default false). Only PUBLIC listings with QR links appear; owner/stock data is never disclosed. Canonical productId allows a later authenticated BuyerDemand, but indicative public price is not an all-in quote.
+
+Protected `GET /api/v1/buyers/demands/{demandId}/bids` requires `zakaz.commerce.http.enabled=true`, valid JWT with scope `deal:write` and a server-provisioned buyer-account link matching demand ownership. Returns current nonexpired seller quote revisions capped at 50; no seller warehouse PII. Acceptance reuses transactional `BidAcceptanceService`: one PLACED order, no reserve until seller confirmation. See `docs/R2-3C-REAL-CATALOG-BUYER-CLIENTS.md` and S2 issue #3.
