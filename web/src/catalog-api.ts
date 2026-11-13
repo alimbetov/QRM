@@ -8,6 +8,7 @@ export type LiveVariant = {
 };
 export type LiveCatalogItem = {
   listingId: string;
+  productId: string;
   sellerId: string;
   qrToken: string;
   title: string;
