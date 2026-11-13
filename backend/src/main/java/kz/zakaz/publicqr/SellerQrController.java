@@ -15,6 +15,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.*;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 /** Seller-only PNG artifact; source URL is fixed by configuration, never Host header. */
@@ -29,6 +30,7 @@ public class SellerQrController {
                      @Value("${zakaz.qr.public-base-url:}") String publicBase){
         this.identities=identities;this.links=links;this.publicBase=publicBase;
     }
+    @Transactional(readOnly=true)
     @GetMapping(path="/{listingId}/qr.png",produces=MediaType.IMAGE_PNG_VALUE)
     public ResponseEntity<byte[]> qr(@PathVariable UUID sellerId,@PathVariable UUID listingId,
                                       JwtAuthenticationToken verifiedSeller){
