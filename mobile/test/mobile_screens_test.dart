@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -165,4 +166,51 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Войти через OIDC / PKCE'),findsOneWidget);
   });
+  testWidgets('QR retries reuse one idempotency key after transient failure',(tester) async {
+    int attempts=0;
+    final keys=<String>[];
+    final api=ZakazApi(endpoint,client:MockClient((req) async {
+      if(req.method=='GET')return utf8Json(qrFixture());
+      attempts++;
+      keys.add(req.headers['idempotency-key']!);
+      return http.Response('',attempts==1?503:202);
+    }));
+    await tester.pumpWidget(MaterialApp(home:QrScreen(api:api,token:qrToken)));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField),'+77001234567');
+    await tester.tap(find.byType(CheckboxListTile));
+    await tester.ensureVisible(find.text('Отправить обращение'));
+    await tester.tap(find.text('Отправить обращение'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Обращение не принято'),findsOneWidget);
+    await tester.tap(find.text('Отправить обращение'));
+    await tester.pumpAndSettle();
+    expect(find.text('Обращение принято, заказ не создан.'),findsOneWidget);
+    expect(attempts,2);
+    expect(keys[0],keys[1]);
+  });
+
+  testWidgets('old QR callback cannot mark a newly displayed listing accepted',(tester) async {
+    final otherToken=List.filled(43,'C').join();
+    final pending=Completer<http.Response>();
+    final api=ZakazApi(endpoint,client:MockClient((req) async {
+      if(req.method=='GET')return utf8Json(qrFixture());
+      if(req.url.path.contains('/'+qrToken+'/leads'))return pending.future;
+      return http.Response('',202);
+    }));
+    await tester.pumpWidget(MaterialApp(home:QrScreen(api:api,token:qrToken)));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField),'+77001234567');
+    await tester.tap(find.byType(CheckboxListTile));
+    await tester.ensureVisible(find.text('Отправить обращение'));
+    await tester.tap(find.text('Отправить обращение'));
+    await tester.pump();
+    await tester.pumpWidget(MaterialApp(home:QrScreen(api:api,token:otherToken)));
+    await tester.pumpAndSettle();
+    pending.complete(http.Response('',202));
+    await tester.pumpAndSettle();
+    expect(find.text('Обращение принято, заказ не создан.'),findsNothing);
+    expect(find.text('Отправить обращение'),findsOneWidget);
+  });
+
 }
