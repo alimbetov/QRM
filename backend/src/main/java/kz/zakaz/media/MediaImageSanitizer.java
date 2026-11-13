@@ -27,8 +27,21 @@ public final class MediaImageSanitizer {
         if(file==null||file.isEmpty()||file.getSize()>MAX_BYTES)
             throw invalid();
         try {
-            byte[] bytes=file.getBytes();
-            if(bytes.length==0||bytes.length>MAX_BYTES || !supported(bytes))
+            return sanitize(file.getBytes());
+        } catch(IOException ex) {
+            throw invalid();
+        }
+    }
+
+    /**
+     * Single-buffer entry point used after AV scanning. Never read the
+     * MultipartFile a second time and never retain the uploaded bytes.
+     */
+    public Sanitized sanitize(byte[] bytes) {
+        if(bytes==null||bytes.length==0||bytes.length>MAX_BYTES)
+            throw invalid();
+        try {
+            if(!supported(bytes))
                 throw invalid();
             try(ImageInputStream stream=ImageIO.createImageInputStream(new ByteArrayInputStream(bytes))) {
                 if(stream==null) throw invalid();

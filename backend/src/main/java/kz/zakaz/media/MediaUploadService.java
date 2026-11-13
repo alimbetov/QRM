@@ -1,6 +1,8 @@
 package kz.zakaz.media;
 
 import java.util.UUID;
+import java.util.concurrent.Semaphore;
+import org.springframework.beans.factory.annotation.Value;
 import kz.zakaz.catalog.SellerListingRepository;
 import kz.zakaz.domain.types.ListingStatus;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -26,15 +28,31 @@ public class MediaUploadService {
     private final MediaImageSanitizer sanitizer;
     private final MediaMalwareScanner scanner;
     private final ListingMediaBlobStore store;
+    private final Semaphore uploadPermits;
 
     public MediaUploadService(SellerListingRepository listings,JdbcTemplate jdbc,
             TransactionTemplate transactions,MediaImageSanitizer sanitizer,
-            MediaMalwareScanner scanner,ListingMediaBlobStore store) {
+            MediaMalwareScanner scanner,ListingMediaBlobStore store,
+            @Value("${zakaz.media.upload.max-concurrent:2}") int maxConcurrentUploads) {
         this.listings=listings;this.jdbc=jdbc;this.transactions=transactions;
         this.sanitizer=sanitizer;this.scanner=scanner;this.store=store;
+        if(maxConcurrentUploads<1||maxConcurrentUploads>8)
+            throw new IllegalStateException("Media upload concurrency must be 1..8");
+        this.uploadPermits=new Semaphore(maxConcurrentUploads,true);
     }
 
     public UUID upload(UUID sellerId,UUID listingId,MultipartFile image,boolean cover) {
+        if(!uploadPermits.tryAcquire())
+            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
+                                              "Too many concurrent media uploads");
+        try {
+            return uploadWithPermit(sellerId,listingId,image,cover);
+        } finally {
+            uploadPermits.release();
+        }
+    }
+
+    private UUID uploadWithPermit(UUID sellerId,UUID listingId,MultipartFile image,boolean cover) {
         if(sellerId==null||listingId==null)
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Seller/listing required");
         // Reject forged SellerListing BEFORE expensive scanning/object-store writes.
@@ -44,14 +62,20 @@ public class MediaUploadService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Listing not found");
         if(draft.getStatus()!=ListingStatus.DRAFT)
             throw new ResponseStatusException(HttpStatus.CONFLICT,"Media changes require DRAFT");
+        // Read the bounded multipart payload once, then reuse the same buffer
+        // for malware scanning and image decoding. No direct client-to-S3 upload.
+        byte[] original;
         try {
             if(image==null||image.isEmpty()||image.getSize()>5_000_000)
                 throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,"Invalid image");
-            scanner.requireClean(image.getBytes());
+            original=image.getBytes();
         } catch(java.io.IOException e) {
             throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,"Unreadable image");
         }
-        var ready=sanitizer.sanitize(image);
+        if(original.length==0||original.length>5_000_000)
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,"Invalid image");
+        scanner.requireClean(original);
+        var ready=sanitizer.sanitize(original);
         UUID mediaId=UUID.randomUUID();
         String prefix="listing/"+listingId+"/"+mediaId+"/";
         String fullKey=prefix+"full.jpg",thumbKey=prefix+"thumb.jpg";
