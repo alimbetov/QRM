@@ -262,47 +262,7 @@ class ZakazApi {
     _array(data,'lines');
     final total=data['totalAmount'];
     final fee=data['deliveryFee'];
-    final amountPattern=RegExp(r'^\d{1,17}\.\d{2}
-    for(final raw in data['lines'] as List<dynamic>) {
-      if(raw is! Map<String,dynamic> || raw['quantity'] is! String ||
-          raw['lineTotal'] is! String) {
-        throw const FormatException('Order line amounts must be decimal strings');
-      }
-    }
-    return data;
-  }
-
-  void dispose()=>client.close();
-}
-);
-    if(total is! String || fee is! String ||
-        !amountPattern.hasMatch(total) || !amountPattern.hasMatch(fee)) {
-      throw const FormatException('Order money must be an exact decimal string');
-    }
-    for(final raw in data['lines'] as List<dynamic>) {
-      if(raw is! Map<String,dynamic> || raw['quantity'] is! String ||
-          raw['lineTotal'] is! String) {
-        throw const FormatException('Order line amounts must be decimal strings');
-      }
-    }
-    return data;
-  }
-
-  void dispose()=>client.close();
-}
-);
-    for(final raw in data['lines'] as List<dynamic>) {
-      if(raw is! Map<String,dynamic> || raw['quantity'] is! String ||
-          raw['lineTotal'] is! String) {
-        throw const FormatException('Order line amounts must be decimal strings');
-      }
-    }
-    return data;
-  }
-
-  void dispose()=>client.close();
-}
-);
+    final amountPattern=RegExp(r'^\d{1,17}\.\d{2}$');
     if(total is! String || fee is! String ||
         !amountPattern.hasMatch(total) || !amountPattern.hasMatch(fee)) {
       throw const FormatException('Order money must be an exact decimal string');
