@@ -62,6 +62,7 @@ class AuthenticatedDealHttpPostgresIT {
     @Autowired CustomerOrderRepository orders;
     @Autowired InventoryReservationRepository reservations;
     @Autowired OrderOutboxEventRepository events;
+    @Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
     @Autowired PublicListingLinkRepository publicLinks;
 
     private record Fixture(UUID productId,UUID skuId,UUID locationId,
@@ -254,6 +255,24 @@ class AuthenticatedDealHttpPostgresIT {
         assertThat(reservations.findByOrderId(orderId)).hasSize(1);
         assertThat(events.findByAggregateIdAndEventType(orderId,"ORDER_CONFIRMED"))
             .isPresent();
+        // ML-R2 reads the SAME committed business transitions; no extra
+        // notifications or duplicated trade labels on repeated confirmation.
+        assertThat(jdbc.queryForObject("""
+            SELECT count(*) FROM ml_trade_event
+            WHERE demand_id=? AND event_type='DEMAND_CREATED'
+            """,Integer.class,demandId)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("""
+            SELECT count(*) FROM ml_trade_event
+            WHERE demand_id=? AND event_type='BID_SUBMITTED'
+            """,Integer.class,demandId)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("""
+            SELECT count(*) FROM ml_trade_event
+            WHERE demand_id=? AND event_type='BID_ACCEPTED'
+            """,Integer.class,demandId)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("""
+            SELECT count(*) FROM ml_trade_event
+            WHERE aggregate_id=? AND event_type='ORDER_CONFIRMED'
+            """,Integer.class,orderId)).isEqualTo(1);
         assertThat(orders.count()).isEqualTo(beforeOrders+1);
     }
 

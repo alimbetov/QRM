@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -39,6 +40,7 @@ class MlTradeEventPostgresIT {
     @Autowired SellerSkuRepository skus;
     @Autowired CatalogPublishingService publishing;
     @Autowired DealPersistenceService deals;
+    @Autowired TransactionTemplate transactions;
 
     private record Scenario(BuyerDemand demand,UUID productId,UUID skuId,UUID sellerId){}
     private Scenario scenario() {
@@ -126,4 +128,27 @@ class MlTradeEventPostgresIT {
             WHERE event_type='SELLER_INVITATION_EVALUATED' AND demand_id=? AND seller_id=?
             """,Integer.class,demand,seller)).isEqualTo(1);
     }
+    @Test void rolledBackDemandDoesNotLeaveGhostTrainingEvent() {
+        var sample=scenario();
+        var another=new BuyerDemand(UUID.randomUUID(),UUID.randomUUID(),
+            "Almaty",Instant.now().plusSeconds(3600),
+            List.of(new BuyerDemand.DemandLine(
+                sample.productId(),BigDecimal.ONE,null,MeasurementUnit.PCS)));
+        assertThatThrownBy(()->transactions.execute(status->{
+            deals.createDemand(another,Instant.now());
+            assertThat(jdbc.queryForObject("""
+                SELECT count(*) FROM ml_trade_event
+                WHERE demand_id=? AND event_type='DEMAND_CREATED'
+                """,Integer.class,another.id())).isEqualTo(1);
+            throw new IllegalStateException("Force business rollback");
+        })).isInstanceOf(IllegalStateException.class)
+           .hasMessageContaining("Force business rollback");
+        assertThat(jdbc.queryForObject("""
+            SELECT count(*) FROM ml_trade_event WHERE demand_id=?
+            """,Integer.class,another.id())).isZero();
+        assertThat(jdbc.queryForObject("""
+            SELECT count(*) FROM buyer_demand_snapshot WHERE id=?
+            """,Integer.class,another.id())).isZero();
+    }
+
 }
