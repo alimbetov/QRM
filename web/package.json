@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "tsc -b && vite build",
-    "test": "vitest run"
+    "test": "vitest run",
+    "e2e:staging": "playwright test --config playwright.config.ts"
   },
   "dependencies": {
     "react": "^19.2.0",
@@ -19,6 +20,7 @@
     "@vitejs/plugin-react": "^5.0.0",
     "typescript": "~5.9.3",
     "vite": "^7.1.7",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "@playwright/test": "1.65.0"
   }
 }
