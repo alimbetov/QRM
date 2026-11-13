@@ -34,8 +34,6 @@ public class PublicCatalogReadService {
         JOIN catalog_category c ON c.id=p.category_id
         JOIN qr_public_link q ON q.listing_id=l.id
         WHERE l.status='PUBLIC' AND c.active=true
-          AND (:categoryCode IS NULL OR c.hcc_code=:categoryCode)
-          AND (:search IS NULL OR lower(p.canonical_name) LIKE :search)
         """;
 
     @Transactional(readOnly=true)
@@ -48,16 +46,23 @@ public class PublicCatalogReadService {
         if (categoryCode!=null && !categoryCode.matches("[0-9]{20}"))
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Invalid category code");
         String term=query==null?null:query.trim().toLowerCase(Locale.ROOT);
+        var filters=new StringBuilder(FROM_PUBLIC);
         var params=new MapSqlParameterSource()
-            .addValue("categoryCode",categoryCode)
-            .addValue("search",term==null||term.isEmpty()?null:"%"+term+"%")
             .addValue("limit",size)
             .addValue("offset",page*size);
-        Long count=jdbc.queryForObject("SELECT count(*) "+FROM_PUBLIC,params,Long.class);
+        if(categoryCode!=null){
+            filters.append(" AND c.hcc_code=:categoryCode ");
+            params.addValue("categoryCode",categoryCode);
+        }
+        if(term!=null&&!term.isEmpty()){
+            filters.append(" AND lower(p.canonical_name) LIKE :search ");
+            params.addValue("search","%"+term+"%");
+        }
+        Long count=jdbc.queryForObject("SELECT count(*) "+filters,params,Long.class);
         var rows=jdbc.query("""
             SELECT l.id, l.seller_id, q.token, p.canonical_name,
                    c.label AS category, c.hcc_code, c.product_type
-            """+FROM_PUBLIC+"""
+            """+filters+"""
             ORDER BY p.canonical_name, l.id
             LIMIT :limit OFFSET :offset
             """,params,(rs,i)->new Item(
