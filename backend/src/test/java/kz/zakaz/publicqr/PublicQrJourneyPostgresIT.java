@@ -227,7 +227,7 @@ class PublicQrJourneyPostgresIT {
         mvc.perform(post(publicPath+"/leads")
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("Idempotency-Key","archived-after-view")
-                .content("{\\"phone\\":\\"+77011234567\\",\\"consent\\":true}"))
+                .content("{\"phone\":\"+77011234567\",\"consent\":true}"))
             .andExpect(status().isNotFound());
 
         assertThat(leads.findByListingId(listing.getId())).hasSize(leadsBefore);
