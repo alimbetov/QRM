@@ -2,6 +2,11 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 /// Same API contract as the React buyer client. No device-generated buyer IDs.
+class ZakazApiError extends StateError {
+  final int statusCode;
+  ZakazApiError(this.statusCode):super('API HTTP $statusCode');
+}
+
 class ZakazApi {
   final Uri origin;
   final http.Client client;
@@ -37,7 +42,7 @@ class ZakazApi {
     if (body != null) request.body = jsonEncode(body);
     final response = await http.Response.fromStream(await client.send(request));
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw StateError('API HTTP ${response.statusCode}');
+      throw ZakazApiError(response.statusCode);
     }
     if (response.body.isEmpty) return {};
     final decoded = jsonDecode(utf8.decode(response.bodyBytes));
@@ -56,6 +61,20 @@ class ZakazApi {
     await request('POST','/api/v1/public/q/${Uri.encodeComponent(token)}/leads',
       idempotencyKey:key,body:{'phone':phone,'consent':true});
   }
+
+  Future<Map<String,dynamic>?> buyerProfile(String bearer) async {
+    try {
+      return await request('GET','/api/v1/buyers/me',bearer:bearer);
+    } on ZakazApiError catch(e) {
+      if(e.statusCode==404) return null;
+      rethrow;
+    }
+  }
+
+  Future<Map<String,dynamic>> enrollBuyer(
+    String bearer,String nickname,String phone,bool consent
+  ) => request('POST','/api/v1/buyers/enroll',bearer:bearer,
+      body:{'nickname':nickname,'phone':phone,'consentToStorePhone':consent});
 
   Future<String> createDemand(
     String bearer, String productId, String unit, String city, String quantity
