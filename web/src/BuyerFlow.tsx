@@ -6,6 +6,7 @@ import {
   type BuyerBids, type BuyerOrder
 } from './buyer-api';
 import { formatPublishedPriceKzt } from './qr-api';
+import {enrollBuyer,loadBuyerProfile,type BuyerProfile} from './enrollment-api';
 import './buyer-flow.css';
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -17,6 +18,11 @@ export default function BuyerFlow() {
   const unit=qs.get('unit') || '';
   const [user,setUser]=useState<User|null>(null);
   const [authReady,setAuthReady]=useState(false);
+  const [profile,setProfile]=useState<BuyerProfile|null>(null);
+  const [profileReady,setProfileReady]=useState(false);
+  const [nickname,setNickname]=useState('');
+  const [phone,setPhone]=useState('');
+  const [consent,setConsent]=useState(false);
   const [city,setCity]=useState('Алматы');
   const [quantity,setQuantity]=useState('1');
   const [demandId,setDemandId]=useState(qs.get('demandId') || '');
@@ -35,8 +41,18 @@ export default function BuyerFlow() {
     }).catch(()=>setAuthReady(true));
   },[]);
 
+  useEffect(()=>{
+    let active=true;
+    setProfile(null);setProfileReady(false);
+    if (!user) return;
+    loadBuyerProfile(user.access_token)
+      .then(found=>{if(active){setProfile(found);setProfileReady(true);}})
+      .catch(()=>{if(active){setProfileReady(false);setError('Не удалось проверить профиль покупателя. Проверьте подтверждение email и доступ к регистрации.');}});
+    return ()=>{active=false;};
+  },[user]);
+
   const refreshBids=useCallback(async ()=>{
-    if (!user || !demandId || !uuid.test(demandId)) return;
+    if (!user || !profile || !demandId || !uuid.test(demandId)) return;
     try{
       setBusy(true);setError('');
       const result=await loadBuyerBids(user.access_token,demandId);
@@ -45,19 +61,34 @@ export default function BuyerFlow() {
     }catch{
       setError('Не удалось получить предложения. Проверьте авторизацию и повторите запрос.');
     }finally{setBusy(false);}
-  },[user,demandId]);
+  },[user,profile,demandId]);
 
   const refreshOrder=useCallback(async ()=>{
-    if (!user || !orderId || !uuid.test(orderId)) return;
+    if (!user || !profile || !orderId || !uuid.test(orderId)) return;
     try{
       setBusy(true);setError('');
       setOrder(await loadBuyerOrder(user.access_token,orderId));
     }catch{setError('Не удалось прочитать заказ. Проверьте доступ к заказу.');}
     finally{setBusy(false);}
-  },[user,orderId]);
+  },[user,profile,orderId]);
 
   useEffect(()=>{void refreshBids();},[refreshBids]);
   useEffect(()=>{void refreshOrder();},[refreshOrder]);
+
+  async function register(event:FormEvent<HTMLFormElement>){
+    event.preventDefault();
+    if(!user || !/^[\\p{L}\\p{N}][\\p{L}\\p{N}_.-]{2,39}$/u.test(nickname) ||
+       !/^\\+[1-9][0-9]{7,14}$/.test(phone) || !consent){
+      setError('Укажите ник, номер в международном формате и согласие на сохранение контакта.');
+      return;
+    }
+    try {
+      setBusy(true);setError('');
+      setProfile(await enrollBuyer(user.access_token,nickname,phone,consent));
+    } catch {
+      setError('Не удалось завершить регистрацию. Необходим подтверждённый email в OIDC и активный сервис регистрации.');
+    } finally {setBusy(false);}
+  }
 
   async function create(event:FormEvent<HTMLFormElement>){
     event.preventDefault();
@@ -92,13 +123,13 @@ export default function BuyerFlow() {
 
   async function signOutLocal() {
     await clearBuyerSession();
-    setUser(null);setQuotes(null);setOrder(null);
+    setUser(null);setProfile(null);setProfileReady(false);setQuotes(null);setOrder(null);
   }
 
   const configured=Boolean(buyerAuth);
   return <div className="buyer-shell">
     <header className="buyer-topbar"><a href="/">ZAKAZ</a><span>Оформление заказа</span>
-      {user && <button onClick={()=>{void signOutLocal();}}>Завершить сеанс</button>}</header>
+      {user && <button onClick={()=>{void signOutLocal();}}>Очистить локальный сеанс</button>}</header>
     <main className="buyer-main">
       <div className="buyer-breadcrumb"><a href="/">Каталог</a> / Согласование предложения</div>
       <h1>Запросить цену и оформить заказ</h1>
@@ -114,7 +145,18 @@ export default function BuyerFlow() {
         <p>Для согласования цен необходима подтверждённая учётная запись, привязанная к покупателю на сервере.</p>
         <button onClick={()=>{void loginBuyer(window.location.pathname+window.location.search).catch(()=>setError('Не удалось открыть провайдер входа.'));}}>Войти через OIDC</button>
       </section>}
-      {user && <div className="buyer-steps">
+      {user && !profileReady && !error && <p role="status">Проверяем профиль покупателя…</p>}
+      {user && profileReady && !profile && <section className="buyer-panel">
+        <h2>Завершить регистрацию покупателя</h2>
+        <p className="buyer-muted">Email должен быть подтверждён в Keycloak. Номер телефона сохраняется зашифрованным, но не подтверждается SMS и не используется для входа или восстановления доступа.</p>
+        <form className="buyer-form" onSubmit={register}>
+          <label>Никнейм<input maxLength={40} value={nickname} onChange={e=>setNickname(e.target.value)} required /></label>
+          <label>Контактный телефон (+77001234567)<input type="tel" maxLength={16} value={phone} onChange={e=>setPhone(e.target.value)} required /></label>
+          <label><input type="checkbox" checked={consent} onChange={e=>setConsent(e.target.checked)} required /> Согласен на сохранение контактного номера для обработки заказов</label>
+          <button disabled={busy} type="submit">Создать профиль покупателя</button>
+        </form>
+      </section>}
+      {user && profile && <div className="buyer-steps">
         {!demandId && !orderId && <section className="buyer-panel">
           <h2>1. Создать заявку</h2>
           {uuid.test(productId) && supportedUnits.has(unit) ? <form onSubmit={create} className="buyer-form">
