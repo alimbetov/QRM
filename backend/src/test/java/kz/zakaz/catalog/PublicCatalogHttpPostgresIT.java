@@ -97,7 +97,7 @@ class PublicCatalogHttpPostgresIT {
             .andExpect(jsonPath("$.total").value(1));
         mvc.perform(get("/api/v1/public/catalog/categories"))
             .andExpect(status().isOk()); // never enumerates unpublished categories
-        assertThat(live.listing().getStatus()).isEqualTo(ListingStatus.PUBLIC);
+        assertThat(listings.findById(live.listing().getId()).orElseThrow().getStatus()).isEqualTo(ListingStatus.PUBLIC);
     }
 
     @Test void boundedQueryAndNoFabricatedLegacyPrice() throws Exception {
