@@ -4,6 +4,7 @@ import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.*;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -28,6 +29,9 @@ class OutboxWorkerPostgresIT {
     @Autowired JdbcTemplate jdbc;
     @Autowired PlatformTransactionManager txManager;
     @Autowired JdbcOutboxQueue queue;
+    @BeforeEach void isolateQueue() {
+        jdbc.execute("TRUNCATE TABLE order_event_projection_inbox,order_outbox_event RESTART IDENTITY");
+    }
 
     private UUID event(UUID orderId,String type) {
         UUID id=UUID.randomUUID(),line=UUID.randomUUID();
