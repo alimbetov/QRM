@@ -9,6 +9,7 @@ import kz.zakaz.domain.types.*;
 import kz.zakaz.inventory.*;
 import kz.zakaz.location.*;
 import kz.zakaz.order.*;
+import kz.zakaz.publicqr.PublicListingLinkRepository;
 import kz.zakaz.security.*;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,7 +32,13 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest @AutoConfigureMockMvc @ActiveProfiles("test-pg") @Testcontainers
-@TestPropertySource(properties="zakaz.commerce.http.enabled=true")
+@TestPropertySource(properties={
+    "zakaz.commerce.http.enabled=true",
+    "zakaz.qr.http.enabled=true",
+    "zakaz.buyer.enrollment.enabled=true",
+    "zakaz.identity.require-verified-email=true",
+    "zakaz.identity.phone-key-base64=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+})
 class AuthenticatedDealHttpPostgresIT {
     @Container static PostgreSQLContainer<?> db=new PostgreSQLContainer<>("postgres:17-alpine");
     @DynamicPropertySource static void datasource(DynamicPropertyRegistry r){
@@ -55,15 +62,18 @@ class AuthenticatedDealHttpPostgresIT {
     @Autowired CustomerOrderRepository orders;
     @Autowired InventoryReservationRepository reservations;
     @Autowired OrderOutboxEventRepository events;
+    @Autowired PublicListingLinkRepository publicLinks;
 
     private record Fixture(UUID productId,UUID skuId,UUID locationId,
-                           UUID sellerId,UUID buyerId,String buyerToken,String sellerToken){}
+                           UUID sellerId,UUID buyerId,String buyerToken,String sellerToken,UUID listingId){}
     private Jwt jwt(String subject,String scope) {
         return Jwt.withTokenValue("mocked-decoder-result").header("alg","RS256")
             .issuer("https://idp.example.test").subject(subject)
-            .claim("aud",List.of("zakaz-api")).claim("scope",scope).build();
+            .claim("aud",List.of("zakaz-api")).claim("scope",scope)
+            .claim("email","buyer@example.test").claim("email_verified",true).build();
     }
-    private Fixture seed(){
+    private Fixture seed(){ return seed(true); }
+    private Fixture seed(boolean buyerPreProvisioned){
         String code=String.format("%02d%02d%03d",1+Math.floorMod(UUID.randomUUID().hashCode(),99),
                 1+Math.floorMod(UUID.randomUUID().hashCode(),99),
                 1+Math.floorMod(UUID.randomUUID().hashCode(),999))+"0000000000000";
@@ -80,13 +90,14 @@ class AuthenticatedDealHttpPostgresIT {
         balances.saveAndFlush(InventoryBalance.open(seller,location.getId(),sku.getId(),BigDecimal.ONE));
         areas.saveAndFlush(SellerDeliveryArea.allow(seller,"Almaty"));
         String buyerSubject="buyer-"+UUID.randomUUID(), sellerSubject="seller-"+UUID.randomUUID();
-        buyerLinks.saveAndFlush(BuyerAccountLink.provision("https://idp.example.test",buyerSubject,buyer));
+        if(buyerPreProvisioned)
+            buyerLinks.saveAndFlush(BuyerAccountLink.provision("https://idp.example.test",buyerSubject,buyer));
         memberships.saveAndFlush(SellerMembership.grant("https://idp.example.test",sellerSubject,
             seller,SellerMembership.Role.SELLER_ADMIN));
         String bt="buyer-"+UUID.randomUUID(),st="seller-"+UUID.randomUUID();
         when(decoder.decode(bt)).thenReturn(jwt(buyerSubject,"deal:write order:read"));
         when(decoder.decode(st)).thenReturn(jwt(sellerSubject,"deal:bid order:confirm"));
-        return new Fixture(product.getId(),sku.getId(),location.getId(),seller,buyer,bt,st);
+        return new Fixture(product.getId(),sku.getId(),location.getId(),seller,buyer,bt,st,listing.getId());
     }
     private UUID idFrom(String body,String name) throws Exception{
         return UUID.fromString(json.readTree(body).get(name).asText());
@@ -168,6 +179,80 @@ class AuthenticatedDealHttpPostgresIT {
         assertThat(reservations.findByOrderId(orderId)).hasSize(1);
         assertThat(events.findByAggregateIdAndEventType(orderId,"ORDER_CONFIRMED")).isPresent();
     }
+
+    /**
+     * QA-02: real PostgreSQL/MockMvc commerce journey across registration, QR,
+     * buyer demand, seller quote, acceptance and exactly-once reservation.
+     * JWT decoder is simulated; external Keycloak/SMTP browser UAT is separate.
+     */
+    @Test void buyerEnrollmentQrDemandOfferOrderAndReserveShareOneDbJourney() throws Exception {
+        var f=seed(false);
+        long beforeOrders=orders.count();
+        String qrToken=publicLinks.findByListing_Id(f.listingId()).orElseThrow().getToken();
+
+        mvc.perform(get("/api/v1/public/q/"+qrToken))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.listingId").value(f.listingId().toString()))
+            .andExpect(jsonPath("$.variants[0].id").value(f.skuId().toString()));
+        assertThat(orders.count()).isEqualTo(beforeOrders);
+
+        mvc.perform(get("/api/v1/buyers/me")
+                .header("Authorization","Bearer "+f.buyerToken()))
+            .andExpect(status().isNotFound());
+        mvc.perform(post("/api/v1/buyers/enroll")
+                .header("Authorization","Bearer "+f.buyerToken())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"nickname\":\"BuyerQA02\",\"phone\":\"+77000000000\","
+                    +"\"consentToStorePhone\":true}"))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.nickname").value("BuyerQA02"));
+
+        String expires=Instant.now().plusSeconds(900).toString();
+        String demandBody="{\"city\":\"Almaty\",\"expiresAt\":\""+expires+
+            "\",\"lines\":[{\"productId\":\""+f.productId()+
+            "\",\"quantity\":1,\"unit\":\"PCS\"}]}";
+        var demand=mvc.perform(post("/api/v1/buyers/demands")
+                .header("Authorization","Bearer "+f.buyerToken())
+                .contentType(MediaType.APPLICATION_JSON).content(demandBody))
+            .andExpect(status().isCreated()).andReturn();
+        UUID demandId=idFrom(demand.getResponse().getContentAsString(),"demandId");
+
+        String bidBody="{\"revision\":1,\"expiresAt\":\""+expires+
+            "\",\"lines\":[{\"productId\":\""+f.productId()+
+            "\",\"skuId\":\""+f.skuId()+
+            "\",\"quantity\":1,\"unitPrice\":100}],"
+            +"\"method\":\"PICKUP\",\"originLocationId\":\""+
+              f.locationId()+"\",\"deliveryFee\":0}";
+        var bid=mvc.perform(post("/api/v1/sellers/"+f.sellerId()+
+                "/demands/"+demandId+"/bids")
+                .header("Authorization","Bearer "+f.sellerToken())
+                .contentType(MediaType.APPLICATION_JSON).content(bidBody))
+            .andExpect(status().isCreated()).andReturn();
+        UUID bidId=idFrom(bid.getResponse().getContentAsString(),"bidId");
+
+        var accepted=mvc.perform(post("/api/v1/buyers/demands/"+demandId+
+                "/bids/"+bidId+"/accept")
+                .header("Authorization","Bearer "+f.buyerToken())
+                .header("Idempotency-Key","qa02-"+UUID.randomUUID()))
+            .andExpect(status().isCreated()).andReturn();
+        UUID orderId=idFrom(accepted.getResponse().getContentAsString(),"orderId");
+        assertThat(reservations.findByOrderId(orderId)).isEmpty();
+        assertThat(orders.findById(orderId).orElseThrow().getStatus())
+            .isEqualTo(OrderStatus.PLACED);
+
+        var confirm="/api/v1/sellers/"+f.sellerId()+"/orders/"+orderId+"/confirm";
+        mvc.perform(post(confirm).header("Authorization","Bearer "+f.sellerToken()))
+            .andExpect(status().isNoContent());
+        mvc.perform(post(confirm).header("Authorization","Bearer "+f.sellerToken()))
+            .andExpect(status().isNoContent());
+        assertThat(orders.findById(orderId).orElseThrow().getStatus())
+            .isEqualTo(OrderStatus.CONFIRMED);
+        assertThat(reservations.findByOrderId(orderId)).hasSize(1);
+        assertThat(events.findByAggregateIdAndEventType(orderId,"ORDER_CONFIRMED"))
+            .isPresent();
+        assertThat(orders.count()).isEqualTo(beforeOrders+1);
+    }
+
     @Test void unverifiedAndForeignActorsCannotCreateDemandOrConfirmOrder() throws Exception{
         var f=seed();
         var request="{\"city\":\"Almaty\",\"expiresAt\":\""+

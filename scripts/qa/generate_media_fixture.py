@@ -19,8 +19,9 @@ def main():
         raise SystemExit("Fixture dimensions must be between 1 and 1600")
     # Non-personal, synthetic and deterministic pixels; no EXIF/PII.
     raw = b"".join(
-        b"\x00" + bytes(((x*17+y*3)%256,(x*7+y*11)%256,(x*5+y*13)%256)
-            for x in range(args.width)) for y in range(args.height)
+        b"\x00" + bytes(value for x in range(args.width)
+            for value in ((x*17+y*3)%256,(x*7+y*11)%256,(x*5+y*13)%256))
+        for y in range(args.height)
     )
     payload = (
         b"\x89PNG\r\n\x1a\n" +
