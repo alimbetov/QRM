@@ -83,3 +83,17 @@ Backend добавляет **только недостающую грань**, �
 ## 6. Definition of done / release
 
 R1 code is accepted for *further review* after backend tests, Vitest, TS build, Flutter regression and staging realm checks. `VITE_SELLER_WORKSPACE_ENABLED` and Backend `ZAKAZ_SELLER_WORKSPACE_ENABLED` default OFF. Full release requires operator-run browser Playwright, real Seller OIDC redirect + verified membership, full Buyer/Seller/Inventory journey, device WebView/PKCE, independent S2, privacy and rate/security audit. Single working branch only; don't promote `main` or merge Draft PR #2 without evidence.
+
+## 7. Реальный статус первого среза после реализации
+
+**R1 committed** in `8a9d1fe6ddbe46a78b93f92d2daf60b658080f8a`, TypeScript fix `22cb8bb9cf947fbd67ef0d491785e1061e629907`. Real PostgreSQL negative tests and staging-only seller Playwright contract in `f5da4d0d9135c5e05c21f6b1d2189b24d37ec3fc`.
+
+**At HEAD `978240918a1c6848ef026d372624253e9bd4c397`** (2026-11-14): Java Backend, React, Flutter and Staging Configuration all GitHub Actions **SUCCESS**. Java21 fast **106/106 PASS**; PostgreSQL/Failsafe **102/102 PASS**, 0 failures/errors, `SellerCatalogWorkspacePostgresIT` 3/3 PASS; JaCoCo total **89.95% lines**, **63.84% branches**. Browser Playwright files only compile/list in CI, **no real seller Web/Keycloak UAT executed**.
+
+Additional parallel R1.1 implementation (already in the *same* branch) includes `SellerAccountController.GET /api/v1/sellers/me` (returns only verified SELLER_ADMIN memberships), seller owner-scoped order list, audit-protected QR lead inbox + CONTACTED/DECLINED workflow, optional consent-scoped ML-R2 invitations read, and `SellerDealsPanel` React tabs with server-derived statuses and explicit seller confirmation/cancellation. **This is a code-tested candidate, not a proven real full-cycle user flow**. `CATALOG_EDITOR` users may still need their Seller ID supplied by an admin because seller organization discovery currently filters SELLER_ADMIN.
+
+**Different flags:** `zakaz.seller.workspace.enabled=false` controls R1 draft/listing APIs. `zakaz.seller.studio.enabled=false` independently controls order/member list. `zakaz.qr.http.enabled`, `zakaz.catalog.media.enabled` and `zakaz.ml.r2.consent-api.enabled` independently gate lead/media/invitation APIs. A seller app may report an unavailable section until its server-specific flag is enabled. Never enable all flags merely to make a UI screen appear green.
+
+**Known P0 pre-release deficiencies:** no seller-friendly HCC Product selector or editable item master, no owner-scoped buyer demand+SKU discovery and bid-entry UI; no idempotency key on first `POST .../listings` (client network retries can produce duplicate drafts); no stock location/balance editor, no complete seller→buyer→fulfillment journey, no external Keycloak/SMTP seller+buyer browser UAT, no real RustFS/ClamAV qualification, no physical Android/iOS hybrid UAT and no independent S2 approval. The current draft creation UI is for internal supervised UAT, not public merchant onboarding.
+
+**Next technical step (R2):** add seller eligibility/demand projection with explicit buyer consent and ACL, valid SKU/location selection, form to submit first `SellerBid`, then confirm/reserve a full real order through seller UI; implement idempotent draft POST and friendly product picker in parallel. Qualify via real PostgreSQL and actual browser E2E before enabling release flags.
