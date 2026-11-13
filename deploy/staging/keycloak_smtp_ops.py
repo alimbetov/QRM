@@ -106,9 +106,10 @@ def update_realm(token, desired):
     current = http_json("/admin/realms/" + REALM, token=token)
     if current.get("realm") != REALM:
         raise RuntimeError("Refusing to mutate another realm")
-    # Preserve other realm settings; never turn off email proof.
-    current.update(desired)
-    http_json("/admin/realms/" + REALM, "PUT", current, token)
+    # PUT only explicitly changed top-level properties. Never round-trip a
+    # masked SMTP password returned by GET back into persisted Keycloak config.
+    http_json("/admin/realms/" + REALM, "PUT",
+              {"realm": REALM, **desired}, token)
     return http_json("/admin/realms/" + REALM, token=token)
 
 def main():
