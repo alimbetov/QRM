@@ -7,3 +7,7 @@ QR Commerce Platform for Kazakhstan: seller listings, QR storefronts, Web purcha
 Project requirements are maintained in `docs/` through reviewed pull requests.
 
 **Status (2026-11-13):** R2.3 implementation in Draft PR #2 on `docs/adr-002-jpa-architecture-review`: Java 21 MVC/JPA/PostgreSQL/Flyway Backend, authenticated demand/bid/order APIs and QR/guest-lead HTTP, React QR route with optional seller-set KZT SKU unit price. All public commerce and QR HTTP routes are gated OFF by default. Independent S2 review, external OIDC, browser/mobile end-to-end acceptance and 5000-VU load qualification remain open. `main` is not the implementation baseline.
+
+## R2.3C development status (2026-11-13)
+
+Single active branch `docs/adr-002-jpa-architecture-review`, Draft PR #2. Published catalog HTTP/React, OIDC PKCE buyer flow, protected SellerBid discovery and minimal Flutter source have been implemented. Backend and mobile/web CI must be qualified on the final SHA; external OIDC UAT, browser/device E2E, S2 approval, multi-pod operations and 5000-VU qualification remain OPEN. See [R2.3C implementation](docs/R2-3C-REAL-CATALOG-BUYER-CLIENTS.md). `main` is not current working code.
