@@ -17,7 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class PublicCatalogReadService {
     public record Variant(UUID id, String code, String unit, String priceKzt) {}
-    public record Item(UUID listingId, UUID sellerId, String qrToken,
+    public record Item(UUID listingId, UUID productId, UUID sellerId, String qrToken,
                        String title, String category, String categoryCode,
                        String productType, List<Variant> variants) {}
     public record CatalogPage(int page, int size, long total, List<Item> items) {}
@@ -60,13 +60,14 @@ public class PublicCatalogReadService {
         }
         Long count=jdbc.queryForObject("SELECT count(*) "+filters,params,Long.class);
         var rows=jdbc.query("""
-            SELECT l.id, l.seller_id, q.token, p.canonical_name,
+            SELECT l.id, p.id AS product_id, l.seller_id, q.token, p.canonical_name,
                    c.label AS category, c.hcc_code, c.product_type
             """+filters+"""
             ORDER BY p.canonical_name, l.id
             LIMIT :limit OFFSET :offset
             """,params,(rs,i)->new Item(
-                (UUID)rs.getObject("id"),(UUID)rs.getObject("seller_id"),
+                (UUID)rs.getObject("id"),(UUID)rs.getObject("product_id"),
+                (UUID)rs.getObject("seller_id"),
                 rs.getString("token"),rs.getString("canonical_name"),
                 rs.getString("category"),rs.getString("hcc_code"),
                 rs.getString("product_type"),List.of()));
@@ -85,7 +86,7 @@ public class PublicCatalogReadService {
                     .add(new Variant((UUID)rs.getObject("id"),rs.getString("seller_sku_code"),
                         rs.getString("sales_unit"),price==null?null:price.toPlainString()));
             });
-        var items=rows.stream().map(r->new Item(r.listingId(),r.sellerId(),r.qrToken(),
+        var items=rows.stream().map(r->new Item(r.listingId(),r.productId(),r.sellerId(),r.qrToken(),
             r.title(),r.category(),r.categoryCode(),r.productType(),
             List.copyOf(variants.getOrDefault(r.listingId(),List.of())))).toList();
         return new CatalogPage(page,size,count==null?0:count,items);
