@@ -47,6 +47,13 @@ test('real browser login, demand, bid acceptance, confirmation and inventory wor
   await page.locator('input[name="password"]').fill(env('STAGING_BROWSER_BUYER_PASSWORD'));
   await page.locator('#kc-login').click();
   await expect(page).toHaveURL(/\/buy\?/);
+  const enroll=page.getByRole('button',{name:'Создать профиль покупателя'});
+  if(await enroll.isVisible()){
+    await page.getByRole('textbox',{name:'Никнейм'}).fill('StagingBrowserBuyer');
+    await page.getByRole('textbox',{name:/Контактный телефон/}).fill('+77000000000');
+    await page.getByRole('checkbox',{name:/Согласен на сохранение/}).check();
+    await enroll.click();
+  }
   await expect(page.getByRole('button',{name:'Создать BuyerDemand'})).toBeVisible();
 
   const demandResponsePromise=page.waitForResponse(r=>r.url().includes('/api/v1/buyers/demands')
