@@ -18,9 +18,10 @@ class BuyerAuth {
         scopes:['openid','profile','deal:write','order:read'],
       ),
     );
-    if (tokens?.accessToken == null || tokens!.accessToken!.isEmpty) {
+    final accessToken=tokens.accessToken;
+    if (accessToken == null || accessToken.isEmpty) {
       throw StateError('No access token returned');
     }
-    return tokens.accessToken!;
+    return accessToken;
   }
 }
