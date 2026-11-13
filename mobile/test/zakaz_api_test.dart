@@ -40,6 +40,42 @@ void main() {
     api.dispose();
   });
 
+  test('enrollment has no client-controlled buyer identity or phone verified flag', () async {
+    final client=MockClient((request) async {
+      expect(request.url.path,'/api/v1/buyers/enroll');
+      expect(request.method,'POST');
+      expect(request.headers['authorization'],'Bearer signed-buyer-token');
+      final payload=jsonDecode(request.body) as Map<String,dynamic>;
+      expect(payload.keys,containsAll(['nickname','phone','consentToStorePhone']));
+      expect(payload.containsKey('buyerId'),isFalse);
+      expect(payload.containsKey('email_verified'),isFalse);
+      expect(payload['consentToStorePhone'],isTrue);
+      return http.Response(jsonEncode({
+        'buyerId':'server-id','nickname':'TestBuyer','phoneVerified':false,
+        'maskedPhone':'••••0000','email':'buyer@verified.test','created':true
+      }),201);
+    });
+    final api=ZakazApi('https://staging.example.test',client:client);
+    final registered=await api.enrollBuyer('signed-buyer-token','TestBuyer','+77000000000',true);
+    expect(registered['phoneVerified'],false);
+    api.dispose();
+  });
+
+  test('profile 404 means not enrolled while access denied stays an error', () async {
+    int calls=0;
+    final client=MockClient((request) async {
+      expect(request.url.path,'/api/v1/buyers/me');
+      expect(request.headers['authorization'],'Bearer signed-buyer-token');
+      calls++;
+      return http.Response('',calls==1?404:403);
+    });
+    final api=ZakazApi('https://staging.example.test',client:client);
+    expect(await api.buyerProfile('signed-buyer-token'),isNull);
+    await expectLater(api.buyerProfile('signed-buyer-token'),
+      throwsA(isA<ZakazApiError>().having((e)=>e.statusCode,'statusCode',403)));
+    api.dispose();
+  });
+
   test('insecure external API address is prohibited', () {
     expect(()=>ZakazApi('http://example.com'),throwsArgumentError);
   });
