@@ -3,6 +3,8 @@
 **Date:** 2026-11-12. **Status:** design opportunities, NOT shipped capabilities and NOT proven ROI.  
 Architecture baseline: [DEC-INTELLIGENCE-001](DEC-INTELLIGENCE-001-TASK-SEGMENTATION.md), [UCE HCC](DEC-UCE-001-UNIVERSAL-CLASSIFICATION.md), [ADR-003](ADR-003-JAVA-ML-RECOMMENDATIONS.md), [TRIBUO-HCC review](REVIEW-TRIBUO-HCC-001.md).
 
+**Execution roadmap:** [ML-R1 through ML-R6 (events → datasets → Tribuo → registry → React/Flutter)](ML-R1-R6-EXECUTION-ROADMAP.md). This is the ordered implementation and evidence contract; ML-R2…R6 are not claimed shipped.
+
 ## Product thesis and gates
 
 A single stable HCC + governed universal attribute dictionary + KATO/territory + distinct language capabilities + consented buyer preferences powers multiple independent ML tasks. **Deterministic eligibility first, optional Tribuo ranking second, buyer/seller action third.** Product differentiation comes from better completed trades, not from having 30 predictive models.
