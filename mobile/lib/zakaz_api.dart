@@ -222,7 +222,9 @@ class ZakazApi {
     final data=await request('GET',
       '/api/v1/buyers/demands/'+Uri.encodeComponent(demandId)+'/bids',
       bearer:_requireToken(bearer));
-    _nonempty(data,'demandId');
+    if(_nonempty(data,'demandId') != demandId) {
+      throw const FormatException('Bid response belongs to another demand');
+    }
     final accepted=data['acceptedOrderId'];
     if(accepted != null && accepted is! String) {
       throw const FormatException('Invalid accepted order');
@@ -252,12 +254,64 @@ class ZakazApi {
     final data=await request('GET',
       '/api/v1/buyers/orders/'+Uri.encodeComponent(orderId),
       bearer:_requireToken(bearer));
-    _nonempty(data,'orderId');
+    if(_nonempty(data,'orderId') != orderId) {
+      throw const FormatException('Order response belongs to another order');
+    }
     _nonempty(data,'status');
     _nonempty(data,'currency');
     _array(data,'lines');
-    if(data['totalAmount'] is! num && data['totalAmount'] is! String) {
-      throw const FormatException('Invalid order total');
+    final total=data['totalAmount'];
+    final fee=data['deliveryFee'];
+    final amountPattern=RegExp(r'^\d{1,17}\.\d{2}
+    for(final raw in data['lines'] as List<dynamic>) {
+      if(raw is! Map<String,dynamic> || raw['quantity'] is! String ||
+          raw['lineTotal'] is! String) {
+        throw const FormatException('Order line amounts must be decimal strings');
+      }
+    }
+    return data;
+  }
+
+  void dispose()=>client.close();
+}
+);
+    if(total is! String || fee is! String ||
+        !amountPattern.hasMatch(total) || !amountPattern.hasMatch(fee)) {
+      throw const FormatException('Order money must be an exact decimal string');
+    }
+    for(final raw in data['lines'] as List<dynamic>) {
+      if(raw is! Map<String,dynamic> || raw['quantity'] is! String ||
+          raw['lineTotal'] is! String) {
+        throw const FormatException('Order line amounts must be decimal strings');
+      }
+    }
+    return data;
+  }
+
+  void dispose()=>client.close();
+}
+);
+    for(final raw in data['lines'] as List<dynamic>) {
+      if(raw is! Map<String,dynamic> || raw['quantity'] is! String ||
+          raw['lineTotal'] is! String) {
+        throw const FormatException('Order line amounts must be decimal strings');
+      }
+    }
+    return data;
+  }
+
+  void dispose()=>client.close();
+}
+);
+    if(total is! String || fee is! String ||
+        !amountPattern.hasMatch(total) || !amountPattern.hasMatch(fee)) {
+      throw const FormatException('Order money must be an exact decimal string');
+    }
+    for(final raw in data['lines'] as List<dynamic>) {
+      if(raw is! Map<String,dynamic> || raw['quantity'] is! String ||
+          raw['lineTotal'] is! String) {
+        throw const FormatException('Order line amounts must be decimal strings');
+      }
     }
     return data;
   }

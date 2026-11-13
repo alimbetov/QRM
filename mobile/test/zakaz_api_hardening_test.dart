@@ -97,4 +97,29 @@ void main() {
     expect((await api.qr(token))['title'],'Phone');
     api.dispose();
   });
+  test('order amounts above JavaScript safe integer range remain exact strings',() async {
+    final api=ZakazApi(origin,client:MockClient((_) async =>
+      http.Response(jsonEncode({
+        'orderId':'order-1','status':'PLACED','currency':'KZT',
+        'totalAmount':'9007199254740993.01','deliveryFee':'0.00',
+        'lines':[{'skuId':'sku','unit':'PCS','quantity':'1.000',
+          'lineTotal':'9007199254740993.01'}]
+      }),200)));
+    final order=await api.order('signed','order-1');
+    expect(order['totalAmount'],'9007199254740993.01');
+    expect((order['lines'] as List).first['lineTotal'],'9007199254740993.01');
+    api.dispose();
+  });
+
+  test('numeric order money is rejected to avoid a rounded checkout total',() async {
+    final api=ZakazApi(origin,client:MockClient((_) async =>
+      http.Response(jsonEncode({
+        'orderId':'order-1','status':'PLACED','currency':'KZT',
+        'totalAmount':123.45,'deliveryFee':0,
+        'lines':[{'skuId':'sku','quantity':'1.000','lineTotal':'123.45'}]
+      }),200)));
+    await expectLater(api.order('signed','order-1'),throwsA(isA<FormatException>()));
+    api.dispose();
+  });
+
 }

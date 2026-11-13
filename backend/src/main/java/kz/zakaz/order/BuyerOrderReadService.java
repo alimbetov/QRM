@@ -1,6 +1,5 @@
 package kz.zakaz.order;
 
-import java.math.BigDecimal;
 import java.util.*;
 import kz.zakaz.domain.types.MeasurementUnit;
 import kz.zakaz.security.BuyerIdentityService;
@@ -11,9 +10,9 @@ import org.springframework.transaction.annotation.Transactional;
 /** Buyer-owned immutable economic snapshot and current status. No seller PII. */
 @Service
 public class BuyerOrderReadService {
-    public record Line(UUID skuId,BigDecimal quantity,MeasurementUnit unit,BigDecimal lineTotal){}
+    public record Line(UUID skuId,String quantity,MeasurementUnit unit,String lineTotal){}
     public record View(UUID orderId,String publicNumber,UUID sellerId,String status,
-                       BigDecimal totalAmount,BigDecimal deliveryFee,String currency,
+                       String totalAmount,String deliveryFee,String currency,
                        List<Line> lines){}
     private final BuyerIdentityService identity;
     private final CustomerOrderRepository orders;
@@ -27,9 +26,10 @@ public class BuyerOrderReadService {
             .orElseThrow(()->new NoSuchElementException("Order not found"));
         identity.requireBuyer(actor,order.getBuyerId());
         var lines=order.getLines().stream().map(l->new Line(
-            l.getSkuId(),l.getQuantity(),l.getUnit(),l.getLineTotal())).toList();
+            l.getSkuId(),l.getQuantity().toPlainString(),l.getUnit(),l.getLineTotal().toPlainString())).toList();
         return new View(order.getId(),order.getPublicNumber(),order.getSellerId(),
-            order.getStatus().name(),order.getTotalAmount(),order.getDeliveryFee(),
+            order.getStatus().name(),order.getTotalAmount().toPlainString(),
+            order.getDeliveryFee().toPlainString(),
             order.getCurrencyCode(),lines);
     }
 }

@@ -15,6 +15,7 @@ Scope: working branch `docs/adr-002-jpa-architecture-review`, Flutter source and
 | P1 | Buyer and seller ID rendering used unguarded `substring(0,8)` | Safe short ID presentation | Validation and buyer UI tests |
 | P1 | Fractional PCS quantities passed mobile UI but failed on backend | Shared quantity validation for discrete units | Unit tests |
 | P1 | QR guest consent/phone validation silently ignored invalid submissions | User-facing validation errors and success state | QR widget test |
+| P0 | Order HTTP DTO serialized BigDecimal money as JSON numbers (lossy in Dart/JavaScript) | Monetary values and quantities are immutable exact decimal strings in buyer order DTO | PostgreSQL HTTP + Flutter contract tests |
 | P1 | Unknown public price was displayed as arbitrary backend text | Exact KZT string formatter; no float-derived money | Validation tests |
 
 ## Server trust boundaries

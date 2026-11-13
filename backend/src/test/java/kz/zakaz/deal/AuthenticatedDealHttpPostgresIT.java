@@ -149,7 +149,11 @@ class AuthenticatedDealHttpPostgresIT {
                 .header("Authorization","Bearer "+f.buyerToken()))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").value("PLACED"))
-            .andExpect(jsonPath("$.lines[0].quantity").value(1));
+            // Preserve BigDecimal precision at the HTTP boundary for JS/Dart clients.
+            .andExpect(jsonPath("$.totalAmount").value("100.00"))
+            .andExpect(jsonPath("$.deliveryFee").value("0.00"))
+            .andExpect(jsonPath("$.lines[0].lineTotal").value("100.00"))
+            .andExpect(jsonPath("$.lines[0].quantity").isString());
         // A separately provisioned buyer cannot read or enumerate another buyer's order.
         String anotherSubject="unrelated-buyer-"+UUID.randomUUID();
         String anotherToken="unrelated-token-"+UUID.randomUUID();

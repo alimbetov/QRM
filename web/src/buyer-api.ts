@@ -27,10 +27,10 @@ export type BuyerOrder = {
   publicNumber: string;
   sellerId: string;
   status: string;
-  totalAmount: string | number;
-  deliveryFee: string | number;
+  totalAmount: string;
+  deliveryFee: string;
   currency: string;
-  lines: Array<{skuId:string; quantity:string|number; unit:string; lineTotal:string|number}>;
+  lines: Array<{skuId:string; quantity:string; unit:string; lineTotal:string}>;
 };
 
 async function authorizedJson<T>(method: string, path: string, token: string,
@@ -76,7 +76,15 @@ export async function acceptBuyerBid(
     token,undefined,idempotencyKey);
   return r.orderId;
 }
-export function loadBuyerOrder(token: string, orderId: string): Promise<BuyerOrder> {
-  return authorizedJson<BuyerOrder>('GET',
+export async function loadBuyerOrder(token: string, orderId: string): Promise<BuyerOrder> {
+  const data = await authorizedJson<BuyerOrder>('GET',
     '/api/v1/buyers/orders/'+encodeURIComponent(orderId),token);
+  // Decimal strings are mandatory: JS Number cannot preserve money precisely.
+  if (!data || data.orderId !== orderId || typeof data.totalAmount !== 'string' ||
+      typeof data.deliveryFee !== 'string' || !Array.isArray(data.lines) ||
+      data.lines.some(line => typeof line.quantity !== 'string' ||
+        typeof line.lineTotal !== 'string')) {
+    throw new Error('Invalid buyer order response');
+  }
+  return data;
 }
