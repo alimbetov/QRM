@@ -30,6 +30,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest @AutoConfigureMockMvc @ActiveProfiles("test-pg") @Testcontainers
 @TestPropertySource(properties={
   "zakaz.buyer.enrollment.enabled=true",
+  "zakaz.identity.require-verified-email=true",
   "zakaz.identity.phone-key-base64=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 })
 class BuyerEnrollmentPostgresIT {
