@@ -26,7 +26,7 @@ jobs:
       - name: Validate script syntax
         run: |
           bash -n deploy/staging/seed-fixture.sh
-          python -m py_compile deploy/staging/render_realm.py deploy/staging/oidc-pkce-login.py
+          python -m py_compile deploy/staging/render_realm.py deploy/staging/oidc-pkce-login.py deploy/staging/preflight.py
           node --check deploy/staging/e2e-real-oidc.mjs
       - name: Validate Compose syntax with dummy-only CI secrets
         run: docker compose --env-file deploy/staging/private.env.example -f deploy/staging/compose.yaml config --quiet
