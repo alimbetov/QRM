@@ -133,14 +133,15 @@ export default function SellerWorkspace() {
   const generation=useRef(0);
 
   useEffect(()=>{
-    if(!enabled||!sellerAuth){setAuthReady(true);return;}
+    const client=sellerAuth;
+    if(!enabled||!client){setAuthReady(true);return;}
     let active=true;
-    sellerAuth.getUser().then(value=>{
+    client.getUser().then(value=>{
       if(active){setUser(value&&!value.expired?value:null);setAuthReady(true);}
     }).catch(()=>{if(active)setAuthReady(true);});
     const expired=()=>{setUser(null);setSellerId('');setPage(null);};
-    sellerAuth.events.addAccessTokenExpired(expired);
-    return ()=>{active=false;sellerAuth.events.removeAccessTokenExpired(expired);};
+    client.events.addAccessTokenExpired(expired);
+    return ()=>{active=false;client.events.removeAccessTokenExpired(expired);};
   },[enabled]);
 
   const loadPage=useCallback(async(id:string,token:string,number:number)=>{

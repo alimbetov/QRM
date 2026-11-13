@@ -4,10 +4,11 @@ import {sellerAuth} from './seller-oidc';
 export default function SellerAuthSignedOut() {
   const [state,setState]=useState<'pending'|'complete'|'error'>('pending');
   useEffect(()=>{
-    if(!sellerAuth){setState('error');return;}
+    const client=sellerAuth;
+    if(!client){setState('error');return;}
     let active=true;
-    sellerAuth.signoutRedirectCallback()
-      .then(()=>sellerAuth.removeUser())
+    client.signoutRedirectCallback()
+      .then(()=>client.removeUser())
       .then(()=>{if(active)setState('complete');})
       .catch(()=>{if(active)setState('error');});
     return ()=>{active=false;};
