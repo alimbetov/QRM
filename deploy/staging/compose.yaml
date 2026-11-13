@@ -79,6 +79,7 @@ services:
       DB_PASSWORD: ${ZAKAZ_DB_PASSWORD:?set ZAKAZ_DB_PASSWORD}
       ZAKAZ_JWT_ISSUER: https://${STAGING_DOMAIN:?set STAGING_DOMAIN}/identity/realms/zakaz-staging
       ZAKAZ_JWT_AUDIENCE: zakaz-api
+      SERVER_FORWARD_HEADERS_STRATEGY: native
       ZAKAZ_CATALOG_HTTP_ENABLED: "true"
       ZAKAZ_QR_HTTP_ENABLED: "true"
       ZAKAZ_COMMERCE_HTTP_ENABLED: "true"
