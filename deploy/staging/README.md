@@ -28,7 +28,7 @@ docker compose --env-file deploy/staging/private.env \
   -f deploy/staging/compose.yaml up --build -d
 ```
 
-Check `https://<domain>/identity/realms/zakaz-staging/.well-known/openid-configuration`. The `issuer` field MUST exactly match the Backend `ZAKAZ_JWT_ISSUER`. Confirm JWKS has signing keys, `https://<domain>/api/v1/public/catalog` returns real JSON (possibly empty), and `https://<domain>/` serves the React catalog. A 502 or TLS error is a failing gate; do not spoof tokens or bypass validation. Keycloak import runs only when realm is absent; do not delete the IAM database to re-import a live realm.
+Run `STAGING_DOMAIN=<domain> python3 deploy/staging/preflight.py` (system-trusted HTTPS required). Then check `https://<domain>/identity/realms/zakaz-staging/.well-known/openid-configuration`. The `issuer` field MUST exactly match the Backend `ZAKAZ_JWT_ISSUER`. Confirm JWKS has signing keys, `https://<domain>/api/v1/public/catalog` returns real JSON (possibly empty), and `https://<domain>/` serves the React catalog. A 502 or TLS error is a failing gate; do not spoof tokens or bypass validation. Keycloak import runs only when realm is absent; do not delete the IAM database to re-import a live realm.
 
 ## 2. Provision two isolated Keycloak actors (admin action)
 
@@ -103,7 +103,7 @@ The SQL raises an exception unless one CONFIRMED order has exactly one RESERVED 
 
 ## Remaining release blockers
 
-1. **Independent S2 Issue #3:** authorized reviewer must verify final exact SHA, IdP client scope and audience mapper, PKCE and user lifecycle, known proxy/forwarded-IP trust, TLS, legal data retention, migration/backup rehearsal, and permissions. No approval is implied here.
+1. **Independent S2 Issue #3:** authorized reviewer must verify final exact SHA, IdP client scope and audience mapper, PKCE and user lifecycle, known Caddy→Tomcat forwarded-IP trust (including spoofed X-Forwarded-For negative test), TLS, legal data retention, migration/backup rehearsal, and permissions. No approval is implied here.
 2. **Browser E2E:** live SPA login/logout/refresh/retry and seller-side real UI still require Playwright or equivalent qualification against staging. Current script proves server HTTP flow with real IdP tokens, not UI clicks.
 3. **Flutter:** generate native runner files, configure appAuthRedirectScheme / iOS URL scheme, run signed-device/AppAuth UAT; previous `flutter analyze/test` is not device acceptance.
 4. **Performance:** 5000 distinct paid? **No payment**; only PLACED confirmed order fixtures via legitimate seller membership. Run isolated k6 and post-run integrity scripts after security gate; never infer 5000 capacity from a single-transaction test.
