@@ -262,3 +262,9 @@ Flyway V12 закрывает возможность прямой дозапис
 ## 33. R2.3 QR-first HTTP API / React QR landing (2026-11-13)
 
 Flyway V16 создает стабильный непрогнозируемый публичный QR-токен вместе с публикацией объявления, шифрованные `PurchaseLead` и PostgreSQL rate-limit. Реализованы публичная `GET /api/v1/public/q/{token}`, POST гостевого обращения с согласием/Idempotency-Key (не создает CustomerOrder), seller-only QR PNG с фиксированным HTTPS origin, серверный seller lead inbox (только SELLER_ADMIN+`leads:read`) и неизменяемый аудит чтений по Flyway V17. В React работает реальный маршрут `/q/{token}`, но основной каталог еще демо. Авторизованные BuyerDemand→SellerBid→Acceptance(PLACED)→Seller Confirm(CONFIRMED, reserve, Outbox) и buyer order GET подключены к HTTP контроллеру. Оба публичных функциональных контура выключены по умолчанию до S2 Review, внешнего IdP/JWKS, согласования обработки персональных данных, реального браузерного E2E и нагрузки 5000 пользователей. [Реализация](R2-3-HTTP-API-QR-JOURNEY.md).
+
+## 34. SEARCH-001 — словарный поиск, фотолента и визуальное обнаружение (DRAFT)
+
+**Проект требований, не реализовано и не является production gate PASS.** Единый поиск по названию/словарю синонимов RU/KK/EN/ZH, HCC и pg_trgm; далее безопасные медиа в SellerListing, визуальная лента с cursor/keyset pagination; затем image embedding/pgvector и Photo-to-Service. Все результаты проходят публичную SQL-visibility PUBLIC + active category + QR; Order/Inventory/BuyerDemand остаются authoritative. Техническое задание, API/SQL контракт, границы безопасности и RED-тесты: [SEARCH-001 Unified Discovery](SEARCH-001-UNIFIED-DISCOVERY.md).
+
+Идентификатор фичи SEARCH-001 выбран специально, поскольку старое обозначение R2.4 в §32 относится к k6/5K нагрузочному gate. Релизное переименование должно быть согласовано отдельно; S2 R2.3F, внешний staging E2E и 5K нагрузка не сняты.
