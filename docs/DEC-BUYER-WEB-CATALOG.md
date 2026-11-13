@@ -18,6 +18,9 @@
 
 ## Buyer bookmark and category notification extension (SEARCH-001)
 
+> **Аудит 2026-11-13 / CONDITIONAL:** Реальный backend ещё не содержит Favorite/Notification Center. Category watch и price-watch — P1, последний блокируется V3 immutable published price; order_outbox_event FK на customer_order не применим к Catalog events. S4 favorite owner-scope реализуется отдельно от S5 notification consent/transport. Детали и конкретные RED-контракты: [SEARCH-AUD-001](SEARCH-AUD-001-TECHNICAL-REVIEW.md) и [SEARCH-001 implementation contract](SEARCH-001-IMPLEMENTATION-CONTRACT.md).
+
+
 - **«Моя памятка»** is a user-facing name for existing planned server-side Favorites; not a second wishlist service. `Favorite(buyerId,listingId)` represents one concrete seller Listing, never all sellers of the same Product. Saved items group automatically by the listing Product's authoritative HCC category (parent/child drilldown), with cursor pagination and unchanged buyer ownership controls. A guest can keep temporary local bookmarks only; signed-in import requires confirmation.
 - A bookmark is **not** marketing/Push consent. Independently configurable opt-ins cover listing/SKU price-watch and category new-public-listing digest. Category subscription is explicit, disabled by default and never inferred from a saved item or category visit. Operational order/offer notifications follow distinct policies.
 - Existing planned Notification Center + Outbox is authoritative; optional FCM/Web Push/Flutter are transport adapters, with OS/browser permission gating, dedup, quiet hours, per-channel/device preferences and opt-out checked again at send time. PUSH delivery is best-effort. No unverified price, availability, discount, private media or seller details are exposed in a notification.

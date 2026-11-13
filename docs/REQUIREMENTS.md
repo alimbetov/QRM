@@ -265,6 +265,9 @@ Flyway V16 создает стабильный непрогнозируемый 
 
 ## 34. SEARCH-001 — словарный поиск, фотолента и визуальное обнаружение (DRAFT)
 
+**Аудит реализации 2026-11-13: CONDITIONAL S0, не S2 APPROVE.** Обнаружены order-only Outbox FK на CustomerOrder, отсутствие runtime Favorites/Media/Notifications, невозможность легально менять опубликованную цену (V3), и отсутствие SellerListing/SKU в текущем BuyerDemand route. Исправленный порядок исполнения: S1 Search → S2 Media → S3 PhotoFeed → S4 Favorites → S5 Notifications/Repricing → S6 Visual; точные контракты и BLOCKERS: [SEARCH-AUD-001](SEARCH-AUD-001-TECHNICAL-REVIEW.md) и [SEARCH-001 implementation contract](SEARCH-001-IMPLEMENTATION-CONTRACT.md).
+
+
 **Проект требований, не реализовано и не является production gate PASS.** Единый поиск по названию/словарю синонимов RU/KK/EN/ZH, HCC и pg_trgm; далее безопасные медиа в SellerListing, визуальная лента с cursor/keyset pagination; затем image embedding/pgvector и Photo-to-Service. Также «Моя памятка» с группировкой сохранённых SellerListing по HCC, синхронизацией React/Flutter и явно включаемыми price-watch и Push-подписками по категориям через существующий Notification Center/Outbox; добавление в избранное само по себе не означает согласия на маркетинговые уведомления. Все результаты проходят публичную SQL-visibility PUBLIC + active category + QR; Order/Inventory/BuyerDemand остаются authoritative. Техническое задание, API/SQL контракт, границы безопасности и RED-тесты: [SEARCH-001 Unified Discovery](SEARCH-001-UNIFIED-DISCOVERY.md).
 
 Идентификатор фичи SEARCH-001 выбран специально, поскольку старое обозначение R2.4 в §32 относится к k6/5K нагрузочному gate. Релизное переименование должно быть согласовано отдельно; S2 R2.3F, внешний staging E2E и 5K нагрузка не сняты.
