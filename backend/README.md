@@ -6,11 +6,11 @@ Spring MVC + JPA/Hibernate + PostgreSQL 17 + Flyway + Spring Security OAuth2 res
 
 - Fast JUnit/H2 tests: `mvn -f backend/pom.xml test`
 - All JUnit + PostgreSQL Testcontainers/Failsafe: `mvn -f backend/pom.xml verify` (Docker required).
-- PostgreSQL `test-pg` uses **Flyway V1–V17** then Hibernate `ddl-auto=validate`. H2 `test` explicitly disables Flyway and creates an isolated test schema. Never use H2 as evidence of production SQL migration compatibility.
+- PostgreSQL `test-pg` uses **Flyway V1–V18** then Hibernate `ddl-auto=validate`. H2 `test` explicitly disables Flyway and creates an isolated test schema. Never use H2 as evidence of production SQL migration compatibility.
 
 ## Database/schema ownership
 
-- Fresh PostgreSQL environments: Flyway applies controlled versioned `db/migration/V1__domain_and_catalog_baseline.sql` through V17 on application startup. Includes existing `customer_order`, `order_line`, `inventory_location`, catalog tables, enum governance and seller membership. JPA only validates; it never updates the PostgreSQL schema.
+- Fresh PostgreSQL environments: Flyway applies controlled versioned `db/migration/V1__domain_and_catalog_baseline.sql` through V18 on application startup. Includes existing `customer_order`, `order_line`, `inventory_location`, catalog tables, enum governance and seller membership. JPA only validates; it never updates the PostgreSQL schema.
 - Existing **pre-Flyway** environments are intentionally blocked from silent migration. `spring.flyway.baseline-on-migrate=false` and `spring.flyway.clean-disabled=true`. Before upgrading a populated DB: backup, compare physical schema and data to V1, rehearse a reviewed adoption/baseline plan and verify checksums + migration history. **Do not** simply enable `baseline-on-migrate=true` or delete old tables.
 - The older `db/manual/V001..V003` scripts remain for isolated historical integration checks; `db/migration/` is authoritative for new PostgreSQL environments. Retire manual duplicates only after transition review.
 - Dev PostgreSQL: `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, then `mvn -f backend/pom.xml spring-boot:run`. Development also uses Flyway; old dev DBs require manual adoption.
@@ -39,3 +39,11 @@ Flyway V15 adds dedicated queue coordination fields (`event_sequence`, status, a
 ### R2.3 public QR and authorized commerce HTTP — default OFF
 
 Enable only for an independently approved isolated staging environment. `zakaz.qr.http.enabled=true` enables public QR GET, guest contact POST, seller QR PNG and seller lead inbox; `zakaz.commerce.http.enabled=true` enables BuyerDemand/SellerBid/Order HTTP. Both default false. `zakaz.qr.public-base-url` must be explicitly configured to canonical HTTPS root for seller PNG; no request Host spoofing. Lead POST/decrypt requires `zakaz.leads.phone-key-base64` from secret manager (32 raw bytes base64), missing key returns 503. Never store keys or phone in Git/logs. Lead read requires a verified seller with `leads:read` scope and `SELLER_ADMIN` server role; all contact disclosures are audited. Buyer demand/accept requires `deal:write`, buyer order read `order:read`, seller bid `deal:bid`, seller confirm/cancel `order:confirm`, plus seller membership and buyer account links. Flyway V16–V17 add QR links/encrypted callbacks and PII-read audit. Tests validate PostgreSQL HTTP flows but no production OIDC/ingress/mobile browser qualification. [R2.3 contract and gates](../docs/R2-3-HTTP-API-QR-JOURNEY.md).
+
+## R2.3B — public draft SKU unit price (KZT)
+
+Flyway V18 adds nullable `catalog_sku.public_unit_price_kzt numeric(19,2)`. An authenticated catalog editor with server-side membership can set a strictly positive, two-decimal price while the listing is `DRAFT`:
+
+`PUT /api/v1/sellers/{sellerId}/listings/{listingId}/skus/{skuId}/price`
+
+Body: `{"priceKzt":125000.50}`; response: 204. Requires `SCOPE_catalog:write`, correct seller membership and `zakaz.qr.http.enabled=true` (default false). Ownership and draft state are checked under a listing row lock; V3 protects the SKU price from direct SQL modification after publishing. No silent rounding is permitted. The public QR response contains `variants[].priceKzt` as a decimal **string** or null for legacy listings without a configured price. React displays the string losslessly or "Цена уточняется". It is an indicative unit catalog price, **not** the immutable accepted bid with shipping/discounts/tax; live repricing after publication requires a separate revisioned-price design. Do not imply any checkout is completed by showing the price.
