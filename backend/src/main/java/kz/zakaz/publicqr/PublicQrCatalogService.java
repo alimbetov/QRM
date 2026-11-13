@@ -11,7 +11,7 @@ import org.springframework.http.HttpStatus;
 /** Explicit DTO whitelist: no stock balances, buyer identity or warehouse address. */
 @Service
 public class PublicQrCatalogService {
-    public record Variant(UUID id,String code,String unit){}
+    public record Variant(UUID id,String code,String unit,String priceKzt){}
     public record ListingView(UUID listingId,UUID sellerId,String title,
                               String category,List<Variant> variants){}
     private final PublicListingLinkRepository links;
@@ -26,7 +26,8 @@ public class PublicQrCatalogService {
         var variants=skus.findByListingId(listing.getId()).stream()
             .sorted(Comparator.comparing(SellerSku::getId))
             .map(s->new Variant(s.getId(),s.getSellerSkuCode(),
-                s.getSalesUnit()==null?null:s.getSalesUnit().name())).toList();
+                s.getSalesUnit()==null?null:s.getSalesUnit().name(),
+                s.getPublicUnitPriceKzt()==null?null:s.getPublicUnitPriceKzt().toPlainString())).toList();
         return new ListingView(listing.getId(),listing.getSellerId(),
             listing.getProduct().getCanonicalName(),
             listing.getProduct().getCategory().getLabel(),variants);
