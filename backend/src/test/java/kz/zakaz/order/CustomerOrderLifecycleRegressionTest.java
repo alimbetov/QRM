@@ -71,4 +71,25 @@ class CustomerOrderLifecycleRegressionTest {
             List.of(line("1",MeasurementUnit.PCS,"0.001"))))
             .isInstanceOf(IllegalArgumentException.class);
     }
+    @Test void buyerCancellationIsPlacedOnlyAndNeverRewritesEconomicSnapshots() {
+        var order=CustomerOrder.placedFromBid(SELLER,BUYER,"ZK-2345-6789",
+            List.of(line("2",MeasurementUnit.PCS,"99.99")),
+            UUID.randomUUID(),new BigDecimal("11.00"),NOW);
+        var originalTotal=order.getTotalAmount();
+        var originalBid=order.getAcceptedBidId();
+        order.cancelByBuyer();
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.CANCELLED_BY_BUYER);
+        assertThat(order.getTotalAmount()).isEqualByComparingTo(originalTotal);
+        assertThat(order.getAcceptedBidId()).isEqualTo(originalBid);
+        assertThatThrownBy(order::confirm).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(order::cancelBySeller).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(order::cancelByBuyer).isInstanceOf(IllegalStateException.class);
+
+        var confirmed=CustomerOrder.placed(SELLER,BUYER,"ZK-2345-6789",
+            List.of(line("1",MeasurementUnit.PCS,"100.00")));
+        confirmed.confirm();
+        assertThatThrownBy(confirmed::cancelByBuyer).isInstanceOf(IllegalStateException.class);
+        assertThat(confirmed.getStatus()).isEqualTo(OrderStatus.CONFIRMED);
+    }
+
 }
