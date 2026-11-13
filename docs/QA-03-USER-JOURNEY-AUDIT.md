@@ -48,7 +48,7 @@
 | UX-07 | Buyer явно создаёт Order | **P** | `AuthenticatedDealHttpPostgresIT.buyerEnrollmentQrDemandOfferOrderAndReserveShareOneDbJourney`, `BidAcceptanceFlowTest`; реальный browser/mobile UAT отсутствует, не реализован AGREED-путь |
 | UX-08 | Seller исполняет Order | **P** | `OrderConfirmationPostgresIT.confirmationReservesAtomicallyEmitsOneOutboxAndRetryIsIdempotent`; только CONFIRMED+reserve, нет fulfillment UI/dispatch/READY_FOR_RECEIPT |
 | UX-09 | Buyer подтверждает получение | **M** | Отсутствуют ReceiptChallenge, buyer-only receipt API, expiry/replay protection |
-| UX-10 | Buyer отменяет заказ | **M** | Реализована seller cancellation; нет buyer cancel/request/dispatch race |
+| UX-10 | Buyer отменяет заказ | **P** | Реализована owner-only отмена PLACED через HTTP, React, Flutter; `AuthenticatedDealHttpPostgresIT` проверяет повтор, чужого покупателя, CONFIRMED conflict и гонку с seller confirm. Нет cancellation request после подтверждения и реального device E2E |
 | UX-11 | Buyer оставляет отзыв | **M** | Нет Review entities/API/moderation и receipt eligibility |
 | UX-12 | Seller видит репутацию | **M** | Нет qualified seller reputation snapshot/UI |
 | UX-13 | Seller видит постоянного клиента | **M** | Нет seller-buyer activity read model/ACL |
@@ -56,7 +56,7 @@
 | UX-15 | Seller входит в Web через QR approval | **M** | Есть Seller JWT/OIDC, **нет** browser-bound QR approval |
 | UX-16 | Favorite + Price Watch синхронизированы | **M** | `web/src/App.tsx` содержит лишь локальное demo; активные React/Flutter не используют серверный Favorite |
 
-**Итого по каноническим UX:** **5 P / 11 M / 0 R**. Реализованный новый BuyerDemand→SellerBid→Order имеет собственный backend с тестами, но не заменяет отсутствующий сценарий ценового торга.
+**Итого по каноническим UX:** **6 P / 10 M / 0 R** после реализации owner-only PLACED cancellation; полноценная отмена после CONFIRMED ещё отсутствует. Реализованный новый BuyerDemand→SellerBid→Order имеет собственный backend с тестами, но не заменяет отсутствующий сценарий ценового торга.
 
 ## 4. Канонические EDGE-01…EDGE-20
 
@@ -64,13 +64,13 @@
 |---|---|---|---|
 | EDGE-01 | ARCHIVED между QR view и Lead POST | **P** | Добавлен `PublicQrJourneyPostgresIT.archivedBetweenQrViewAndLeadSubmitCannotCreateLeadOrOrder`; проверить новый тест в exact-SHA CI, параллельный race пока не измерен |
 | EDGE-02 | Tier/Discount изменился до order quote | **M** | Нет PricingTier/DiscountCampaign |
-| EDGE-03 | Два одновременных order create | **P** | Есть retry/uniqueness; нужен отдельный two-thread HTTP acceptance PostgreSQL race |
+| EDGE-03 | Два одновременных order create | **A** | `AuthenticatedDealHttpPostgresIT.twoConcurrentHttpBidAcceptancesCreateExactlyOnePlacedOrder` проверяет два одновременных HTTP POST, один 201/другой 409, ровно один Order без резерва |
 | EDGE-04 | Flutter App Link сохраняет exact listing после login | **P** | `hybrid_route_policy_test.dart`; нет реального Android/iOS App Link + PKCE context-return |
 | EDGE-05 | Чужой номер callback не создаёт связанный Buyer | **A** | `PublicQrJourneyPostgresIT.guestConsentAndIdempotencyProduceLeadNeverOrderOrPlaintext` |
 | EDGE-06 | Seller A читает телефон Lead продавца B | **A** | `SellerLeadInboxPostgresIT.onlySellerAdminCanReadEncryptedGuestContactWithAuditableAccess` |
 | EDGE-07 | Push недоступен, бизнес-событие не теряется | **M** | Нет Notification Center / FCM channel |
 | EDGE-08 | Read-state изменён offline → cross-device sync | **M** | Нет versioned unread Inbox |
-| EDGE-09 | Buyer cancel конкурирует с seller dispatch | **M** | Нет buyer cancellation/dispatch state machine |
+| EDGE-09 | Buyer cancel конкурирует с seller dispatch | **P** | Проверена гонка PLACED buyer cancel ↔ seller CONFIRM (`buyerCancellationRacingSellerConfirmationLeavesOneLegalOutcome`); полноценный PROCESSING/dispatch ещё отсутствует |
 | EDGE-10 | Approved return перед nightly rollup | **M** | Нет ReturnClaim/qualifying profile pipeline |
 | EDGE-11 | 0 completed orders не даёт фиктивного buyer tier | **M** | Нет buyer tier |
 | EDGE-12 | 0 reviews не отображает фиктивный seller 0-star | **M** | Нет seller rating |
@@ -83,7 +83,7 @@
 | EDGE-19 | Nightly job stage failure сохраняет previous published | **M** | Нет durable scheduled profile publication |
 | EDGE-20 | Double review за одну покупку | **M** | Нет Review/PG uniqueness |
 
-**Итого по EDGE:** **4 A / 4 P / 12 M / 0 R**. Не отмечать EDGE-03 как полностью проверенный без реального concurrent PostgreSQL API теста.
+**Итого по EDGE:** **5 A / 4 P / 11 M / 0 R** после QA03 order slice. Уровень R остаётся нулевым до живого браузерного/мобильного E2E.
 
 ## 5. Дополнительные реализованные сценарии текущего приложения
 
@@ -186,3 +186,12 @@
 В этой же точке ветки уже шли параллельные ML-R2 доработки: общий Backend `verify` содержал **105 unit** и **89 PostgreSQL integration** тестов, все PASS. Текущая измеренная JaCoCo точка для указанного коммита: **89.01% line / 63.22% branch** (изменение знаменателя после появления нового ML-кода). Эти показатели **не заменяют** baseline `d075f480...` и не должны произвольно смешиваться с ним.
 
 **Дополнительное S0 противоречие:** мастер-ТЗ упоминает доступ к `UNLISTED` по прямой ссылке, но `PublicQrCatalogService.findPublicLink` в аудированном коде разрешает только `PUBLIC`. Не объявлять direct-link UNLISTED работающим: сначала уточнить security/visibility контракт и написать PostgreSQL RED на переход PUBLIC → UNLISTED → direct access/listing discovery.
+
+## 11. Дополнение QA03: конкурентное принятие и покупательская отмена
+
+Срез описан в [QA-03-ORDER-CANCELLATION-SLICE](QA-03-ORDER-CANCELLATION-SLICE.md). Результаты:
+- RED `86ef216d3b35a15ad17fef20e8df63eb1030eff6`: PostgreSQL HTTP тест ожидаемо вернул 403 вместо 204 (маршрут отмены отсутствовал). Это доказанный RED, не production failure.
+- GREEN `d87cac6b08c254766e5a12d12d0a4e2270e25ed5`: [Java Actions](https://github.com/alimbetov/QRM/actions/runs/43513242321) **105 unit + 95 PostgreSQL IT PASS**, включая 2-concurrent acceptance и buyer cancel vs seller confirm.
+- React и Flutter содержат живое действие отмены с подтверждением и client tests; исходные [Buyer Web CI](https://github.com/alimbetov/QRM/actions/runs/43513249909) и [Flutter CI](https://github.com/alimbetov/QRM/actions/runs/43513249919) PASS.
+- Полный external OIDC/SMTP/Playwright/Android/iOS E2E и S2 остаются **OPEN**. Новый Playwright сценарием только проверяет декларативный контракт и в обычном CI исполняется лишь `--list`.
+- **Новый gate:** отмена только PLACED, при CONFIRMED всегда 409. Никогда не выпускать её как обещание «отмена любого заказа».
