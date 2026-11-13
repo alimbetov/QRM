@@ -43,6 +43,7 @@ jobs:
           clients={c['clientId']:c for c in realm['clients']}
           assert realm['realm']=='zakaz-staging'
           assert not realm['registrationAllowed']
+          assert realm['verifyEmail'] is True
           assert {'zakaz-api','zakaz-buyer-web','zakaz-buyer-cli','zakaz-seller-cli','zakaz-mobile'} <= clients.keys()
           for name in ('zakaz-buyer-web','zakaz-buyer-cli','zakaz-seller-cli','zakaz-mobile'):
               client=clients[name]
