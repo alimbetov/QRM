@@ -56,3 +56,46 @@ jobs:
           assert '__STAGING_DOMAIN__' not in json.dumps(realm)
           print('PASS: realm PKCE, exact redirects, issuer origin inputs')
           PY
+
+  keycloak-import-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      STAGING_DOMAIN: ci.example.org
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start isolated PostgreSQL + real Keycloak and import realm
+        run: |
+          docker compose --env-file deploy/staging/private.env.example \
+            -f deploy/staging/compose.yaml up -d iam-db realm-config keycloak
+      - name: Verify real OIDC discovery and signing JWKS from Docker network
+        run: |
+          ready=false
+          for attempt in $(seq 1 60); do
+            if docker run --rm --network zakaz-staging_private curlimages/curl:8.11.1 \
+              --connect-timeout 2 --max-time 5 -fsS \
+              http://keycloak:8080/identity/realms/zakaz-staging/.well-known/openid-configuration \
+              > /tmp/zakaz-oidc.json 2>/dev/null; then
+              ready=true
+              break
+            fi
+            sleep 5
+          done
+          test "$ready" = true
+          docker run --rm --network zakaz-staging_private curlimages/curl:8.11.1 \
+            --connect-timeout 2 --max-time 10 -fsS \
+            http://keycloak:8080/identity/realms/zakaz-staging/protocol/openid-connect/certs \
+            > /tmp/zakaz-jwks.json
+          python3 - <<'PY'
+          import json
+          conf=json.load(open('/tmp/zakaz-oidc.json'))
+          jwks=json.load(open('/tmp/zakaz-jwks.json'))
+          assert conf['issuer']=='https://ci.example.org/identity/realms/zakaz-staging'
+          assert any(k.get('kty')=='RSA' for k in jwks.get('keys',[]))
+          print('PASS: real Keycloak imported realm, canonical HTTPS issuer, RSA JWKS')
+          PY
+      - name: Clean isolated CI volumes
+        if: always()
+        run: |
+          docker compose --env-file deploy/staging/private.env.example \
+            -f deploy/staging/compose.yaml down -v --remove-orphans
