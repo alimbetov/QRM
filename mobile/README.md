@@ -33,3 +33,7 @@ Android: configure AppAuth manifest placeholder `appAuthRedirectScheme` with `kz
 For running UI, backend flags `zakaz.catalog.http.enabled=true`, `zakaz.qr.http.enabled=true`, `zakaz.commerce.http.enabled=true` are required on isolated test environment. The published catalog can have zero items; no demo fallback. Seller bid creation/confirmation is currently via authenticated backend API, **not yet a seller mobile interface**. The phone callback never creates an account, SMS identity or purchase.
 
 Security/release blockers: independent S2 (#3), real OIDC/JWKS and provisioning, Android/iOS deep-link verification, privacy and rate-limit proxy configuration, real browser/device E2E and 5000-user performance qualification. Do not merge PR #2 to main on Flutter scaffolding alone.
+
+### R2.3E verified buyer profile onboarding
+
+After AppAuth PKCE, Flutter reads `GET /api/v1/buyers/me`; a genuinely unregistered (404) buyer is offered nickname, E.164 unverified phone and explicit consent, then submits `POST /api/v1/buyers/enroll`. A 403 or other failure does not silently create an account. Checkout requires the resulting server-created buyer profile. Device tests and the native AppAuth redirect configuration are still outstanding; no APK/IPA acceptance is implied.
