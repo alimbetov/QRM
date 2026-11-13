@@ -31,6 +31,7 @@ public class SellerSku {
         var s=new SellerSku();s.id=UUID.randomUUID();s.listing=listing;s.sellerSkuCode=skuCode;
         s.trackingMode=mode;s.salesUnit=salesUnit;return s;
     }
+    public String getSellerSkuCode(){return sellerSkuCode;}
     public UUID getId(){return id;}
     public SellerListing getListing(){return listing;}
     public StockTrackingMode getTrackingMode(){return trackingMode;}

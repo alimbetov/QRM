@@ -22,9 +22,14 @@ public class ApiSecurityConfig {
             .sessionManagement(s->s.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
         var decoder=decoders.getIfAvailable();
         if(decoder==null) {
-            http.authorizeHttpRequests(auth->auth.anyRequest().denyAll());
+            http.authorizeHttpRequests(auth->auth
+                .requestMatchers(HttpMethod.GET,"/api/v1/public/q/*").permitAll()
+                .requestMatchers(HttpMethod.POST,"/api/v1/public/q/*/leads").permitAll()
+                .anyRequest().denyAll());
         } else {
             http.authorizeHttpRequests(auth->auth
+                .requestMatchers(HttpMethod.GET,"/api/v1/public/q/*").permitAll()
+                .requestMatchers(HttpMethod.POST,"/api/v1/public/q/*/leads").permitAll()
                 .requestMatchers(HttpMethod.POST,"/api/v1/sellers/*/listings/*/publish")
                     .hasAuthority("SCOPE_catalog:write")
                 .anyRequest().denyAll())

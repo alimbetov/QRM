@@ -15,6 +15,7 @@ public class CanonicalProduct {
         if(name==null||name.isBlank()||name.length()>200)throw new IllegalArgumentException("Invalid product");
         var p=new CanonicalProduct();p.id=UUID.randomUUID();p.category=category;p.canonicalName=name;return p;
     }
+    public String getCanonicalName(){return canonicalName;}
     public UUID getId(){return id;}
     public Category getCategory(){return category;}
 }

@@ -29,6 +29,7 @@ public class Category {
         var c=new Category();c.id=UUID.randomUUID();c.hccCode=hccCode;c.type=type;
         c.label=label;c.parent=parent;c.active=true;return c;
     }
+    public String getLabel(){return label;}
     public UUID getId(){return id;}
     public String getHccCode(){return hccCode;}
     public ProductType getType(){return type;}

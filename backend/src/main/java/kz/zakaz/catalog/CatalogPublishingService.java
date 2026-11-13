@@ -1,6 +1,8 @@
 package kz.zakaz.catalog;
 
 import java.util.*;
+import kz.zakaz.publicqr.PublicListingLink;
+import kz.zakaz.publicqr.PublicListingLinkRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -12,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class CatalogPublishingService {
     private final SellerListingRepository listings;
+    private final PublicListingLinkRepository publicLinks;
     private final SellerSkuRepository skus;
     private final CategoryAttributeRuleRepository rules;
     private final SkuAttributeValueRepository attributes;
@@ -19,9 +22,11 @@ public class CatalogPublishingService {
     public CatalogPublishingService(SellerListingRepository listings,SellerSkuRepository skus,
                                     CategoryAttributeRuleRepository rules,
                                     SkuAttributeValueRepository attributes,
-                                    AttributeEnumOptionRepository enumOptions) {
+                                    AttributeEnumOptionRepository enumOptions,
+                                    PublicListingLinkRepository publicLinks) {
         this.listings=listings;this.skus=skus;this.rules=rules;
         this.attributes=attributes;this.enumOptions=enumOptions;
+        this.publicLinks=publicLinks;
     }
     @Transactional
     public void publishForSeller(UUID actorSellerId,UUID listingId) {
@@ -42,5 +47,7 @@ public class CatalogPublishingService {
             CatalogEnumPolicy.verifyFacts(facts,enumOptions);
         }
         listing.publish();
+        // Atomic with publication: never emit a QR identity for an unpublished draft.
+        publicLinks.saveAndFlush(PublicListingLink.issue(listing));
     }
 }
