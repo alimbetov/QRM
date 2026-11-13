@@ -53,9 +53,9 @@ public class SellerQrController {
         }
         var target=base.resolve("/q/"+link.getToken()).toString();
         try{
-            var matrix=new QRCodeWriter().encode(target,BarcodeFormat.QR_CODE,360,360,
+            var matrix=new QRCodeWriter().encode(target,BarcodeFormat.QR_CODE,512,512,
                 Map.of(EncodeHintType.ERROR_CORRECTION,ErrorCorrectionLevel.M,
-                       EncodeHintType.MARGIN,2));
+                       EncodeHintType.MARGIN,4));
             var out=new ByteArrayOutputStream();
             MatrixToImageWriter.writeToStream(matrix,"PNG",out);
             return ResponseEntity.ok().cacheControl(CacheControl.noStore())
