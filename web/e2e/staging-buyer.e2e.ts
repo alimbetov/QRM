@@ -48,6 +48,8 @@ test('real browser login, demand, bid acceptance, confirmation and inventory wor
   await page.locator('#kc-login').click();
   await expect(page).toHaveURL(/\/buy\?/);
   const enroll=page.getByRole('button',{name:'Создать профиль покупателя'});
+  const demandButton=page.getByRole('button',{name:'Создать BuyerDemand'});
+  await expect(enroll.or(demandButton)).toBeVisible();
   if(await enroll.isVisible()){
     await page.getByRole('textbox',{name:'Никнейм'}).fill('StagingBrowserBuyer');
     await page.getByRole('textbox',{name:/Контактный телефон/}).fill('+77000000000');
