@@ -17,6 +17,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.jwt.*;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -30,6 +31,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest @AutoConfigureMockMvc @ActiveProfiles("test-pg") @Testcontainers
+@TestPropertySource(properties="zakaz.commerce.http.enabled=true")
 class AuthenticatedDealHttpPostgresIT {
     @Container static PostgreSQLContainer<?> db=new PostgreSQLContainer<>("postgres:17-alpine");
     @DynamicPropertySource static void datasource(DynamicPropertyRegistry r){

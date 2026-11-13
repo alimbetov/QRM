@@ -1,10 +1,12 @@
 package kz.zakaz.publicqr;
 
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
+@ConditionalOnProperty(name="zakaz.qr.http.enabled",havingValue="true")
 @RequestMapping("/api/v1/public/q")
 public class PublicQrController {
     public record LeadRequest(String phone,Boolean consent){}

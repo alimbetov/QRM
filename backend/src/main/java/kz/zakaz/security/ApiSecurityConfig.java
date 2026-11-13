@@ -40,6 +40,8 @@ public class ApiSecurityConfig {
                     .hasAuthority("SCOPE_order:confirm")
                 .requestMatchers(HttpMethod.POST,"/api/v1/sellers/*/orders/*/cancel")
                     .hasAuthority("SCOPE_order:confirm")
+                .requestMatchers(HttpMethod.GET,"/api/v1/sellers/*/listings/*/qr.png")
+                    .hasAuthority("SCOPE_catalog:write")
                 .requestMatchers(HttpMethod.POST,"/api/v1/sellers/*/listings/*/publish")
                     .hasAuthority("SCOPE_catalog:write")
                 .anyRequest().denyAll())

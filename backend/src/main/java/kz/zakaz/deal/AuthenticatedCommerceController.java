@@ -1,6 +1,7 @@
 package kz.zakaz.deal;
 
 import jakarta.validation.Valid;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
 import java.time.*;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
  * No inventory is reserved at PLACED; only SELLER_ADMIN confirmation reserves.
  */
 @RestController
+@ConditionalOnProperty(name="zakaz.commerce.http.enabled",havingValue="true")
 @RequestMapping("/api/v1")
 public class AuthenticatedCommerceController {
     public record DemandLineInput(@NotNull UUID productId,
