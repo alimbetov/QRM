@@ -283,5 +283,130 @@ class ZakazApi {
     return data;
   }
 
+
+  static final _sellerUuid=RegExp(
+    r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}
+}
+);
+  static String _sellerId(String value){
+    if(!_sellerUuid.hasMatch(value))throw ArgumentError('Invalid seller resource ID');
+    return value;
+  }
+
+  Future<List<dynamic>> _sellerList(String bearer,String path) async {
+    final response=await client.get(url(path),headers:{
+      'Authorization':'Bearer '+_requireToken(bearer),
+      'Accept':'application/json'
+    }).timeout(requestTimeout);
+    if(response.statusCode!=200)throw ZakazApiError(response.statusCode);
+    final parsed=jsonDecode(utf8.decode(response.bodyBytes));
+    if(parsed is! List<dynamic>)throw const FormatException('Expected seller array');
+    return parsed;
+  }
+
+  Future<List<dynamic>> sellerAccounts(String bearer) async {
+    final items=await _sellerList(bearer,'/api/v1/sellers/me');
+    for(final item in items){
+      if(item is! Map<String,dynamic>||
+         item['sellerId'] is! String ||
+         !_sellerUuid.hasMatch(item['sellerId'] as String) ||
+         item['role']!='SELLER_ADMIN') {
+        throw const FormatException('Invalid seller membership');
+      }
+    }
+    return items;
+  }
+
+  Future<Map<String,dynamic>> sellerOrders(String bearer,String sellerId,
+      [int page=0]) async {
+    _sellerId(sellerId);
+    if(page<0||page>1000)throw ArgumentError('Invalid seller order page');
+    final data=await request('GET',
+      '/api/v1/sellers/'+sellerId+'/orders',bearer:_requireToken(bearer),
+      query:{'page':page.toString(),'size':'20','status':'ALL'});
+    if(data['page']!=page||data['size']!=20||
+       data['total'] is! int || (data['total'] as int)<0) {
+      throw const FormatException('Invalid order pagination');
+    }
+    final amounts=RegExp(r'^\d{1,17}\.\d{2}
+}
+);
+    for(final raw in _array(data,'items')){
+      if(raw is! Map<String,dynamic> ||
+         raw['orderId'] is! String || !_sellerUuid.hasMatch(raw['orderId'] as String) ||
+         raw['status'] is! String || raw['totalAmount'] is! String ||
+         !amounts.hasMatch(raw['totalAmount'] as String) ||
+         raw['deliveryFee'] is! String ||
+         !amounts.hasMatch(raw['deliveryFee'] as String) ||
+         raw['currency']!='KZT'||raw['lines'] is! List<dynamic>){
+        throw const FormatException('Invalid seller order');
+      }
+    }
+    return data;
+  }
+
+
+  Future<void> _sellerNoContent(String bearer,String method,String path,
+      [Map<String,dynamic>? payload]) async {
+    final req=http.Request(method,url(path));
+    req.headers['Authorization']='Bearer '+_requireToken(bearer);
+    req.headers['Accept']='application/json';
+    if(payload!=null){
+      req.headers['Content-Type']='application/json';
+      req.body=jsonEncode(payload);
+    }
+    final response=await http.Response.fromStream(
+      await client.send(req)).timeout(requestTimeout);
+    if(response.statusCode!=204)throw ZakazApiError(response.statusCode);
+  }
+
+  Future<void> sellerOrderAction(
+      String bearer,String sellerId,String orderId,String action) async {
+    _sellerId(sellerId);_sellerId(orderId);
+    if(action!='confirm'&&action!='cancel')throw ArgumentError('Invalid seller action');
+    await _sellerNoContent(bearer,'POST',
+      '/api/v1/sellers/'+sellerId+'/orders/'+orderId+'/'+action);
+  }
+
+  Future<List<dynamic>> sellerLeads(String bearer,String sellerId) async {
+    _sellerId(sellerId);
+    final items=await _sellerList(bearer,
+      '/api/v1/sellers/'+sellerId+'/leads?page=0&size=20');
+    for(final item in items){
+      if(item is! Map<String,dynamic> ||
+         item['leadId'] is! String || !_sellerUuid.hasMatch(item['leadId'] as String) ||
+         item['listingId'] is! String || !_sellerUuid.hasMatch(item['listingId'] as String) ||
+         item['phone'] is! String || item['receivedAt'] is! String ||
+         !['NEW','CONTACTED','DECLINED'].contains(item['status'])) {
+        throw const FormatException('Invalid callback data');
+      }
+    }
+    return items;
+  }
+
+  Future<void> sellerLeadStatus(String bearer,String sellerId,
+      String leadId,String status) async {
+    _sellerId(sellerId);_sellerId(leadId);
+    if(!['CONTACTED','DECLINED'].contains(status))throw ArgumentError('Invalid lead status');
+    await _sellerNoContent(bearer,'PUT',
+      '/api/v1/sellers/'+sellerId+'/leads/'+leadId+'/status',{'status':status});
+  }
+
+  Future<List<dynamic>> sellerInvitations(String bearer,String sellerId) async {
+    _sellerId(sellerId);
+    final items=await _sellerList(bearer,
+      '/api/v1/sellers/'+sellerId+'/invitations?limit=24');
+    for(final item in items){
+      if(item is! Map<String,dynamic>||
+         item['invitationId'] is! String || item['demandId'] is! String ||
+         !_sellerUuid.hasMatch(item['invitationId'] as String)||
+         !_sellerUuid.hasMatch(item['demandId'] as String)||
+         item['deliveredAt'] is! String){
+        throw const FormatException('Invalid invitation');
+      }
+    }
+    return items;
+  }
+
   void dispose()=>client.close();
 }

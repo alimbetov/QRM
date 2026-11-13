@@ -3,6 +3,7 @@ import 'zakaz_api.dart';
 import 'mobile_validation.dart';
 import 'qr_screen.dart';
 import 'buyer_screen.dart';
+import 'seller_inbox_screen.dart';
 
 /// Public discovery stays usable without login; no synthetic items on API errors.
 class CatalogScreen extends StatefulWidget {
@@ -84,7 +85,13 @@ class _CatalogScreenState extends State<CatalogScreen> {
 
   @override Widget build(BuildContext context) {
     return Scaffold(
-      appBar:AppBar(title:const Text('ZAKAZ · каталог')),
+      appBar:AppBar(title:const Text('ZAKAZ · каталог'),
+        actions:[
+          if(const bool.fromEnvironment('ZAKAZ_SELLER_STUDIO_ENABLED'))
+            IconButton(tooltip:'Кабинет продавца',icon:const Icon(Icons.store),
+              onPressed:()=>Navigator.push(context,MaterialPageRoute<void>(
+                builder:(_)=>SellerInboxScreen(api:widget.api)))),
+        ]),
       body:Padding(padding:const EdgeInsets.all(16),child:Column(children:[
         TextField(controller:search,
           decoration:InputDecoration(labelText:'Поиск по товарам',

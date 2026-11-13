@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import 'buyer_screen.dart';
+import 'seller_inbox_screen.dart';
 import 'catalog_screen.dart';
 import 'hybrid_route_policy.dart';
 import 'zakaz_api.dart';
@@ -111,6 +112,13 @@ class _HybridCatalogScreenState extends State<HybridCatalogScreen> {
       appBar: AppBar(
         title: const Text('ZAKAZ · каталог'),
         actions: [
+          if(const bool.fromEnvironment('ZAKAZ_SELLER_STUDIO_ENABLED'))
+            IconButton(
+              tooltip: 'Кабинет продавца',
+              icon: const Icon(Icons.store),
+              onPressed:()=>Navigator.push(context,MaterialPageRoute<void>(
+                builder:(_)=>SellerInboxScreen(api:widget.api))),
+            ),
           IconButton(
             tooltip: 'Назад в каталоге',
             onPressed: _back,
