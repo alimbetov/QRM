@@ -47,6 +47,14 @@ async function api(method,path,token,body,key,expected=200){
 }
 
 console.log('R2.3D: verifying real OIDC and transactional HTTP journey');
+const registration=await api('POST','/api/v1/buyers/enroll',buyer,{
+  nickname:'StagingBuyer',phone:'+77000000000',consentToStorePhone:true
+},null,201);
+assert.equal(registration.phoneVerified,false,'Phone was not verified by SMS');
+assert.equal(registration.maskedPhone,'••••0000');
+const me=await api('GET','/api/v1/buyers/me',buyer);
+assert.equal(me.buyerId,registration.buyerId);
+console.log('PASS: verified OIDC buyer enrollment without SMS or client-assigned buyer ID');
 const uri='/api/v1/public/catalog?query=STAGING-QR-TEST-PRODUCT';
 const before=await api('GET',uri,null,null,null,200);
 assert.equal(before.total,0,'Seed must remain DRAFT before seller publication');
