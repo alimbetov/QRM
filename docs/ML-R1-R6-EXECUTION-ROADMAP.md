@@ -1,6 +1,6 @@
 # ML-R1 → ML-R6 — executable release sequence for ZAKAZ
 
-**Status:** ML-R1 and ML-R2 initial PostgreSQL implementation committed; ML-R2 external invitation dispatch/consent policy remains HOLD; ML-R3…ML-R6 are plans, NOT shipped.
+**Status:** ML-R1 plus ML-R2 PostgreSQL trade journal/internal delivery/consent API implementation committed; independently approved release and actual Push/SMS/email remain HOLD; ML-R3…ML-R6 are NOT shipped.
 **Repository:** `alimbetov/QRM`; continue only on `docs/adr-002-jpa-architecture-review` until the current Draft PR is independently reviewed and merged.
 **Architecture baseline:** Java 21, Spring Boot MVC/JPA, PostgreSQL modular monolith, HCC 20-digit 2/2/3/5/8, typed AttributeRegistry, catalog/demand/bid/order/outbox. No standalone ML microservice, MongoDB or broker required at this stage.
 
@@ -29,13 +29,17 @@ Proposed append-only domain events with explicitly versioned payloads:
 - `SELLER_INVITATION_ELIGIBLE`, `INVITATION_QUEUED`, `INVITATION_DELIVERED`, `INVITATION_SUPPRESSED`, `INVITATION_FAILED`
 - `SELLER_BID_SUBMITTED`, `BID_REVISED`, `BID_EXPIRED`, `BID_ACCEPTED`, `ORDER_CONFIRMED` and relevant cancellations
 
-Event envelope minimum: `event_id UUID`, `event_type`, `schema_version`, `aggregate_id`, `aggregate_version`, `occurred_at`, `ingested_at`, `idempotency_key`, `causation_id`, `consent/purpose policy marker` when required. `V24` is now allocated to ML-R2 event/decision storage. Seller notifications and consent are separate future work; buyer Favorites is assigned **V25 or next available version** after verifying current HEAD.
+Event envelope minimum: `event_id UUID`, `event_type`, `schema_version`, `aggregate_id`, `aggregate_version`, `occurred_at`, `ingested_at`, `idempotency_key`, `causation_id`, `consent/purpose policy marker` when required. `V24` is now allocated to ML-R2 event/decision storage. Seller notifications and consent are separate future work; buyer Favorites is assigned **V26 or next available version** after verifying current HEAD.
 
 Deduplication is a **business invariant**, not a cache TTL: unique `(demand_id, seller_id, invitation_policy_version)` for one invitation decision per policy round; unique `event_id` in consumed-event ledger and unique source-aggregate revision. Repeated delivery must produce one business invitation and one training label. No emailing/pushing before explicit delivery policy and consent checks.
 
 **Implemented PostgreSQL checks:** RED `MlTradeEventPostgresIT` intentionally failed on missing tables; GREEN tests cover immutable events, bid revisions, duplicate `(demand,seller,policy)` rejection, seller membership/category/public listing/location suppression, expiry, six competing workers, versioned reevaluation. Further required tests before external invitation delivery: real notification consent, HTTP replay, crashed dispatcher, external delivery ACK, database event consumer dedup, revocation and privacy gates.
 
 **Exit gate:** PostgreSQL journal and candidate evaluation achieved in CI. Full ML-R2 delivery gate **OPEN**: reviewed notification policy/consent, real at-least-once consumer ledger and crash/replay tests, independently verified side effects; independent S2 on exact SHA. No sending from the current service.
+
+### ML-R2.1 reliable internal delivery — implemented candidate
+
+**V25** adds fenced `ml_event_delivery` (claim/heartbeat/ACK/retry/dead-letter), `ml_event_projection_inbox` with immutable fingerprint contract and `ml_seller_invitation_inbox` under explicit buyer-demand sharing consent AND seller in-app opt-in. Buyer and seller endpoints enforce verified account linkage/SELLER_ADMIN through JWT; all delivery and consent feature flags remain OFF. Actual email/Push/SMS, external provider ACK, operator redrive and independent S2/multi-node staging qualification remain open. See [ML-R2 status](ML-R2-IMPLEMENTATION-STATUS.md).
 
 ## ML-R3 — PostgreSQL Dataset Builder and time-control
 

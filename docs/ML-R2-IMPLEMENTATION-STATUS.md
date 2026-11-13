@@ -1,7 +1,7 @@
 # ML-R2 — executable PostgreSQL trade journal and invitation eligibility
 
 **Date:** 2026-11-14. **Branch:** `docs/adr-002-jpa-architecture-review`.
-**Release status:** Candidate GREEN verified by CI, **independent S2 NOT APPROVED**, external notification consent and delivery NOT implemented.
+**Release status:** ML-R2 transactional event journal + *internal* at-least-once delivery and opt-in invitation inbox implemented, PostgreSQL CI PASS; **independent S2 NOT APPROVED**, production worker OFF, real Push/SMS/email NOT implemented.
 
 ## Implemented
 
@@ -20,14 +20,24 @@
 
 **PostgreSQL negative scenarios covered:** direct SQL duplicate decision rejection, append-only DELETE/UPDATE, duplicate revision, expired demand, inactive/non-member seller, DRAFT-only/non-matching SKU, absent destination fulfillment, concurrent 6-worker decision replay, and distinct policy versions. The hardening tests extend verification of a failed transaction producing **zero events** and one BID_ACCEPTED/ORDER_CONFIRMED event despite repeated seller confirmation.
 
-## Remaining ML-R2 acceptance blockers
+## ML-R2.1 — reliable internal delivery and consent (2026-11-14)
 
-1. **Buyer notification/marketing consent** and seller notification preferences are not present. Do not automatically dispatch messages based on an `ELIGIBLE` candidate.
-2. Add source event consumer/delivery ledger for actual at-least-once processing, duplicate conflicting IDs, crash between dispatch and ACK, retries and dead letters. Current local event journal is transactionally durable, **not a live messaging pipeline**.
-3. Real schema migration in staging, DB write throughput/latency and contention tests with concurrent bids/confirmations; 5,000-VU commerce load and correctness remain open.
-4. Harden exposure: no public ML-R2 invitation endpoint, do not trust client seller IDs or consent booleans; restrict SQL write privileges, auditor access, tenant scoping and retention.
-5. Independent S2 Review of migration/triggers, security, data lineage, temporal semantics, concurrency tests, worker failure modes and exact SHA.
+- **RED `af1c3150211fdd6e268f44880956a23081cc8f86`:** PostgreSQL delivery tests refer to the absent queue and projection sink; Backend CI expected RED.
+- **GREEN `c4abe58a85345353f74c5a3a8ab4c7d0da48fe1c`:** Flyway `V25__ml_event_delivery_and_consent.sql` creates a per-event PostgreSQL queue, transactional consumer ledger, buyer-demand sharing consent, seller in-app preference, private seller inbox; migration replays actual V24 trade events only, no invented time history. All four CI workflows PASS; Java21 `mvn verify` BUILD SUCCESS, 88 PostgreSQL IT tests, zero failures, V1–V25 applied.
+- **`JdbcMlEventQueue`:** bounded cross-pod `SKIP LOCKED` claims, per-demand event ordering, fencing by lease token + monotonically increasing claim generation, ACK only if lease valid, exponential retry/backoff, expired claim recovery, DEAD_LETTER terminal state and per-status health.
+- **`JdbcMlEventProjectionSink`:** event fingerprint + unique consumer/event inbox written in a transaction, with internal invitation-inbox projection in that SAME transaction. If the consumer commits then dies before queue ACK, retry is harmless; conflicting fingerprints fail closed.
+- **`MlEventDispatcher`:** ACK after sink commit, sanitized error names on failure. Internal-only scheduler is **OFF by default** (`zakaz.ml.r2.delivery.enabled=false`), external webhook, Push, email and SMS are NOT called.
+- **Consent boundary:** only a linked buyer can toggle sharing of their demand; only authenticated `SELLER_ADMIN` can toggle seller in-app invitations/read inbox. Both must be explicitly enabled. Missing or revoked consent suppresses access. Public/listing/active membership/geography/expiration and prior acceptance are rechecked at delivery AND read. HTTP consent/inbox endpoints are **OFF by default** (`zakaz.ml.r2.consent-api.enabled=false`). Candidate evaluation stays internal and OFF (`zakaz.ml.r2.invitation-evaluation.enabled=false`).
+- **Tests:** event producer rollback, two-worker claim race, stale ACK/lease recovery, sink-before-ACK crash replay, retry and dead letter, buyer+seller positive and negative opt-in, buyer/seller endpoint ACL and revocation, causal ordering and conflicting fingerprints (last two added in hardening follow-up and require exact-SHA CI validation).
 
-**Next milestone:** complete ML-R2 event replay/delivery and consent policy before classifying R2 as fully complete. Then ML-R3 PostgreSQL point-in-time Dataset Builder may consume these immutable authoritative facts, with `occurred_at` and `ingested_at` controlled separately and no future leakage.
+## Required gates before production or ML-R3 qualification
 
-**ML-R3…ML-R6 remain planned, not implemented.**
+1. **Independent S2 Review on exact SHA** for V24/V25 migration, temporal semantics, role/consent checks, privacy, event replay and ACLs. Neither automatic CI nor this author is an independent APPROVE.
+2. **Real staging multi-pod worker UAT:** worker restarts, PG outage, lease contention, simultaneous policy revoke, snapshot retention, dead-letter alerting, controlled audited redrive and backup/restore. No real multi-pod evidence yet.
+3. **Actual outbound notification/push integration** is deliberately NOT included. If enabled later it needs channel-specific delivery/outbox, seller device tokens, consent/quiet hours, retry ACK from provider and separate E2E. An `ELIGIBLE` candidate is never permission to push.
+4. **Performance and privacy:** 5K load gate, delivery backlog/lag, slow consumer/connection-pool contention, row-retention policy, database least privilege, time skew and revocation races require qualification.
+5. **ML-R3 prerequisite:** temporal datasets must use immutable `ml_trade_event` and consumed event evidence, with separate `occurred_at` / `ingested_at` / `applied_at`, no late-feature leakage and no duplicated labels.
+
+**Migration numbering:** V23 media audit, V24 ML-R2 event journal, V25 ML-R2 internal delivery/consent. SEARCH Favorites must start **V26 or next free version**, and category-watch/Push at V27+.
+
+**The internal ML-R2 delivery slice is implemented and CI-green; the full product release remains HOLD** until external staging/independent review. ML-R3…ML-R6 are not implemented.

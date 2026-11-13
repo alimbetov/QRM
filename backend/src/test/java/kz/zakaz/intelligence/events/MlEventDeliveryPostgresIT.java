@@ -109,4 +109,43 @@ class MlEventDeliveryPostgresIT {
             """,Integer.class,id)).isZero();
     }
     @Autowired org.springframework.transaction.PlatformTransactionManager txManager;
+    @Test void eventDeliveryRespectsCausalOrderWithinOneBuyerDemand() {
+        var f=demandEvent();
+        UUID invitation=UUID.randomUUID();
+        jdbc.update("""
+            INSERT INTO ml_seller_invitation(
+                id,demand_id,seller_id,policy_version,status,reason_code,evaluated_at)
+            VALUES (?,?,?,1,'SUPPRESSED','NO_ACTIVE_MEMBERSHIP',clock_timestamp())
+            """,invitation,f.demandId(),UUID.randomUUID());
+        UUID laterEvent=jdbc.queryForObject("""
+            SELECT event_id FROM ml_trade_event
+            WHERE aggregate_id=? AND event_type='SELLER_INVITATION_EVALUATED'
+            """,UUID.class,invitation);
+        var first=queue.claim("ordering-a",10,Duration.ofSeconds(30),3);
+        assertThat(first).extracting(JdbcMlEventQueue.Claim::eventId)
+            .containsExactly(f.eventId());
+        assertThat(queue.ack(first.getFirst())).isTrue();
+        var second=queue.claim("ordering-b",10,Duration.ofSeconds(30),3);
+        assertThat(second).extracting(JdbcMlEventQueue.Claim::eventId)
+            .containsExactly(laterEvent);
+        sink.deliver(second.getFirst());
+        assertThat(queue.ack(second.getFirst())).isTrue();
+    }
+
+    @Test void conflictingConsumerFingerprintIsRejectedInsteadOfSilentlyDeduplicated() {
+        var f=demandEvent();
+        var claim=queue.claim("fingerprint-worker",1,Duration.ofSeconds(30),3).getFirst();
+        jdbc.update("""
+            INSERT INTO ml_event_projection_inbox(consumer_id,event_id,fingerprint)
+            VALUES ('ml-r2-projection-v1',?,?)
+            """,f.eventId(),"0".repeat(64));
+        assertThatThrownBy(()->sink.deliver(claim))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessageContaining("Conflicting replay fingerprint");
+        assertThat(queue.fail(claim,"Fingerprint mismatch",Duration.ZERO,1)).isTrue();
+        assertThat(jdbc.queryForObject("""
+            SELECT status FROM ml_event_delivery WHERE event_id=?
+            """,String.class,f.eventId())).isEqualTo("DEAD_LETTER");
+    }
+
 }

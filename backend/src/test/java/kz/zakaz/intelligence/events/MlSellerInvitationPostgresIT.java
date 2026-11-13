@@ -203,4 +203,29 @@ class MlSellerInvitationPostgresIT {
             .isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
     }
 
+    @Test void oneSidedOptInSuppressesInvitationUntilNewPolicyEvaluation() {
+        var f=scenario(true,true,true);
+        consent.setSellerInApp(f.sellerId(),true);
+        UUID buyer=jdbc.queryForObject(
+            "SELECT buyer_id FROM buyer_demand_snapshot WHERE id=?",
+            UUID.class,f.demandId());
+        var old=invitation.evaluate(f.demandId(),f.sellerId(),1,Instant.now());
+        var worker=new MlEventDispatcher(deliveryQueue,deliverySink,
+            "one-sided-test",10,3,java.time.Duration.ofSeconds(30));
+        assertThat(worker.pollOnce()).isEqualTo(1);
+        assertThat(worker.pollOnce()).isEqualTo(1);
+        assertThat(jdbc.queryForObject("""
+            SELECT count(*) FROM ml_seller_invitation_inbox WHERE invitation_id=?
+            """,Integer.class,old.id())).isZero();
+
+        consent.setDemandSharing(buyer,f.demandId(),true);
+        // Older events stay consumed; a new explicit policy decision is required.
+        var updated=invitation.evaluate(f.demandId(),f.sellerId(),2,Instant.now());
+        assertThat(updated.id()).isNotEqualTo(old.id());
+        assertThat(worker.pollOnce()).isEqualTo(1);
+        assertThat(consent.listSellerInbox(f.sellerId(),24))
+            .extracting(MlInvitationConsentService.InboxItem::invitationId)
+            .containsExactly(updated.id());
+    }
+
 }
