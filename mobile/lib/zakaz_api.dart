@@ -285,9 +285,7 @@ class ZakazApi {
 
 
   static final _sellerUuid=RegExp(
-    r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}
-}
-);
+    r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}'+String.fromCharCode(36));
   static String _sellerId(String value){
     if(!_sellerUuid.hasMatch(value))throw ArgumentError('Invalid seller resource ID');
     return value;
@@ -328,9 +326,7 @@ class ZakazApi {
        data['total'] is! int || (data['total'] as int)<0) {
       throw const FormatException('Invalid order pagination');
     }
-    final amounts=RegExp(r'^\d{1,17}\.\d{2}
-}
-);
+    final amounts=RegExp(r'^\d{1,17}\.\d{2}'+String.fromCharCode(36));
     for(final raw in _array(data,'items')){
       if(raw is! Map<String,dynamic> ||
          raw['orderId'] is! String || !_sellerUuid.hasMatch(raw['orderId'] as String) ||
