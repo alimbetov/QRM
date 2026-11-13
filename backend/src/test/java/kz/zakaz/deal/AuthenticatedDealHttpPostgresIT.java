@@ -84,7 +84,7 @@ class AuthenticatedDealHttpPostgresIT {
         memberships.saveAndFlush(SellerMembership.grant("https://idp.example.test",sellerSubject,
             seller,SellerMembership.Role.SELLER_ADMIN));
         String bt="buyer-"+UUID.randomUUID(),st="seller-"+UUID.randomUUID();
-        when(decoder.decode(bt)).thenReturn(jwt(buyerSubject,"deal:write"));
+        when(decoder.decode(bt)).thenReturn(jwt(buyerSubject,"deal:write order:read"));
         when(decoder.decode(st)).thenReturn(jwt(sellerSubject,"deal:bid order:confirm"));
         return new Fixture(product.getId(),sku.getId(),location.getId(),seller,buyer,bt,st);
     }
@@ -123,6 +123,11 @@ class AuthenticatedDealHttpPostgresIT {
                 .header("Authorization","Bearer "+f.buyerToken())
                 .header("Idempotency-Key","buyer-accept-one"))
             .andExpect(status().isCreated()).andExpect(jsonPath("$.orderId").value(orderId.toString()));
+        mvc.perform(get("/api/v1/buyers/orders/"+orderId)
+                .header("Authorization","Bearer "+f.buyerToken()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("PLACED"))
+            .andExpect(jsonPath("$.lines[0].quantity").value(1));
         assertThat(orders.findById(orderId).orElseThrow().getStatus()).isEqualTo(OrderStatus.PLACED);
         assertThat(reservations.findByOrderId(orderId)).isEmpty();
         var confirmation="/api/v1/sellers/"+f.sellerId()+"/orders/"+orderId+"/confirm";
@@ -130,6 +135,10 @@ class AuthenticatedDealHttpPostgresIT {
             .andExpect(status().isNoContent());
         mvc.perform(post(confirmation).header("Authorization","Bearer "+f.sellerToken()))
             .andExpect(status().isNoContent());
+        mvc.perform(get("/api/v1/buyers/orders/"+orderId)
+                .header("Authorization","Bearer "+f.buyerToken()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("CONFIRMED"));
         assertThat(orders.findById(orderId).orElseThrow().getStatus()).isEqualTo(OrderStatus.CONFIRMED);
         assertThat(reservations.findByOrderId(orderId)).hasSize(1);
         assertThat(events.findByAggregateIdAndEventType(orderId,"ORDER_CONFIRMED")).isPresent();

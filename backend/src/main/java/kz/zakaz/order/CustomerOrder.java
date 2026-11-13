@@ -57,6 +57,7 @@ public class CustomerOrder {
        throw new IllegalStateException("Order is not seller-cancellable");
    status=OrderStatus.CANCELLED_BY_SELLER;
  }
+ public String getCurrencyCode(){return currencyCode;}
  public UUID getId(){return id;}
  public String getPublicNumber(){return publicNumber;}
  public OrderStatus getStatus(){return status;}

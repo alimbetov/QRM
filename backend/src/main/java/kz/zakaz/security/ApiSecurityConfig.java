@@ -30,6 +30,8 @@ public class ApiSecurityConfig {
             http.authorizeHttpRequests(auth->auth
                 .requestMatchers(HttpMethod.GET,"/api/v1/public/q/*").permitAll()
                 .requestMatchers(HttpMethod.POST,"/api/v1/public/q/*/leads").permitAll()
+                .requestMatchers(HttpMethod.GET,"/api/v1/buyers/orders/*")
+                    .hasAuthority("SCOPE_order:read")
                 .requestMatchers(HttpMethod.POST,"/api/v1/buyers/demands")
                     .hasAuthority("SCOPE_deal:write")
                 .requestMatchers(HttpMethod.POST,"/api/v1/buyers/demands/*/bids/*/accept")

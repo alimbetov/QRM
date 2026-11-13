@@ -8,6 +8,7 @@ import java.time.*;
 import java.util.*;
 import kz.zakaz.domain.types.MeasurementUnit;
 import kz.zakaz.inventory.*;
+import kz.zakaz.order.BuyerOrderReadService;
 import kz.zakaz.security.*;
 import org.springframework.http.*;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
@@ -41,6 +42,7 @@ public class AuthenticatedCommerceController {
     public record OrderCreated(UUID orderId){}
 
     private final BuyerIdentityService buyerIdentity;
+    private final BuyerOrderReadService orderReads;
     private final SellerIdentityService sellerIdentity;
     private final DealPersistenceService deals;
     private final SellerBidSubmissionService bids;
@@ -50,10 +52,12 @@ public class AuthenticatedCommerceController {
     public AuthenticatedCommerceController(BuyerIdentityService buyerIdentity,
          SellerIdentityService sellerIdentity,DealPersistenceService deals,
          SellerBidSubmissionService bids,BidAcceptanceService acceptance,
-         OrderConfirmationService confirmation,OrderCancellationService cancellation){
+         OrderConfirmationService confirmation,OrderCancellationService cancellation,
+         BuyerOrderReadService orderReads){
         this.buyerIdentity=buyerIdentity;this.sellerIdentity=sellerIdentity;
         this.deals=deals;this.bids=bids;this.acceptance=acceptance;
         this.confirmation=confirmation;this.cancellation=cancellation;
+        this.orderReads=orderReads;
     }
     @PostMapping("/buyers/demands")
     public ResponseEntity<DemandCreated> createDemand(@Valid @RequestBody DemandInput body,
@@ -93,6 +97,11 @@ public class AuthenticatedCommerceController {
          JwtAuthenticationToken actor){
         var id=acceptance.accept(actor,demandId,bidId,key,Instant.now());
         return ResponseEntity.status(HttpStatus.CREATED).body(new OrderCreated(id));
+    }
+    @GetMapping("/buyers/orders/{orderId}")
+    public BuyerOrderReadService.View buyerOrder(@PathVariable UUID orderId,
+                                                  JwtAuthenticationToken actor){
+        return orderReads.read(actor,orderId);
     }
     @PostMapping("/sellers/{sellerId}/orders/{orderId}/confirm")
     @ResponseStatus(HttpStatus.NO_CONTENT)
