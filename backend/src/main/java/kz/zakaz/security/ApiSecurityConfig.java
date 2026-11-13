@@ -25,6 +25,7 @@ public class ApiSecurityConfig {
             http.authorizeHttpRequests(auth->auth
                 .requestMatchers(HttpMethod.GET,"/api/v1/public/catalog","/api/v1/public/catalog/categories").permitAll()
                 .requestMatchers(HttpMethod.GET,"/api/v1/public/catalog/search","/api/v1/public/search/suggest").permitAll()
+                .requestMatchers(HttpMethod.GET,"/api/v1/public/catalog/*/media","/api/v1/public/media/*").permitAll()
                 .requestMatchers(HttpMethod.GET,"/api/v1/public/q/*").permitAll()
                 .requestMatchers(HttpMethod.POST,"/api/v1/public/q/*/leads").permitAll()
                 .anyRequest().denyAll());
@@ -32,6 +33,7 @@ public class ApiSecurityConfig {
             http.authorizeHttpRequests(auth->auth
                 .requestMatchers(HttpMethod.GET,"/api/v1/public/catalog","/api/v1/public/catalog/categories").permitAll()
                 .requestMatchers(HttpMethod.GET,"/api/v1/public/catalog/search","/api/v1/public/search/suggest").permitAll()
+                .requestMatchers(HttpMethod.GET,"/api/v1/public/catalog/*/media","/api/v1/public/media/*").permitAll()
                 .requestMatchers(HttpMethod.GET,"/api/v1/public/q/*").permitAll()
                 .requestMatchers(HttpMethod.POST,"/api/v1/public/q/*/leads").permitAll()
                 .requestMatchers(HttpMethod.GET,"/api/v1/buyers/me")
@@ -57,6 +59,8 @@ public class ApiSecurityConfig {
                 .requestMatchers(HttpMethod.GET,"/api/v1/sellers/*/listings/*/qr.png")
                     .hasAuthority("SCOPE_catalog:write")
                 .requestMatchers(HttpMethod.PUT,"/api/v1/sellers/*/listings/*/skus/*/price")
+                    .hasAuthority("SCOPE_catalog:write")
+                .requestMatchers(HttpMethod.POST,"/api/v1/sellers/*/listings/*/media")
                     .hasAuthority("SCOPE_catalog:write")
                 .requestMatchers(HttpMethod.POST,"/api/v1/sellers/*/listings/*/publish")
                     .hasAuthority("SCOPE_catalog:write")
