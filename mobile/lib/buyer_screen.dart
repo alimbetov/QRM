@@ -20,11 +20,12 @@ class _BuyerScreenState extends State<BuyerScreen> {
   final quantity=TextEditingController(text:'1');
   final auth=BuyerAuth();
   final keys=<String,String>{};
+  BuyerSession? session;
   String? token,demandId,orderId,error;
   Map<String,dynamic>? quotes,order,profile;
   bool busy=false,enrollmentChecked=false,consent=false;
   @override void dispose(){
-    token=null;nickname.dispose();phone.dispose();city.dispose();quantity.dispose();super.dispose();
+    session=null;token=null;nickname.dispose();phone.dispose();city.dispose();quantity.dispose();super.dispose();
   }
 
   String nonce(){
@@ -42,9 +43,20 @@ class _BuyerScreenState extends State<BuyerScreen> {
 
   Future<void> login()=>action(()async {
     final result=await auth.signIn();
-    final found=await widget.api.buyerProfile(result);
+    final found=await widget.api.buyerProfile(result.accessToken);
     if(mounted)setState((){
-      token=result;profile=found;enrollmentChecked=true;
+      session=result;token=result.accessToken;profile=found;enrollmentChecked=true;
+    });
+  });
+
+  Future<void> logout()=>action(()async {
+    final current=session;
+    if(current==null)throw StateError('No active OIDC session');
+    await auth.signOut(current);
+    if(mounted)setState((){
+      session=null;token=null;demandId=null;orderId=null;
+      quotes=null;order=null;profile=null;enrollmentChecked=false;
+      consent=false;keys.clear();
     });
   });
 
@@ -107,6 +119,8 @@ class _BuyerScreenState extends State<BuyerScreen> {
         if(!BuyerAuth.configured)const Text('OIDC не настроен. Авторизованный заказ недоступен.'),
         if(BuyerAuth.configured && token==null)FilledButton(
           onPressed:busy?null:login,child:const Text('Войти через OIDC / PKCE')),
+        if(token!=null)OutlinedButton(
+          onPressed:busy?null:logout,child:const Text('Выйти через Keycloak')),
         if(token!=null && !enrollmentChecked)const Text('Проверяем профиль покупателя…'),
         if(token!=null && enrollmentChecked && profile==null) ...[
           const Text('Завершите регистрацию через проверенный email. Телефон хранится зашифрованным, но не подтверждается SMS и не используется для входа.'),
