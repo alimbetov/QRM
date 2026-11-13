@@ -38,3 +38,7 @@ Search currently uses canonical product name and exact category, not full-text/f
 Previous static demo `web/src/App.tsx` and `catalog.ts` remain isolated legacy sources, **not** the default route. They must not be represented as live production data.
 
 See `docs/R2-3C-REAL-CATALOG-BUYER-CLIENTS.md`, Draft PR #2 and S2 issue #3. Do not deploy publicly or merge to `main` before independent review.
+
+### R2.3E verified buyer profile onboarding
+
+After Keycloak PKCE login, the client calls authenticated `GET /api/v1/buyers/me`. When the backend returns 404, the user may complete a profile with nickname, E.164 contact phone and explicit storage consent via `POST /api/v1/buyers/enroll`. All ids and email-verification claims come from the **signed token and backend**; the UI never supplies a buyerId. This functionality requires staging `zakaz.buyer.enrollment.enabled=true` and an independent buyer phone encryption key, plus Keycloak email verification. The phone is not SMS-verified and may not be used for recovery. When the profile cannot be verified (403/503), checkout remains blocked.
