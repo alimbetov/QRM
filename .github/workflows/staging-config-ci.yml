@@ -1,0 +1,58 @@
+name: Staging Configuration
+on:
+  push:
+    paths:
+      - 'deploy/staging/**'
+      - 'backend/Dockerfile.staging'
+      - 'web/Dockerfile.staging'
+      - '.github/workflows/staging-config-ci.yml'
+  pull_request:
+    paths:
+      - 'deploy/staging/**'
+      - 'backend/Dockerfile.staging'
+      - 'web/Dockerfile.staging'
+      - '.github/workflows/staging-config-ci.yml'
+jobs:
+  static-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Validate script syntax
+        run: |
+          bash -n deploy/staging/seed-fixture.sh
+          python -m py_compile deploy/staging/render_realm.py deploy/staging/oidc-pkce-login.py
+          node --check deploy/staging/e2e-real-oidc.mjs
+      - name: Validate Compose syntax with dummy-only CI secrets
+        run: docker compose --env-file deploy/staging/private.env.example -f deploy/staging/compose.yaml config --quiet
+      - name: Validate rendered Keycloak realm and strict PKCE grants
+        env:
+          STAGING_DOMAIN: ci.example.org
+          STAGING_TEMPLATE_DIR: deploy/staging
+          STAGING_OUTPUT_DIR: ${{ runner.temp }}/realm-validation
+        run: |
+          python deploy/staging/render_realm.py
+          python - <<'PY'
+          import json, os, pathlib
+          realm=json.loads((pathlib.Path(os.environ['STAGING_OUTPUT_DIR'])/'realm.json').read_text())
+          clients={c['clientId']:c for c in realm['clients']}
+          assert realm['realm']=='zakaz-staging'
+          assert not realm['registrationAllowed']
+          assert {'zakaz-api','zakaz-buyer-web','zakaz-buyer-cli','zakaz-seller-cli','zakaz-mobile'} <= clients.keys()
+          for name in ('zakaz-buyer-web','zakaz-buyer-cli','zakaz-seller-cli','zakaz-mobile'):
+              client=clients[name]
+              assert client['publicClient'] and client['standardFlowEnabled']
+              assert not client['directAccessGrantsEnabled'] and not client['implicitFlowEnabled']
+              assert client['attributes']['pkce.code.challenge.method']=='S256'
+              assert 'zakaz-audience' in client['defaultClientScopes']
+          web=clients['zakaz-buyer-web']
+          assert web['redirectUris']==['https://ci.example.org/auth/callback']
+          assert web['webOrigins']==['https://ci.example.org']
+          assert '__STAGING_DOMAIN__' not in json.dumps(realm)
+          print('PASS: realm PKCE, exact redirects, issuer origin inputs')
+          PY
