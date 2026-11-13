@@ -39,7 +39,7 @@ class _QrScreenState extends State<QrScreen> {
   @override void dispose() {phone.dispose();super.dispose();}
 
   void _reload() {
-    setState(()=>listing=widget.api.qr(widget.token));
+    setState(() { listing=widget.api.qr(widget.token); });
   }
 
   String nonce() {
@@ -59,14 +59,24 @@ class _QrScreenState extends State<QrScreen> {
       return;
     }
     key ??= nonce(); // Preserve the key across network retries for the same phone.
+    final requestToken=widget.token;
+    final requestApi=widget.api;
+    final requestPhone=phone.text.trim();
+    final requestKey=key!;
     setState((){busy=true;error=null;});
     try {
-      await widget.api.lead(widget.token,phone.text.trim(),key!);
-      if(mounted)setState(()=>accepted=true);
+      await requestApi.lead(requestToken,requestPhone,requestKey);
+      if(mounted && widget.token==requestToken && identical(widget.api,requestApi)) {
+        setState(()=>accepted=true);
+      }
     } catch (_) {
-      if(mounted)setState(()=>error='Обращение не принято. Проверьте сеть и повторите.');
+      if(mounted && widget.token==requestToken && identical(widget.api,requestApi)) {
+        setState(()=>error='Обращение не принято. Проверьте сеть и повторите.');
+      }
     } finally {
-      if(mounted)setState(()=>busy=false);
+      if(mounted && widget.token==requestToken && identical(widget.api,requestApi)) {
+        setState(()=>busy=false);
+      }
     }
   }
 

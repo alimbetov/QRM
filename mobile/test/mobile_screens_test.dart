@@ -12,6 +12,9 @@ import 'package:zakaz_mobile/zakaz_api.dart';
 const endpoint='https://staging.example.test';
 final qrToken=List.filled(43,'B').join();
 
+http.Response utf8Json(String body) => http.Response(body,200,
+  headers:{'content-type':'application/json; charset=utf-8'});
+
 String catalogFixture({int total=1})=>jsonEncode({
   'page':0,'size':12,'total':total,
   'items':[{
@@ -59,7 +62,7 @@ void main() {
     final api=ZakazApi(endpoint,client:MockClient((_) async {
       calls++;
       if(calls==1)return http.Response('',503);
-      return http.Response(catalogFixture(),200);
+      return utf8Json(catalogFixture());
     }));
     await tester.pumpWidget(MaterialApp(home:CatalogScreen(api:api)));
     await tester.pumpAndSettle();
@@ -73,7 +76,7 @@ void main() {
 
   testWidgets('multi-unit catalog does not force buyer into first service SKU',(tester) async {
     final api=ZakazApi(endpoint,client:MockClient((_) async =>
-      http.Response(catalogFixture(),200)));
+      utf8Json(catalogFixture())));
     await tester.pumpWidget(MaterialApp(home:CatalogScreen(api:api)));
     await tester.pumpAndSettle();
     expect(find.text('Запросить предложение · PCS'),findsOneWidget);
@@ -91,7 +94,7 @@ void main() {
     final api=ZakazApi(endpoint,client:MockClient((req) async {
       if(req.method=='GET') {
         views++;
-        return views==1?http.Response('',503):http.Response(qrFixture(),200);
+        return views==1?http.Response('',503):utf8Json(qrFixture());
       }
       contacts++;
       expect(req.url.path,'/api/v1/public/q/'+qrToken+'/leads');
@@ -126,7 +129,7 @@ void main() {
     final api=ZakazApi(endpoint,client:MockClient((req) async {
       if(req.url.path=='/api/v1/buyers/me') {
         lookups++;
-        return lookups==1?http.Response('',503):http.Response(profileFixture(),200);
+        return lookups==1?http.Response('',503):utf8Json(profileFixture());
       }
       return http.Response('',500);
     }));
@@ -147,7 +150,7 @@ void main() {
   testWidgets('failed provider logout retains the local session for a retry',(tester) async {
     final fake=FakeBuyerAuth()..failLogout=true;
     final api=ZakazApi(endpoint,client:MockClient((_) async =>
-      http.Response(profileFixture(),200)));
+      utf8Json(profileFixture())));
     await tester.pumpWidget(MaterialApp(home:BuyerScreen(
       api:api,productId:'short',unit:'PCS',authGateway:fake)));
     await tester.pumpAndSettle();
