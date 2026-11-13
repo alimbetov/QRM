@@ -89,8 +89,12 @@ public final class AdaptiveSufficiencyCalibrator {
             if (baseline==0) continue; // no measurable improvement over a perfect baseline
             double improvement=(baseline-candidate)/baseline;
             if (improvement<guardrails.minRelativeImprovement()) continue;
-            valid.add(new Candidate(entry.getKey(),rows.size(),improvement,candidate));
+            valid.add(new Candidate(entry.getKey(),rows.size(),improvement,candidate,Set.copyOf(cohorts)));
         }
+        // Compare candidate thresholds ONLY on identical cohort/period evidence.
+        // Otherwise a low threshold can win simply because it saw easier sellers.
+        if(valid.size()>1 && valid.stream().map(Candidate::cohortIds).distinct().count()>1)
+            return new Selection(fallback,false,0,0,List.of("INCOMPARABLE_COHORTS"));
         return valid.stream()
             .sorted(Comparator.comparingDouble(Candidate::candidateMae)
                 .thenComparing(Comparator.comparingInt((Candidate c)->c.threshold().weeks()).reversed())
@@ -101,5 +105,6 @@ public final class AdaptiveSufficiencyCalibrator {
             .orElseGet(()->new Selection(fallback,false,0,0,List.of("NO_QUALIFIED_CANDIDATE")));
     }
     private record Threshold(int weeks,double coverage) {}
-    private record Candidate(Threshold threshold,int cohorts,double improvement,double candidateMae) {}
+    private record Candidate(Threshold threshold,int cohorts,double improvement,
+                             double candidateMae,Set<String> cohortIds) {}
 }

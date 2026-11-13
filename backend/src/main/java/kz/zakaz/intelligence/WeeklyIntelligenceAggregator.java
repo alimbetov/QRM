@@ -39,7 +39,11 @@ public final class WeeklyIntelligenceAggregator {
             return availableDays == 0 ? OptionalDouble.empty()
                     : OptionalDouble.of((double) soldUnits / availableDays);
         }
-        public boolean complete() { return observedWeeks == requestedWeeks && unknownStockDays == 0; }
+        public boolean complete() {
+            // A closed ISO week needs seven actually observed, known-stock days.
+            return observedWeeks == requestedWeeks && unknownStockDays == 0
+                && availableDays + stockoutDays == requestedWeeks * 7;
+        }
     }
 
     public static LocalDate monday(LocalDate day) {

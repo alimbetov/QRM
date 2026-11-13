@@ -102,4 +102,15 @@ class WeeklyIntelligenceSmokeTest {
             WeeklyIntelligenceAggregator.rollingWindow(weeks,key(SLOW),AS_OF,ZONE,4)))
             .isInstanceOf(IllegalArgumentException.class);
     }
+    @Test void partialKnownWeekIsNotCompleteEvenWithoutUnknownStockFlags() {
+        var sparse=new ArrayList<WeeklyIntelligenceAggregator.Day>();
+        for(int i=0;i<4;i++) sparse.add(new WeeklyIntelligenceAggregator.Day(
+            SELLER,HOT,"GEO.ALMATY",LocalDate.of(2026,10,12).plusWeeks(i),
+            1,1,1,true));
+        var weeks=WeeklyIntelligenceAggregator.aggregateClosedWeeks(sparse,AS_OF,ZONE);
+        var window=WeeklyIntelligenceAggregator.rollingWindow(weeks,key(HOT),AS_OF,ZONE,4);
+        assertThat(window.observedWeeks()).isEqualTo(4);
+        assertThat(window.unknownStockDays()).isZero();
+        assertThat(window.complete()).isFalse();
+    }
 }

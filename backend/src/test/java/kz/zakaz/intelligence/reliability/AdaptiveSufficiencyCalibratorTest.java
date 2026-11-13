@@ -65,4 +65,16 @@ class AdaptiveSufficiencyCalibratorTest {
         assertThat(AdaptiveSufficiencyCalibrator.select(rows,RULES,AS_OF,10).calibrated())
             .isFalse();
     }
+    @Test void differentEvaluationCohortsCannotSelectMisleadingWinningThreshold() {
+        var easy=cohort(12,.95,1,10);
+        var hard=new ArrayList<AdaptiveSufficiencyCalibrator.Evidence>();
+        for(int i=0;i<5;i++) hard.add(new AdaptiveSufficiencyCalibrator.Evidence(
+            "OTHER_CITY_"+i,AS_OF.minusWeeks(10-i),26,.95,50,5,6,10,12));
+        var evidence=new ArrayList<AdaptiveSufficiencyCalibrator.Evidence>();
+        evidence.addAll(easy);evidence.addAll(hard);
+        var selection=AdaptiveSufficiencyCalibrator.select(evidence,RULES,AS_OF,10);
+        assertThat(selection.calibrated()).isFalse();
+        assertThat(selection.reasons()).contains("INCOMPARABLE_COHORTS");
+        assertThat(selection.policy().minimumWeeks()).isEqualTo(52);
+    }
 }
