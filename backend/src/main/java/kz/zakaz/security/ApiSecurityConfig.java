@@ -23,6 +23,8 @@ public class ApiSecurityConfig {
         var decoder=decoders.getIfAvailable();
         if(decoder==null) {
             http.authorizeHttpRequests(auth->auth
+                .requestMatchers(HttpMethod.GET,"/api/v1/public/catalog","/api/v1/public/catalog/categories").permitAll()
+                .requestMatchers(HttpMethod.GET,"/api/v1/public/catalog","/api/v1/public/catalog/categories").permitAll()
                 .requestMatchers(HttpMethod.GET,"/api/v1/public/q/*").permitAll()
                 .requestMatchers(HttpMethod.POST,"/api/v1/public/q/*/leads").permitAll()
                 .anyRequest().denyAll());
