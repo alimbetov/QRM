@@ -9,7 +9,6 @@ CREATE TABLE buyer_profile (
     phone_verified boolean NOT NULL DEFAULT false,
     consent_to_store_phone_at timestamptz NOT NULL,
     created_at timestamptz NOT NULL,
-    CONSTRAINT chk_buyer_phone_unverified CHECK (phone_verified=false),
     CONSTRAINT chk_buyer_phone_last_four CHECK (phone_last_four ~ '^[0-9]{4}$')
 );
 CREATE INDEX idx_buyer_profile_created_at ON buyer_profile(created_at);
