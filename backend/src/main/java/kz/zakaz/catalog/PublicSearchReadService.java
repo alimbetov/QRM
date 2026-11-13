@@ -51,7 +51,7 @@ public class PublicSearchReadService {
             JOIN catalog_category origin ON origin.id=tc.category_id
             WHERE st.status='ACTIVE' AND origin.active=true
               AND tc.relation_type IN ('SYNONYM','CATEGORY_TERM','SERVICE_INTENT')
-              AND (st.normalized_term=:term OR similarity(st.normalized_term,:term)>=0.64)
+              AND (st.normalized_term=:term OR (st.normalized_term % :term\n                  AND similarity(st.normalized_term,:term)>=0.64))
             UNION
             SELECT child.id,mc.relation_type
             FROM catalog_category child
@@ -85,7 +85,7 @@ public class PublicSearchReadService {
                   lower(p.canonical_name) LIKE :contains
                   OR to_tsvector('simple',lower(p.canonical_name))
                      @@ plainto_tsquery('simple',:term)
-                  OR similarity(lower(p.canonical_name),:term)>=0.55
+                  OR (lower(p.canonical_name) % :term\n                      AND similarity(lower(p.canonical_name),:term)>=0.55)
                   OR EXISTS (
                       SELECT 1 FROM matched_categories m
                       WHERE m.category_id=c.id
@@ -104,7 +104,7 @@ public class PublicSearchReadService {
      * One Listing is one result even when it contains multiple SKUs.
      * Keyset: (match bucket, lower title, listing UUID), never OFFSET.
      */
-    @Transactional(readOnly=true,isolation=Isolation.REPEATABLE_READ)
+    @Transactional(readOnly=true,isolation=Isolation.REPEATABLE_READ,timeout=5)
     public SearchPage search(String raw,String categoryCode,String productType,
                              int limit,String cursor) {
         String term=normalize(raw);
@@ -185,7 +185,7 @@ public class PublicSearchReadService {
         return new SearchPage(items,next,hasMore);
     }
 
-    @Transactional(readOnly=true)
+    @Transactional(readOnly=true,timeout=3)
     public List<Suggestion> suggest(String raw,String locale) {
         String term=normalize(raw);
         if(term.codePointCount(0,term.length())<2)

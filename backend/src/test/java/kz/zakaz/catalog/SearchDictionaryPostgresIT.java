@@ -157,6 +157,49 @@ class SearchDictionaryPostgresIT {
             .andExpect(status().isBadRequest());
     }
 
+
+    @Test void fourLocalesAndHccParentFilterFindSamePublishedListing() throws Exception {
+        var h=hierarchy(ProductType.PHYSICAL);
+        String suffix=UUID.randomUUID().toString().replace("-","").substring(0,7);
+        var target=listing(h.child(),"Аккумуляторный инструмент "+suffix,true,1);
+        Map<String,String> terms=Map.of(
+            "ru","болгарка"+suffix,
+            "kk","бұрыштық тегістеуіш"+suffix,
+            "en","angle grinder "+suffix,
+            "zh","角磨机"+suffix);
+        for(var entry:terms.entrySet()) {
+            dictionary(entry.getValue(),entry.getKey(),h.child(),"SYNONYM");
+            var matched=search(entry.getValue(),
+                "&categoryCode="+h.root().getHccCode()+"&productType=PHYSICAL");
+            assertThat(matched.path("items").size()).isEqualTo(1);
+            assertThat(matched.path("items").get(0).path("listingId").asText())
+                .isEqualTo(target.getId().toString());
+            assertThat(search(entry.getValue(),"&productType=SERVICE")
+                .path("items").size()).isZero();
+        }
+    }
+
+    @Test void dictionaryRevisionRevokesCursorAndMalformedInputIsRejected() throws Exception {
+        var h=hierarchy(ProductType.PHYSICAL);
+        String suffix=UUID.randomUUID().toString().replace("-","").substring(0,7);
+        String term="электропила"+suffix;
+        dictionary(term,"ru",h.root(),"CATEGORY_TERM");
+        for(int i=0;i<3;i++) listing(h.child(),"Ручная электрическая пила "+i,true,1);
+        String cursor=search(term,"&limit=1").path("nextCursor").asText();
+        assertThat(cursor).isNotBlank();
+        dictionary("другой термин"+suffix,"ru",h.root(),"CATEGORY_TERM");
+        mvc.perform(get("/api/v1/public/catalog/search")
+            .param("q",term).param("cursor",cursor))
+            .andExpect(status().isConflict());
+        mvc.perform(get("/api/v1/public/catalog/search")
+            .param("q","%")).andExpect(status().isBadRequest());
+        mvc.perform(get("/api/v1/public/catalog/search")
+            .param("q","' OR 1=1 --")).andExpect(status().isBadRequest());
+        mvc.perform(get("/api/v1/public/catalog/search")
+            .param("q",term).param("categoryCode","invalid"))
+            .andExpect(status().isBadRequest());
+    }
+
     @Test void suggestionsAreLanguageScopedAndDoNotExposeInactiveTerms() throws Exception {
         var h=hierarchy(ProductType.PHYSICAL);
         String word="сверло"+UUID.randomUUID().toString().substring(0,7);
