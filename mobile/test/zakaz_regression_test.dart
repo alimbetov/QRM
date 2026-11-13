@@ -49,16 +49,17 @@ void main() {
   });
 
   test('lead submission is explicitly consented and idempotent', () async {
+    final token=List.filled(43,'B').join();
     final client=MockClient((req) async {
       expect(req.method,'POST');
-      expect(req.url.path,'/api/v1/public/q/opaque-token/leads');
+      expect(req.url.path,'/api/v1/public/q/' + token + '/leads');
       expect(req.headers['idempotency-key'],'lead-unique-key');
       expect(req.headers.containsKey('authorization'),isFalse);
       expect(jsonDecode(req.body),{'phone':'+77001234567','consent':true});
       return http.Response('',204);
     });
     final api=ZakazApi('https://staging.example.test',client:client);
-    await api.lead('opaque-token','+77001234567','lead-unique-key');
+    await api.lead(token,'+77001234567','lead-unique-key');
     api.dispose();
   });
 

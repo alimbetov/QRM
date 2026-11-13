@@ -1,15 +1,18 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'buyer_auth.dart';
 import 'zakaz_api.dart';
+import 'mobile_validation.dart';
 
 class BuyerScreen extends StatefulWidget {
   final ZakazApi api;
   final String productId;
   final String unit;
+  final BuyerAuthGateway? authGateway;
   const BuyerScreen({required this.api,required this.productId,
-                     required this.unit,super.key});
+                     required this.unit,this.authGateway,super.key});
   @override State<BuyerScreen> createState()=>_BuyerScreenState();
 }
 
@@ -18,7 +21,11 @@ class _BuyerScreenState extends State<BuyerScreen> {
   final phone=TextEditingController();
   final city=TextEditingController(text:'Алматы');
   final quantity=TextEditingController(text:'1');
-  final auth=BuyerAuth();
+  late final BuyerAuthGateway auth;
+  @override void initState(){
+    super.initState();
+    auth=widget.authGateway ?? BuyerAuth();
+  }
   final keys=<String,String>{};
   BuyerSession? session;
   String? token,demandId,orderId,error;
@@ -37,17 +44,51 @@ class _BuyerScreenState extends State<BuyerScreen> {
     if(busy)return;
     setState((){busy=true;error=null;});
     try {await work();}
-    catch (_) {if(mounted)setState(()=>error='Операция отклонена. Проверьте авторизацию, условия заказа и повторите.');}
+    catch (e) {
+      if(!mounted)return;
+      setState(() {
+        if(e is TimeoutException) {
+          error='Сервер не ответил. Проверьте сеть и повторите действие.';
+        } else if(e is ZakazApiError && e.statusCode==401) {
+          error='Срок действия авторизации истёк. Выйдите и войдите снова.';
+        } else if(e is ZakazApiError && e.statusCode==403) {
+          error='Нет доступа к этой операции. Проверьте подтверждение email и права.';
+        } else if(e is FormatException || e is ArgumentError) {
+          error='Проверьте введённые данные или корректность ответа сервера.';
+        } else {
+          error='Операция не выполнена. Проверьте соединение и повторите.';
+        }
+      });
+    }
     finally {if(mounted)setState(()=>busy=false);}
   }
 
   Future<void> login()=>action(()async {
     final result=await auth.signIn();
-    final found=await widget.api.buyerProfile(result.accessToken);
-    if(mounted)setState((){
-      session=result;token=result.accessToken;profile=found;enrollmentChecked=true;
+    if(!mounted)return;
+    // Keep the signed-in session if a subsequent profile GET fails transiently.
+    // The user can retry the GET without another browser authentication.
+    setState(() {
+      session=result;
+      token=result.accessToken;
+      profile=null;
+      enrollmentChecked=false;
+      demandId=null;
+      orderId=null;
+      quotes=null;
+      order=null;
+      keys.clear();
     });
+    await loadProfileDirect();
   });
+
+  Future<void> loadProfileDirect() async {
+    final current=token;
+    if(current==null)throw StateError('Not signed in');
+    final found=await widget.api.buyerProfile(current);
+    if(mounted)setState((){profile=found;enrollmentChecked=true;});
+  }
+  Future<void> retryProfile()=>action(loadProfileDirect);
 
   Future<void> logout()=>action(()async {
     final current=session;
@@ -61,20 +102,18 @@ class _BuyerScreenState extends State<BuyerScreen> {
   });
 
   Future<void> enroll()=>action(()async {
-    if(token==null ||
-       !RegExp(r'^[\p{L}\p{N}][\p{L}\p{N}_.-]{2,39}$',unicode:true).hasMatch(nickname.text) ||
-       !RegExp(r'^\+[1-9][0-9]{7,14}$').hasMatch(phone.text) || !consent) {
+    if(token==null || !validBuyerNickname(nickname.text) ||
+       !validContactPhone(phone.text) || !consent) {
       throw const FormatException('Invalid buyer enrollment');
     }
     final found=await widget.api.enrollBuyer(
-      token!,nickname.text,phone.text,consent);
+      token!,nickname.text,phone.text.trim(),consent);
     if(mounted)setState(()=>profile=found);
   });
 
   Future<void> create()=>action(()async {
     if(token==null || city.text.trim().isEmpty ||
-       !RegExp(r'^\d{1,10}(\.\d{1,3})?$').hasMatch(quantity.text) ||
-       double.tryParse(quantity.text)==null || double.parse(quantity.text)<=0){
+       !validDemandQuantity(quantity.text,widget.unit)){
       throw const FormatException('Invalid buyer demand');
     }
     final id=await widget.api.createDemand(token!,widget.productId,widget.unit,
@@ -89,7 +128,7 @@ class _BuyerScreenState extends State<BuyerScreen> {
       quotes=data;
       orderId=data['acceptedOrderId'] as String? ?? orderId;
     });
-    if(orderId!=null)await refreshOrderDirect();
+    if(orderId!=null && mounted)await refreshOrderDirect();
   }
   Future<void> refreshBids()=>action(refreshBidsDirect);
 
@@ -112,16 +151,20 @@ class _BuyerScreenState extends State<BuyerScreen> {
       body:ListView(padding:const EdgeInsets.all(16),children:[
         Text('Запросить предложение',style:Theme.of(context).textTheme.headlineSmall),
         const SizedBox(height:8),
-        Text('Товар ${widget.productId.substring(0,8)} · ${widget.unit}'),
+        Text('Товар '+shortPublicId(widget.productId)+' · '+widget.unit),
         const SizedBox(height:8),
         const Text('Сначала продавец делает предложение, затем покупатель явно принимает его. Статус PLACED не означает резерв или оплату.'),
         const Divider(height:32),
-        if(!BuyerAuth.configured)const Text('OIDC не настроен. Авторизованный заказ недоступен.'),
-        if(BuyerAuth.configured && token==null)FilledButton(
+        if(!auth.isConfigured)const Text('OIDC не настроен. Авторизованный заказ недоступен.'),
+        if(auth.isConfigured && token==null)FilledButton(
           onPressed:busy?null:login,child:const Text('Войти через OIDC / PKCE')),
         if(token!=null)OutlinedButton(
           onPressed:busy?null:logout,child:const Text('Выйти через Keycloak')),
-        if(token!=null && !enrollmentChecked)const Text('Проверяем профиль покупателя…'),
+        if(token!=null && !enrollmentChecked) ...[
+          const Text('Профиль покупателя не загружен. Повторите проверку, если произошла ошибка сети.'),
+          OutlinedButton(onPressed:busy?null:retryProfile,
+            child:const Text('Повторить проверку профиля')),
+        ],
         if(token!=null && enrollmentChecked && profile==null) ...[
           const Text('Завершите регистрацию через проверенный email. Телефон хранится зашифрованным, но не подтверждается SMS и не используется для входа.'),
           TextField(controller:nickname,decoration:const InputDecoration(labelText:'Никнейм')),
@@ -144,13 +187,13 @@ class _BuyerScreenState extends State<BuyerScreen> {
         if(demandId!=null && orderId==null) ...[
           Text('Заявка: $demandId'),
           OutlinedButton(onPressed:busy?null:refreshBids,child:const Text('Обновить предложения')),
-          if(bids.isEmpty)const Text('Пока нет предложений продавцов.'),
+          if(bids.isEmpty)const Text('Пока нет предложений продавцов. Обновите список позже.'),
           ...bids.map((data){
             final bid=data as Map<String,dynamic>;
             final id=bid['bidId'] as String;
             return Card(child:Padding(padding:const EdgeInsets.all(12),child:Column(
               crossAxisAlignment:CrossAxisAlignment.start,children:[
-                Text('Продавец ${(bid['sellerId'] as String).substring(0,8)}'),
+                Text('Продавец '+shortPublicId(bid['sellerId'] as String?)),
                 Text('Итого: ${bid['totalKzt']} ₸'),
                 Text('Способ: ${bid['method']}; доставка: ${bid['deliveryFeeKzt']} ₸'),
                 FilledButton(onPressed:busy?null:()=>accept(id),
@@ -168,7 +211,7 @@ class _BuyerScreenState extends State<BuyerScreen> {
           ],
         ],
         if(busy)const Center(child:CircularProgressIndicator()),
-        if(error!=null)Text(error!,style:const TextStyle(color:Colors.red)),
+        if(error!=null)Text(error!,style:TextStyle(color:Theme.of(context).colorScheme.error)),
       ]),
     );
   }

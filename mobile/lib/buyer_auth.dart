@@ -8,9 +8,16 @@ class BuyerSession {
   const BuyerSession({required this.accessToken, required this.idToken});
 }
 
+/// Injectable auth boundary so widget tests do not invoke platform channels.
+abstract class BuyerAuthGateway {
+  bool get isConfigured;
+  Future<BuyerSession> signIn();
+  Future<void> signOut(BuyerSession session);
+}
+
 /// Public AppAuth client uses native Authorization Code + PKCE only.
 /// The IdP handles account registration/email verification and RP logout.
-class BuyerAuth {
+class BuyerAuth implements BuyerAuthGateway {
   static const issuer=String.fromEnvironment('ZAKAZ_OIDC_ISSUER');
   static const clientId=String.fromEnvironment('ZAKAZ_OIDC_CLIENT_ID');
   static const redirectUrl=String.fromEnvironment('ZAKAZ_OIDC_REDIRECT_URI');
@@ -21,8 +28,12 @@ class BuyerAuth {
       clientId.isNotEmpty && redirectUrl.isNotEmpty &&
       logoutRedirectUrl.startsWith('kz.zakaz.mobile:/');
 
+  @override
+  bool get isConfigured => configured;
+
   final FlutterAppAuth appAuth=FlutterAppAuth();
 
+  @override
   Future<BuyerSession> signIn() async {
     if (!configured) throw StateError('Real OIDC provider is not configured');
     final tokens=await appAuth.authorizeAndExchangeCode(
@@ -41,6 +52,7 @@ class BuyerAuth {
 
   /// EndSession triggers the provider-managed browser session logout and
   /// validates its native redirect. The caller clears local state ONLY on success.
+  @override
   Future<void> signOut(BuyerSession session) async {
     if (!configured) throw StateError('Real OIDC provider is not configured');
     await appAuth.endSession(EndSessionRequest(
