@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { publicQrApiBase, publicQrPath, validContactPhone, type QrListing } from './qr-api';
+import { publicQrApiBase, publicQrPath, validContactPhone, formatPublishedPriceKzt, type QrListing } from './qr-api';
 import './styles.css';
 import './qr-landing.css';
 
@@ -70,10 +70,10 @@ export default function QrLanding({ token }: { token: string }) {
           <h2>Варианты товара</h2>
           <ul className="qr-variants">
             {listing.variants.map(variant => <li key={variant.id}>
-              <strong>{variant.code}</strong><span>{variant.unit || 'Единица уточняется'}</span>
+              <strong>{variant.code}</strong><span>{variant.unit || 'Единица уточняется'}</span><span>{formatPublishedPriceKzt(variant.priceKzt)}</span>
             </li>)}
           </ul>
-          <p className="qr-note">Цена и наличие не подтверждаются этой карточкой. Уточните условия у продавца.</p>
+          <p className="qr-note">Публичная цена указана за единицу товара и не является согласованной итоговой ценой заказа. Доставка и наличие уточняются у продавца.</p>
         </section>
         <section className="qr-panel">
           <h2>Связаться с продавцом</h2>
