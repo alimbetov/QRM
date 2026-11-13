@@ -114,4 +114,34 @@ class OutboxWorkerPostgresIT {
         var b=queue.claim("pod-b",10,Duration.ofSeconds(30),3);
         assertThat(b).extracting(OutboxClaim::id).containsExactly(second);
     }
+    @Test void crashOnFinalAttemptBecomesDeadLetterWithoutStrandingLease() {
+        UUID id=event(UUID.randomUUID(),"ORDER_CONFIRMED");
+        var claim=queue.claim("pod-crashed",1,Duration.ofSeconds(30),1).getFirst();
+        jdbc.update("UPDATE order_outbox_event SET lease_until=now()-interval '2 seconds' WHERE id=?",id);
+        assertThat(queue.claim("another-pod",1,Duration.ofSeconds(30),1)).isEmpty();
+        assertThat(jdbc.queryForObject("SELECT status FROM order_outbox_event WHERE id=?",
+            String.class,id)).isEqualTo("DEAD_LETTER");
+        assertThat(queue.ack(claim)).isFalse();
+    }
+    @Test void dispatcherSurvivesSinkFailureAndRetriesWithIdempotentProjection() {
+        UUID id=event(UUID.randomUUID(),"ORDER_CONFIRMED");
+        var failures=new java.util.concurrent.atomic.AtomicInteger(0);
+        var realSink=new JdbcOrderEventProjectionSink(jdbc);
+        OutboxDeliverySink flaky=claim->{
+            if(failures.getAndIncrement()==0) throw new IllegalStateException("Temporary failure");
+            realSink.deliver(claim);
+        };
+        var dispatcher=new OutboxDispatcher(queue,flaky,"pod-dispatcher",3,3,Duration.ofSeconds(30));
+        assertThat(dispatcher.pollOnce()).isZero();
+        assertThat(jdbc.queryForObject("SELECT status FROM order_outbox_event WHERE id=?",
+            String.class,id)).isEqualTo("PENDING");
+        jdbc.update("UPDATE order_outbox_event SET next_attempt_at=now()-interval '1 second' WHERE id=?",id);
+        assertThat(dispatcher.pollOnce()).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT status FROM order_outbox_event WHERE id=?",
+            String.class,id)).isEqualTo("PUBLISHED");
+        assertThat(jdbc.queryForObject(
+            "SELECT count(*) FROM order_event_projection_inbox WHERE event_id=?",Integer.class,id))
+            .isEqualTo(1);
+    }
+
 }
