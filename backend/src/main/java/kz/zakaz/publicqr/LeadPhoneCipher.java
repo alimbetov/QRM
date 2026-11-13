@@ -33,6 +33,22 @@ public final class LeadPhoneCipher {
             return "v1."+Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
         } catch(GeneralSecurityException ex){throw new IllegalStateException("Phone encryption failure",ex);}
     }
+    public String decrypt(String ciphertext){
+        if(!configured())throw new IllegalStateException("Lead encryption key not configured");
+        if(ciphertext==null||!ciphertext.startsWith("v1."))
+            throw new IllegalStateException("Unknown encrypted phone key version");
+        try {
+            var bytes=Base64.getUrlDecoder().decode(ciphertext.substring(3));
+            if(bytes.length<29)throw new IllegalStateException("Truncated encrypted phone");
+            var nonce=Arrays.copyOfRange(bytes,0,12);
+            var value=Arrays.copyOfRange(bytes,12,bytes.length);
+            var cipher=Cipher.getInstance("AES/GCM/NoPadding");
+            cipher.init(Cipher.DECRYPT_MODE,new SecretKeySpec(secret,"AES"),new GCMParameterSpec(128,nonce));
+            return new String(cipher.doFinal(value),StandardCharsets.UTF_8);
+        }catch(GeneralSecurityException|IllegalArgumentException ex){
+            throw new IllegalStateException("Unable to decrypt encrypted phone",ex);
+        }
+    }
     public String digest(String message){
         if(!configured())throw new IllegalStateException("Lead encryption key not configured");
         try{

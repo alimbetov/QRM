@@ -35,6 +35,9 @@ public class PurchaseLead {
         lead.phoneCiphertext=ciphertext;lead.sourceDigest=sourceDigest;
         lead.consentAt=now;lead.createdAt=now;return lead;
     }
+    public UUID getId(){return id;}
+    public UUID getListingId(){return listingId;}
+    public Instant getCreatedAt(){return createdAt;}
     public String getPhoneCiphertext(){return phoneCiphertext;}
     public String getRequestFingerprint(){return requestFingerprint;}
 }
