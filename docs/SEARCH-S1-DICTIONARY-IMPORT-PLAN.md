@@ -19,3 +19,17 @@
 
 ## Открытые данные
 Owner taxonomy, реальные HCC значения, полная категория/описание товара, роли редакторов, production словарный corpus, provenance и versioning пока не подтверждены. Поэтому подготовлен **кандидат**, а не production import. Импортёр и модерация — следующий отдельный slice.
+
+## Operator scripts (only after product-owner approval)
+
+These files are present in the working branch; they are **not** migrations and never run automatically.
+
+Use **one psql session** and an independently approved CSV (all rows `APPROVED`, existing 20-digit HCC):
+
+```psql
+\i scripts/search/prepare-dictionary-import.sql
+\copy search_dictionary_stage FROM '/absolute/path/approved.csv' WITH (FORMAT csv, HEADER true)
+\i scripts/search/apply-approved-dictionary.sql
+```
+
+The SQL validation rejects missing/inactive categories, mismatched ProductType, duplicate normalized terms and unapproved rows before commit. If it fails, execute `ROLLBACK`, correct and review source data, then repeat the transaction. The candidate CSV with empty HCC codes is intentionally rejected. Before production migration, separately verify Unicode NFC/case-fold consistency with the Java normalizer and category-depth semantics: SQL cannot certify product-language meaning.

@@ -1,6 +1,6 @@
 # SEARCH-001 — контракт реализации (S0 handoff для RED-тестов)
 
-**Статус:** SEARCH-S1 candidate code committed (Flyway V20–V21, public search/suggest APIs, RED→candidate GREEN PostgreSQL tests), **S2 NOT APPROVED, feature OFF by default**. SEARCH-S2…S7 remain PROPOSED. **Основа:** технический аудит [SEARCH-AUD-001](SEARCH-AUD-001-TECHNICAL-REVIEW.md); `docs/SEARCH-001-UNIFIED-DISCOVERY.md`; master-TZ v2.0, ADR-002, ADR-004, DEC-27, DEC-BUYER-WEB-001. Любая миграция/endpoint — отдельный RED→S2→GREEN. Дата: 2026-11-13.
+**Статус:** SEARCH-S1 PostgreSQL Search и SEARCH-S2A Media Backend candidate committed (Flyway V20–V22, public search/suggest/media APIs, RED→candidate GREEN PostgreSQL tests), **independent S2 NOT APPROVED, features OFF by default**. S2B S3…S7 remain PROPOSED. **Основа:** технический аудит [SEARCH-AUD-001](SEARCH-AUD-001-TECHNICAL-REVIEW.md); `docs/SEARCH-001-UNIFIED-DISCOVERY.md`; master-TZ v2.0, ADR-002, ADR-004, DEC-27, DEC-BUYER-WEB-001. Любая миграция/endpoint — отдельный RED→S2→GREEN. Дата: 2026-11-13.
 
 ## 1. Рекомендуемые решения (на подтверждение владельцем на S0)
 
@@ -18,7 +18,7 @@
 | --- | --- | --- |
 | S1 / V20 | `catalog_search_term(id UUID PK, term, normalized_term, locale, status, revision, created_at)`; `catalog_term_category(term_id FK, category_id FK, relation_type, weight, UNIQUE(term_id,category_id,relation_type))` | Locale `ru/kk/en/zh`, status `ACTIVE/INACTIVE`, relation allowlist. Не выдумывать category links |
 | S1 / V21 | **Реализовано:** GIN FTS/trgm индексы на `catalog_product` и `catalog_search_term`, partial indexes публичных Listing/активных Category, `pg_trgm`. `catalog_search_document` пока НЕ создаётся | Live read JOIN против Catalog/Category/QR исключает stale индекс и старые приватные объявления; материализация — будущая оптимизация после EXPLAIN |
-| S2 / V22 | `catalog_listing_media(id PK, listing_id FK, object_key UNIQUE, sha256, status, sort_position, is_cover, mime, width, height, created_at, version)` | Partial UNIQUE cover per listing, prevent foreign ownership via service, immutable object variants; old PUBLIC without media supported |
+| S2A / V22 | **Реализовано в девелоперской ветке:** `catalog_listing_media(id PK, listing_id FK, object_key UNIQUE, content_type, sha256, status, sort_position, is_cover, width, height, created_at, version)`, UNIQUE READY cover, draft-only trigger | Dev/test filesystem store, sanitizer JPEG/PNG, public visibility API, 3 SQL + 2 HTTP PG tests; **production S3/scanning not implemented** |
 | S4 / V23 | `buyer_favorite(id PK, buyer_id, listing_id FK, created_at, UNIQUE(buyer_id,listing_id))` | Buyer ID server resolved from active buyer_account_link; ownership index `(buyer_id,created_at DESC,id DESC)`; нет notification consent |
 | S5 / V24+ | `buyer_category_watch`, `buyer_price_watch`, `user_notification`, `notification_preference`, `push_device`, `notification_delivery` и review-approved general domain event outbox | НЕ использовать `order_outbox_event` как есть, поскольку aggregate_id FK customer_order; no auto opt-in |
 | S6 / later | `catalog_media_embedding(media_id, model_version, embedding)` и `pgvector` extension | Только после выбора licensed encoder/dimension, отдельная миграция и backfill |
@@ -98,3 +98,10 @@
 - DEC-S08: low-risk read-only Search may be developed in Draft branch without releasing other flags, but production still blocked by R2.3F and independent S2.
 
 **Статус S1:** RED `d5cc36d` → schema/API candidate `70fd78d` → MockMvc Unicode fix `da36afd` → 4-locale/cursor-revision tests `3f4c08e`. Кандидат не равен принятому GREEN: независимое S2 и отдельные security/load/staging gates необходимы до включения. Операционный отчёт: [SEARCH-S1 implementation status](SEARCH-S1-IMPLEMENTATION-STATUS.md).
+
+## SEARCH-S2A integration note (2026-11-14)
+
+- `V22` (metadata), `MediaImageSanitizer`, `ListingMediaBlobStore`, `LocalDevMediaBlobStore`, `MediaUploadService`, `PublicMediaReadService`, `ListingMediaController` committed and verified via PostgreSQL CI `43492712630` (65 integration tests PASS).
+- `zakaz.catalog.media.enabled=false` by default; dev/test profile requires `zakaz.media.storage.provider=filesystem` and `zakaz.media.storage.root`. This filesystem implementation must NEVER be used as a production multi-node blob store.
+- New media API `POST /api/v1/sellers/{sellerId}/listings/{listingId}/media` (JWT `SCOPE_catalog:write`, DB membership, DRAFT-only); GET `/api/v1/public/catalog/{listingId}/media` and `/api/v1/public/media/{mediaId}?size=thumb|full` (PUBLIC/Category/QR live gate).
+- Missing S2B production concerns: S3-compatible adapter, malware/decoder fuzzing, crash-orphan reconciliation, moderation, CDN revocation, async scan; independent S2 reviewer required before rollout. [Implementation status](SEARCH-S2-IMPLEMENTATION-STATUS.md).
