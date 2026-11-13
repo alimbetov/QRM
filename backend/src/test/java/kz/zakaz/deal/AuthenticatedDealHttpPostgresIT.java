@@ -128,6 +128,15 @@ class AuthenticatedDealHttpPostgresIT {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").value("PLACED"))
             .andExpect(jsonPath("$.lines[0].quantity").value(1));
+        // A separately provisioned buyer cannot read or enumerate another buyer's order.
+        String anotherSubject="unrelated-buyer-"+UUID.randomUUID();
+        String anotherToken="unrelated-token-"+UUID.randomUUID();
+        buyerLinks.saveAndFlush(BuyerAccountLink.provision(
+            "https://idp.example.test",anotherSubject,UUID.randomUUID()));
+        when(decoder.decode(anotherToken)).thenReturn(jwt(anotherSubject,"order:read"));
+        mvc.perform(get("/api/v1/buyers/orders/"+orderId)
+                .header("Authorization","Bearer "+anotherToken))
+            .andExpect(status().isForbidden());
         assertThat(orders.findById(orderId).orElseThrow().getStatus()).isEqualTo(OrderStatus.PLACED);
         assertThat(reservations.findByOrderId(orderId)).isEmpty();
         var confirmation="/api/v1/sellers/"+f.sellerId()+"/orders/"+orderId+"/confirm";
