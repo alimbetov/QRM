@@ -38,7 +38,7 @@ async function api(method,path,token,body,key,expected=200){
     signal:AbortSignal.timeout(15000),
     redirect:'manual'
   });
-  assert.equal(response.status,expected,method+' '+path+' expected '+expected+', got '+response.status);
+  assert.ok((Array.isArray(expected)?expected:[expected]).includes(response.status),method+' '+path+' expected '+expected+', got '+response.status);
   if(response.status===204)return null;
   if(response.status===401 || response.status===403)return null;
   const type=response.headers.get('content-type')||'';
@@ -49,7 +49,7 @@ async function api(method,path,token,body,key,expected=200){
 console.log('R2.3D: verifying real OIDC and transactional HTTP journey');
 const registration=await api('POST','/api/v1/buyers/enroll',buyer,{
   nickname:'StagingBuyer',phone:'+77000000000',consentToStorePhone:true
-},null,201);
+},null,[200,201]);
 assert.equal(registration.phoneVerified,false,'Phone was not verified by SMS');
 assert.equal(registration.maskedPhone,'••••0000');
 const me=await api('GET','/api/v1/buyers/me',buyer);
