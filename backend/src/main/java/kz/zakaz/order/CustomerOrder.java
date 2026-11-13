@@ -19,6 +19,7 @@ public class CustomerOrder {
  @Column(name="currency_code",nullable=false,length=3,updatable=false) private String currencyCode;
  @Column(name="created_at",nullable=false,updatable=false) private Instant createdAt;
  @Version private Long version;
+ @Column(name="expected_line_count",nullable=false,updatable=false) private int expectedLineCount;
  @OneToMany(mappedBy="order",cascade=CascadeType.PERSIST,fetch=FetchType.LAZY)
  @OrderBy("lineNumber ASC") private List<OrderLine> lines=new ArrayList<>();
  protected CustomerOrder(){}
@@ -44,6 +45,7 @@ public class CustomerOrder {
   for(OrderLine.Draft d:drafts){
       OrderLine l=OrderLine.of(o,o.lines.size()+1,d);o.lines.add(l);sum=sum.add(l.getLineTotal());
   }
+  o.expectedLineCount=o.lines.size();
   o.totalAmount=sum.add(o.deliveryFee).setScale(2);return o;
  }
  public void confirm(){

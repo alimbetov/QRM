@@ -16,11 +16,12 @@ class OrderLineIntegrityPostgresIT {
         Flyway.configure().dataSource(db.getJdbcUrl(),db.getUsername(),db.getPassword())
             .locations("classpath:db/migration").load().migrate();
         try(var c=DriverManager.getConnection(db.getJdbcUrl(),db.getUsername(),db.getPassword())){
+            c.setAutoCommit(false);
             UUID order=UUID.randomUUID(),seller=UUID.randomUUID(),buyer=UUID.randomUUID(),
                  line=UUID.randomUUID(),sku=UUID.randomUUID();
-            var cols="id,public_number,seller_id,buyer_id,status,total_amount,delivery_fee,currency_code,created_at,version";
+            var cols="id,public_number,seller_id,buyer_id,status,total_amount,delivery_fee,currency_code,created_at,version,expected_line_count";
             try(var stmt=c.prepareStatement("INSERT INTO customer_order("+cols+
-                ") VALUES (?,'ZK-7M4P-9K2D',?,?,'PLACED',100.00,0.00,'KZT',now(),0)")){
+                ") VALUES (?,'ZK-7M4P-9K2D',?,?,'PLACED',100.00,0.00,'KZT',now(),0,1)")){
                 stmt.setObject(1,order);stmt.setObject(2,seller);stmt.setObject(3,buyer);
                 stmt.executeUpdate();
             }
@@ -29,6 +30,8 @@ class OrderLineIntegrityPostgresIT {
                 stmt.setObject(1,line);stmt.setObject(2,order);stmt.setObject(3,sku);
                 stmt.executeUpdate();
             }
+            c.commit();
+            c.setAutoCommit(true);
             for(var sql:List.of(
                 "UPDATE customer_order SET total_amount=10.00 WHERE id=?",
                 "UPDATE order_line SET unit_price=10.00 WHERE id=?",
