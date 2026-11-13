@@ -52,14 +52,15 @@ export default function BuyerFlow() {
   },[user]);
 
   useEffect(()=>{
-    if (!buyerAuth) return;
+    const auth=buyerAuth;
+    if (!auth) return;
     const expired=()=>{
       setUser(null);setProfile(null);setProfileReady(false);
       setQuotes(null);setOrder(null);
       setError('Срок действия сеанса истёк. Для нового запроса войдите снова.');
     };
-    buyerAuth.events.addAccessTokenExpired(expired);
-    return ()=>buyerAuth.events.removeAccessTokenExpired(expired);
+    auth.events.addAccessTokenExpired(expired);
+    return ()=>auth.events.removeAccessTokenExpired(expired);
   },[]);
 
   const refreshBids=useCallback(async ()=>{
