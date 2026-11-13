@@ -2,6 +2,7 @@ import {useCallback, useEffect, useRef, useState} from 'react';
 import {loadCategories, loadPhotoFeed, photoMediaUrl,
   type LiveCategory, type PhotoFeedItem} from './catalog-api';
 import {formatPublishedPriceKzt, qrTokenPattern} from './qr-api';
+import {buyerDemandPath} from './buyer-link';
 import './photo-feed.css';
 
 const STATE_KEY='zakaz.search.photo-feed.v1';
@@ -43,11 +44,8 @@ function PhotoCard({item}: {item: PhotoFeedItem}) {
       <div className="photo-price">{price ? 'от ' + formatPublishedPriceKzt(price) : 'Цена уточняется'}</div>
       <div className="photo-actions">
         {detail && <a href={detail}>Подробнее</a>}
-        {item.productType==='PHYSICAL' &&
-          item.variants.some(v => v.unit && v.unit!=='LICENSE' && v.unit!=='SERVICE') &&
-          <a className="photo-quote" href={'/buy?productId='+
-            encodeURIComponent(item.productId)+'&unit='+
-            encodeURIComponent(item.variants.find(v => v.unit)?.unit || 'PCS')}>
+        {item.productType==='PHYSICAL' && buyerDemandPath(item.productId,item.variants) &&
+          <a className="photo-quote" href={buyerDemandPath(item.productId,item.variants)!}>
             Запросить предложения
           </a>}
       </div>

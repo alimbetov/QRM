@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import LivePhotoFeed from './LivePhotoFeed';
+import {buyerDemandPath} from './buyer-link';
 import { loadCatalog, loadCategories, type LiveCategory, type CatalogPage } from './catalog-api';
 import { formatPublishedPriceKzt, qrTokenPattern } from './qr-api';
 import './live-catalog.css';
@@ -99,9 +100,8 @@ function LegacyLiveCatalog() {
                   <strong>{formatPublishedPriceKzt(variant.priceKzt)}</strong>
                 </div>)}
               </div>
-              {item.productType === 'PHYSICAL' && item.variants.some(variant => variant.unit && variant.unit !== 'SERVICE' && variant.unit !== 'LICENSE') &&
-                <a className="live-card-link" href={'/buy?productId=' + encodeURIComponent(item.productId) +
-                    '&unit=' + encodeURIComponent(item.variants.find(variant => variant.unit)?.unit || 'PCS')}>
+              {item.productType === 'PHYSICAL' && buyerDemandPath(item.productId,item.variants) &&
+                <a className="live-card-link" href={buyerDemandPath(item.productId,item.variants)!}>
                   Запросить предложение
                 </a>}
               {qrTokenPattern.test(item.qrToken) &&

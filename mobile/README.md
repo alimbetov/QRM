@@ -42,3 +42,9 @@ After AppAuth PKCE, Flutter reads `GET /api/v1/buyers/me`; a genuinely unregiste
 ### R2.3F — Keycloak AppAuth logout and real-device UAT
 
 Flutter now retains the OIDC ID token **in memory only** for RP-initiated logout through `FlutterAppAuth.endSession()`. Set `--dart-define=ZAKAZ_OIDC_LOGOUT_REDIRECT_URI=kz.zakaz.mobile:/logout` with a Keycloak `zakaz-mobile` public client's **exact** post-logout redirect. Android `appAuthRedirectScheme` and iOS URL schemes must handle both `kz.zakaz.mobile:/oauthredirect` and `kz.zakaz.mobile:/logout` through the AppAuth plugin. Clearing the local buyer session occurs only after successful identity-provider logout. User sign-up must complete real Keycloak email verification before buyer enrollment; no SMS is required for basic sign-up. No physical-device UAT or APK release has been run. See [R2.3F](../docs/R2-3F-KEYCLOAK-SMTP-SESSION-E2E.md).
+
+
+### Hybrid R0 — React public catalog inside Flutter
+
+The optional hybrid shell is documented in [Hybrid Mobile R0](../docs/HYBRID-MOBILE-R0.md).
+Use `--dart-define=ZAKAZ_HYBRID_WEBVIEW_ENABLED=true` and set `ZAKAZ_WEB_BASE_URL` to the exact reviewed HTTPS React site; keep `ZAKAZ_API_BASE_URL` for the native commerce client. Without the flag the original native catalog remains the default. No AppAuth tokens are injected into WebView; /buy requests open native BuyerScreen. External/authenticated WebView routes are blocked; Seller Studio and authenticated WebView session sharing are NOT part of this slice. Run Flutter CI + real Android/iOS PKCE/browser E2E before any production activation.
