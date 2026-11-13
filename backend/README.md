@@ -6,11 +6,11 @@ Spring MVC + JPA/Hibernate + PostgreSQL 17 + Flyway + Spring Security OAuth2 res
 
 - Fast JUnit/H2 tests: `mvn -f backend/pom.xml test`
 - All JUnit + PostgreSQL Testcontainers/Failsafe: `mvn -f backend/pom.xml verify` (Docker required).
-- PostgreSQL `test-pg` uses **Flyway V1–V14** then Hibernate `ddl-auto=validate`. H2 `test` explicitly disables Flyway and creates an isolated test schema. Never use H2 as evidence of production SQL migration compatibility.
+- PostgreSQL `test-pg` uses **Flyway V1–V17** then Hibernate `ddl-auto=validate`. H2 `test` explicitly disables Flyway and creates an isolated test schema. Never use H2 as evidence of production SQL migration compatibility.
 
 ## Database/schema ownership
 
-- Fresh PostgreSQL environments: Flyway applies controlled versioned `db/migration/V1__domain_and_catalog_baseline.sql` through V14 on application startup. Includes existing `customer_order`, `order_line`, `inventory_location`, catalog tables, enum governance and seller membership. JPA only validates; it never updates the PostgreSQL schema.
+- Fresh PostgreSQL environments: Flyway applies controlled versioned `db/migration/V1__domain_and_catalog_baseline.sql` through V17 on application startup. Includes existing `customer_order`, `order_line`, `inventory_location`, catalog tables, enum governance and seller membership. JPA only validates; it never updates the PostgreSQL schema.
 - Existing **pre-Flyway** environments are intentionally blocked from silent migration. `spring.flyway.baseline-on-migrate=false` and `spring.flyway.clean-disabled=true`. Before upgrading a populated DB: backup, compare physical schema and data to V1, rehearse a reviewed adoption/baseline plan and verify checksums + migration history. **Do not** simply enable `baseline-on-migrate=true` or delete old tables.
 - The older `db/manual/V001..V003` scripts remain for isolated historical integration checks; `db/migration/` is authoritative for new PostgreSQL environments. Retire manual duplicates only after transition review.
 - Dev PostgreSQL: `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, then `mvn -f backend/pom.xml spring-boot:run`. Development also uses Flyway; old dev DBs require manual adoption.
@@ -24,7 +24,7 @@ Spring MVC + JPA/Hibernate + PostgreSQL 17 + Flyway + Spring Security OAuth2 res
 
 ## Current scope / safety gates
 
-**Not yet a production checkout.** The order factory exists but authenticated buyer acceptance, seller confirmation, transactional stock reservation, idempotency and outbox remain R2 work. There is no live inventory validation in catalog publication; published listing does not imply stock or an approved merchant. No real ML training or autonomous procurement.
+**Not a production checkout.** R2.0B/R2.1/R2.2 internal order acceptance, seller confirmation, atomic reservations, movement audit and PostgreSQL internal Outbox exist. R2.3 includes real HTTP routes but they are OFF by default pending independent S2/real IdP, warehouse provenance, real browser/client journey, phone privacy policy and load qualification. Published listing does not imply verified stock or approved merchant. No real Tribuo training.
 
 
 ### V12–V14 rollout safety
@@ -34,3 +34,8 @@ V12 requires every existing customer_order to contain valid lines with matching 
 ### R2.2B — internal PostgreSQL Outbox worker
 
 Flyway V15 adds dedicated queue coordination fields (`event_sequence`, status, attempts, claim generation, lease UUID/owner, next retry) and a durable idempotent **internal** inbox. Set `SPRING_PROFILES_ACTIVE=dev,outbox-worker` in a **separate** worker process to enable polling; API-only processes do not run this worker. Local projection is not an external notification delivery system. Config: `zakaz.outbox.batch-size` (default 10), `zakaz.outbox.max-attempts` (default 5), `zakaz.outbox.lease-seconds` (default 60), `zakaz.outbox.poll-delay-ms` (default 1000). Enforce slow sink timeout and lease heartbeat before replacing the internal sink. `JdbcOutboxQueue.health()` reports pending/in-flight/dead-letter/published counts and oldest undelivered seconds for future metrics integration. **V15 refuses to adopt nonempty pre-V15 outbox**, requiring explicit ordered historical migration. [Outbox qualification](../docs/R2-2B-OUTBOX-QUALIFICATION.md).
+
+
+### R2.3 public QR and authorized commerce HTTP — default OFF
+
+Enable only for an independently approved isolated staging environment. `zakaz.qr.http.enabled=true` enables public QR GET, guest contact POST, seller QR PNG and seller lead inbox; `zakaz.commerce.http.enabled=true` enables BuyerDemand/SellerBid/Order HTTP. Both default false. `zakaz.qr.public-base-url` must be explicitly configured to canonical HTTPS root for seller PNG; no request Host spoofing. Lead POST/decrypt requires `zakaz.leads.phone-key-base64` from secret manager (32 raw bytes base64), missing key returns 503. Never store keys or phone in Git/logs. Lead read requires a verified seller with `leads:read` scope and `SELLER_ADMIN` server role; all contact disclosures are audited. Buyer demand/accept requires `deal:write`, buyer order read `order:read`, seller bid `deal:bid`, seller confirm/cancel `order:confirm`, plus seller membership and buyer account links. Flyway V16–V17 add QR links/encrypted callbacks and PII-read audit. Tests validate PostgreSQL HTTP flows but no production OIDC/ingress/mobile browser qualification. [R2.3 contract and gates](../docs/R2-3-HTTP-API-QR-JOURNEY.md).

@@ -1,6 +1,6 @@
 # R2.3 — QR-first Buyer E2E → 5K Concurrency Qualification
 
-**Date:** 2026-11-13. **State:** Scenario Design / executable load harness only. There is **no real authenticated E2E Web/QR checkout or 5000-VU benchmark result** in the current code.
+**Date:** 2026-11-13. **State:** R2.3 HTTP/React QR vertical slice implemented behind default-OFF flags, PostgreSQL MockMvc E2E is available; full HTTPS browser/mobile E2E, external OIDC and the 5000-VU benchmark remain OPEN. See [R2.3 implementation](R2-3-HTTP-API-QR-JOURNEY.md).
 
 ## Two distinct buyer paths — do not confuse them
 
@@ -22,16 +22,16 @@
 
 | ID | Expected executable RED test | Status |
 |---|---|---|
-| QR-01 | Public seller token resolves PUBLIC listing; no draft/unlisted leak | Not implemented |
-| QR-02 | Unknown/expired QR → no private data | Not implemented |
-| QR-03 | Guest submits lead and never auto-creates order | Not implemented |
+| QR-01 | Public seller token resolves PUBLIC listing; no draft/unlisted leak | PostgreSQL MockMvc integration PASS; UNLISTED transition not exercised |
+| QR-02 | Unknown/expired QR → no private data | Unknown token 404 PASS; expiry policy not implemented |
+| QR-03 | Guest submits lead and never auto-creates order | PostgreSQL HTTP PASS, AES-GCM and quota |
 | QR-04 | QR attribution survives later authenticated buyer order, cannot be forged | Not implemented |
-| QR-05 | Verified buyer identity and seller ownership enforced through signed JWT | Partial; internal service only |
-| QR-06 | One seller bid acceptance yields one order, same-key replay returns same order | Internal services tested |
+| QR-05 | Verified buyer identity and seller ownership enforced through signed JWT | Actual HTTP routes, mock JWT decoder + DB identity IT; external OIDC UAT pending |
+| QR-06 | One seller bid acceptance yields one order, same-key replay returns same order | HTTP + PostgreSQL IT PASS |
 | QR-07 | Confirmed multi-line order reserves exactly once or rolls back all | PostgreSQL IT tested |
 | QR-08 | Seller cancellation releases once and durable Outbox produced | PostgreSQL IT tested |
 | QR-09 | Two independently deployed outbox workers restart during delivery without extra projection | Not independently deployed |
-| QR-10 | React/Flutter API journey with actual HTTP traffic and mobile viewport | Not implemented |
+| QR-10 | React/Flutter API journey with actual HTTP traffic and mobile viewport | Live React /q route and TypeScript build; browser + Flutter E2E still OPEN |
 | PERF-01 | 5000 concurrent distinct confirmed orders, RPS/p95/p99/error, DB locks, CPU/heap | Harness prepared, **not executed** |
 | PERF-02 | Contention for same last SKU, exactly one success; no oversell | Small 2-thread PostgreSQL test only |
 | PERF-03 | 5000 concurrent sessions + nightly Intelligence (resource isolation) | Not executed |
@@ -40,7 +40,7 @@
 
 - Stable S2-approved private test environment with real JWT issuer/JWKS, no public production transactions; mTLS/HTTPS, test companies and seeded anonymous buyer accounts.
 - 5000 **distinct pre-created PLACED orders**, per-order explicit seller authorization, SKU/warehouse and expected outcome; never reuse one order as though it were 5000 different purchases.
-- Approved REST `POST /api/v1/sellers/{sellerId}/orders/{orderId}/confirm` endpoint, currently **NOT implemented**. Need test-first API/security review before enabling.
+- REST `POST /api/v1/sellers/{sellerId}/orders/{orderId}/confirm` is now **implemented behind `zakaz.commerce.http.enabled=true`**; must pass independent S2/real OIDC plus staging qualification before public enablement.
 - Load script: [k6 R2 confirmation](../perf/k6/r2-confirm-reserve.js), one confirmation per virtual user; attach immutable order fixture and do not commit real tokens. Compare separate low-contention and oversell-contention datasets.
 - Capture p50/p95/p99 response time, achieved RPS, CPU, JVM heap/GC, PostgreSQL active connections, lock waits/deadlocks, Hikari pending connections, Outbox backlog age and errors. Pin DB CPU/RAM/PG version, DB pool sizes, test dataset and machine types. Integrate OpenTelemetry/Micrometer after S2.
 - AFTER the run verify SQL invariants: zero negative stock, `reserved<=on_hand`, reservations match line/order/seller, no duplicate outbox order-confirmed, all accepted orders in correct state, no orphan actions. See [post-run checks](../perf/k6/post-run-integrity.sql).
@@ -48,6 +48,6 @@
 
 ## Product gate
 
-Keep current React demo explicitly labeled; do not call static front-end items live catalog. QR link + public landing + callback PurchaseLead should be a separate test-first vertical slice behind reviewed public-field filtering and anti-abuse protection; then authenticated buyer flow; only after this can benchmark represent a real checkout.
+Keep current React demo explicitly labeled; do not call static front-end items live catalog. QR link + public landing + callback PurchaseLead is implemented as a gated HTTP/React slice, with seller QR PNG and audited lead inbox; authenticated commerce is available as gated REST and PostgreSQL IT. Real browser, staging IAM, production privacy/anti-abuse review and 5K fixtures remain before this becomes a qualified buyer checkout.
 
 **No merge to main before independent S2 Review and R2.3 E2E test approval.**
