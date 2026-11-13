@@ -101,6 +101,25 @@ docker compose --env-file deploy/staging/private.env -f deploy/staging/compose.y
 
 The SQL raises an exception unless one CONFIRMED order has exactly one RESERVED line, matching immutable movement, one `ORDER_CONFIRMED` Outbox event and no negative/oversold balance. Capture exact SHA, UTC timestamp, CLI output, DB query results and Keycloak issuer claim **without exposing access tokens**.
 
+## 6. Browser-level purchase E2E (separate from API test)
+
+After preparing a **fresh** synthetic fixture, real Keycloak seller token, and two test actors, run the real React UI through Chromium and Keycloak. This script uses the browser to select the live listing, complete Authorization Code + PKCE, create a demand, inspect bids, explicitly accept and view CONFIRMED; the seller offer/confirmation are still sent through the authenticated REST API because a Seller Studio UI is not implemented.
+
+```bash
+cd web
+npm install --no-audit --no-fund
+npx playwright install chromium
+# The following must be set securely in the operator shell / secrets manager:
+# STAGING_BASE_URL=https://<STAGING_DOMAIN>
+# STAGING_FIXTURE_FILE=<absolute path to deploy/staging/evidence/fixture.env>
+# STAGING_SELLER_TOKEN_FILE=<absolute path to deploy/staging/evidence/seller.token>
+# STAGING_BROWSER_BUYER_USERNAME=<Keycloak synthetic buyer username>
+# STAGING_BROWSER_BUYER_PASSWORD=<Keycloak synthetic buyer password>
+npm run e2e:staging
+```
+
+The staging test is explicitly opt-in: it does not run in normal npm unit CI, and screenshots/video/traces are disabled to avoid capturing login credentials or tokens. **No Playwright PASS claim until executed against real HTTPS staging.** It creates a new demand/order each run and consumes stock; the fixture has ten units. Verify reservation/Outbox invariants using the resulting order ID and `check-order.sql` (or reset the isolated test DB). No rate-limit, brute-force or load testing is implied by a single-browser PASS.
+
 ## Remaining release blockers
 
 1. **Independent S2 Issue #3:** authorized reviewer must verify final exact SHA, IdP client scope and audience mapper, PKCE and user lifecycle, known Caddy→Tomcat forwarded-IP trust (including spoofed X-Forwarded-For negative test), TLS, legal data retention, migration/backup rehearsal, and permissions. No approval is implied here.
