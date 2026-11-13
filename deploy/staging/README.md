@@ -133,3 +133,26 @@ The staging test is explicitly opt-in: it does not run in normal npm unit CI, an
 ## R2.3E — buyer enrollment during real staging E2E
 
 The OIDC-backed buyer profile is now a mandatory step in the staging E2E script. Flyway V19 creates `buyer_profile`. Configure a separate `ZAKAZ_IDENTITY_PHONE_KEY_BASE64` in `private.env` (32 random bytes, different from the guest lead key). The API is enabled in this isolated stack by `ZAKAZ_BUYER_ENROLLMENT_ENABLED=true` and the buyer can self-enroll with a verified JWT after Keycloak login. **The test actor must have `email_verified=true` from actual Keycloak email proof** (not a manually fabricated claim). The self-registration screen in Keycloak remains disabled until you configure trusted SMTP, tested mailbox verification and abuse controls. See [R2.3E design](../../docs/R2-3E-KEYCLOAK-VERIFIED-BUYER-ENROLLMENT.md). No remote E2E PASS yet.
+
+
+## R2.3F — real SMTP, public registration and revocation qualification
+
+Keycloak realm import defaults to `registrationAllowed=false` with `verifyEmail=true`. **Do not** enable registration merely to run E2E: SMTP and a real test mailbox must first pass. Use only an isolated staging domain:
+
+```bash
+cat deploy/staging/private-smtp.env.example
+# Copy names into ignored deploy/staging/private.env with actual SMTP credentials.
+# Keep STARTTLS on port 587 or implicit SSL on port 465; plaintext is denied.
+chmod 600 deploy/staging/private.env
+bash deploy/staging/smtp-ops.sh configure
+# Verify delivery to your authorized mailbox; configure test admin email if required.
+# Set STAGING_ALLOW_SELF_REGISTRATION=YES_AFTER_REAL_MAILBOX_PROOF in private.env.
+bash deploy/staging/smtp-ops.sh enable
+bash deploy/staging/smtp-ops.sh status
+# To close signup after UAT:
+bash deploy/staging/smtp-ops.sh disable
+```
+
+The operator script is ephemeral and accesses the Keycloak Admin API only from the Docker private network. The admin password/token and SMTP credentials **never belong in a repository or Web/Flutter build**. It records short-lived synthetic evidence under ignored `deploy/staging/evidence/` and refuses public signup if SMTP checks fail. A successful SMTP connection is **not** proof the end user received and clicked the email; record that separately in redacted UAT evidence.
+
+React supports `prompt=create`, verified email, PKCE login, server-validated buyer enrollment, RP-initiated logout via `/auth/signed-out`, and re-login. Flutter supports AppAuth end-session with the registered `kz.zakaz.mobile:/logout` callback; device UAT still requires Android/iOS runners and real Keycloak. The Backend staging profile additionally requires `email_verified=true` on every authenticated buyer operation, and a deactivated buyer link blocks an old valid JWT at the business layer. **OIDC logout does not retroactively invalidate the already-issued access token**. See [R2.3F](../../docs/R2-3F-KEYCLOAK-SMTP-SESSION-E2E.md) for security and UAT gates.
