@@ -17,6 +17,7 @@ class SealedOrderLinesPostgresIT {
             .locations("classpath:db/migration").load().migrate();
         UUID order=UUID.randomUUID(),line=UUID.randomUUID(),buyer=UUID.randomUUID(),seller=UUID.randomUUID();
         try(var c=DriverManager.getConnection(db.getJdbcUrl(),db.getUsername(),db.getPassword())) {
+            c.setAutoCommit(false);
             try(var s=c.prepareStatement(
                 "INSERT INTO customer_order(id,public_number,seller_id,buyer_id,status,total_amount,delivery_fee,currency_code,created_at,version,expected_line_count) VALUES (?,'ZK-7M4P-9K2D',?,?,'PLACED',100.00,0.00,'KZT',now(),0,1)")){
                 s.setObject(1,order);s.setObject(2,seller);s.setObject(3,buyer);s.executeUpdate();
@@ -26,6 +27,8 @@ class SealedOrderLinesPostgresIT {
                 s.setObject(1,line);s.setObject(2,order);s.setObject(3,UUID.randomUUID());
                 assertThat(s.executeUpdate()).isEqualTo(1);
             }
+            c.commit();
+            c.setAutoCommit(true);
             try(var s=c.prepareStatement(
                 "INSERT INTO order_line(id,order_id,line_number,sku_id,quantity,unit,unit_price,line_total) VALUES (?,?,2,?,1.000,'PCS',0.00,0.00)")){
                 s.setObject(1,UUID.randomUUID());s.setObject(2,order);s.setObject(3,UUID.randomUUID());

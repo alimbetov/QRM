@@ -49,12 +49,15 @@ class InventoryRelationalIntegrityPostgresIT {
             exec(c,"INSERT INTO inventory_balance(id,seller_id,location_id,sku_id,on_hand,reserved) VALUES (?,?,?,?,2,0)",
                 UUID.randomUUID(),sellerA,locationA,skuA);
 
+            c.setAutoCommit(false);
             exec(c,"INSERT INTO customer_order(id,public_number,seller_id,buyer_id,status,total_amount,delivery_fee,currency_code,created_at,version,expected_line_count) VALUES (?,'ZK-1234-ABCD',?,?,'PLACED',100,0,'KZT',now(),0,1)",
                 orderA,sellerA,UUID.randomUUID());
             exec(c,"INSERT INTO customer_order(id,public_number,seller_id,buyer_id,status,total_amount,delivery_fee,currency_code,created_at,version,expected_line_count) VALUES (?,'ZK-1234-ABCE',?,?,'PLACED',100,0,'KZT',now(),0,1)",
                 orderB,sellerB,UUID.randomUUID());
             exec(c,"INSERT INTO order_line(id,order_id,line_number,sku_id,quantity,unit,unit_price,line_total) VALUES (?,?,1,?,1,'PCS',100,100)",lineA,orderA,skuA);
             exec(c,"INSERT INTO order_line(id,order_id,line_number,sku_id,quantity,unit,unit_price,line_total) VALUES (?,?,1,?,1,'PCS',100,100)",lineB,orderB,skuB);
+            c.commit();
+            c.setAutoCommit(true);
             String insert="INSERT INTO inventory_reservation(id,order_id,order_line_id,seller_id,location_id,sku_id,quantity,status) VALUES (?,?,?,?,?,?,1,'RESERVED')";
             assertThatThrownBy(()->exec(c,insert,UUID.randomUUID(),orderB,lineA,sellerA,locationA,skuA))
                 .isInstanceOf(SQLException.class);
