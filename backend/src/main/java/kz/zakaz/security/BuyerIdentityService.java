@@ -15,6 +15,17 @@ public class BuyerIdentityService {
     private final BuyerAccountLinkRepository accounts;
     public BuyerIdentityService(BuyerAccountLinkRepository accounts){this.accounts=accounts;}
     @Transactional(readOnly=true)
+    public UUID requireBuyer(JwtAuthenticationToken verifiedJwt){
+        if(verifiedJwt==null || !verifiedJwt.isAuthenticated() ||
+           verifiedJwt.getToken()==null || verifiedJwt.getToken().getIssuer()==null ||
+           verifiedJwt.getToken().getSubject()==null)
+            throw new AccessDeniedException("Verified buyer required");
+        var jwt=verifiedJwt.getToken();
+        return accounts.findByIssuerAndSubjectAndActiveTrue(
+            jwt.getIssuer().toString(),jwt.getSubject())
+            .orElseThrow(()->new AccessDeniedException("Unlinked buyer")).getBuyerId();
+    }
+    @Transactional(readOnly=true)
     public UUID requireBuyer(JwtAuthenticationToken verifiedJwt,UUID expectedBuyerId){
         if(verifiedJwt==null || !verifiedJwt.isAuthenticated() || expectedBuyerId==null
            || verifiedJwt.getToken()==null || verifiedJwt.getToken().getIssuer()==null
