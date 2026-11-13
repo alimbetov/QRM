@@ -96,6 +96,50 @@ test('real browser login, demand, bid acceptance, confirmation and inventory wor
   expect(confirmation.status()).toBe(204);
   await page.getByRole('button',{name:'Обновить статус'}).click();
   await expect(page.getByText('CONFIRMED',{exact:true})).toBeVisible();
+
+  // QA03 buyer cancellation: execute the second order through the real browser.
+  // The first confirmed order remains unchanged and remains our logout/relogin oracle.
+  await page.goto('/buy?productId='+actor.STAGING_PRODUCT_ID+'&unit=PCS');
+  await expect(page.getByRole('button',{name:'Создать BuyerDemand'})).toBeVisible();
+  const secondDemandPromise=page.waitForResponse(r=>
+    r.url().includes('/api/v1/buyers/demands') &&
+    r.request().method()==='POST' && r.status()===201);
+  await page.getByRole('button',{name:'Создать BuyerDemand'}).click();
+  const secondDemand=await (await secondDemandPromise).json();
+  expect(secondDemand.demandId).toMatch(/^[0-9a-f-]{36}$/i);
+  const secondBidResponse=await request.post(
+    '/api/v1/sellers/'+actor.STAGING_SELLER_ID+'/demands/'+secondDemand.demandId+'/bids',
+    {headers,data:{
+      revision:1,expiresAt:new Date(Date.now()+15*60_000).toISOString(),
+      method:'PICKUP',originLocationId:actor.STAGING_LOCATION_ID,
+      deliveryFee:0,lines:[{
+        productId:actor.STAGING_PRODUCT_ID,skuId:actor.STAGING_SKU_ID,
+        quantity:1,unitPrice:125000.50
+      }]
+    }});
+  expect(secondBidResponse.status()).toBe(201);
+  await page.getByRole('button',{name:'Обновить предложения'}).click();
+  await page.getByRole('button',{name:'Принять и создать заказ'}).click();
+  await expect(page.getByText('PLACED',{exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Отменить заказ до подтверждения'}))
+    .toBeVisible();
+  const cancelResponse=page.waitForResponse(r=>
+    r.url().endsWith('/cancel') && r.request().method()==='POST' && r.status()===204);
+  page.once('dialog',dialog=>void dialog.accept());
+  await page.getByRole('button',{name:'Отменить заказ до подтверждения'}).click();
+  await cancelResponse;
+  await expect(page.getByText('CANCELLED_BY_BUYER',{exact:true})).toBeVisible();
+  const cancelledOrderId=new URL(page.url()).searchParams.get('orderId');
+  expect(cancelledOrderId).toMatch(/^[0-9a-f-]{36}$/i);
+  const lateConfirm=await request.post(
+    '/api/v1/sellers/'+actor.STAGING_SELLER_ID+'/orders/'+cancelledOrderId+'/confirm',
+    {headers});
+  expect(lateConfirm.status()).toBe(409);
+  const persistedCancel=await page.request.get('/api/v1/buyers/orders/'+cancelledOrderId);
+  // page.request has no buyer JWT by default, so never treat unauthorized
+  // requests as evidence of an order; the browser GET above is authoritative.
+  expect([401,403]).toContain(persistedCancel.status());
+
   // Verify RP-initiated logout callback and a fresh real OIDC login. This proves
   // browser-session lifecycle, NOT immediate revocation of already-issued JWT.
   await page.getByRole('button',{name:'Выйти через Keycloak'}).click();
