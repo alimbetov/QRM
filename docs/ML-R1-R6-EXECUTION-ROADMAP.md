@@ -1,6 +1,6 @@
 # ML-R1 → ML-R6 — executable release sequence for ZAKAZ
 
-**Status:** implementation plan; not a claim that ML-R2…ML-R6 exist in code.
+**Status:** ML-R1 and ML-R2 initial PostgreSQL implementation committed; ML-R2 external invitation dispatch/consent policy remains HOLD; ML-R3…ML-R6 are plans, NOT shipped.
 **Repository:** `alimbetov/QRM`; continue only on `docs/adr-002-jpa-architecture-review` until the current Draft PR is independently reviewed and merged.
 **Architecture baseline:** Java 21, Spring Boot MVC/JPA, PostgreSQL modular monolith, HCC 20-digit 2/2/3/5/8, typed AttributeRegistry, catalog/demand/bid/order/outbox. No standalone ML microservice, MongoDB or broker required at this stage.
 
@@ -22,20 +22,20 @@
 
 ## ML-R2 — trading events, seller invitations and deduplication
 
-**Status:** PLANNED. Reuse verified `BuyerDemand`, `SellerBid`, `CustomerOrder` and existing PostgreSQL outbox pattern rather than another broker.
+**Status:** PARTIALLY IMPLEMENTED / PostgreSQL CI PASS. Flyway `V24__ml_trade_events_and_invitation_decisions.sql` adds immutable `ml_trade_event` and `ml_seller_invitation` with unique `(demand_id,seller_id,policy_version)`. PostgreSQL triggers append `DEMAND_CREATED`, `BID_SUBMITTED`, `BID_REVISED`, `BID_ACCEPTED`, `ORDER_CONFIRMED` transactionally, and `SELLER_INVITATION_EVALUATED` on the deduplicated decision. `MlSellerInvitationService` is internal and **OFF by default**; it checks live PUBLIC+active HCC-compatible tracked SKU, seller membership, demand expiry, acceptance and fulfillment area. No actual invites, Push, notification consent workflow or event replay consumer has shipped. See [ML-R2 implementation status](ML-R2-IMPLEMENTATION-STATUS.md).
 
 Proposed append-only domain events with explicitly versioned payloads:
 - `DEMAND_CREATED` / `DEMAND_UPDATED` / `DEMAND_EXPIRED` (never email/phone in ML event payload)
 - `SELLER_INVITATION_ELIGIBLE`, `INVITATION_QUEUED`, `INVITATION_DELIVERED`, `INVITATION_SUPPRESSED`, `INVITATION_FAILED`
 - `SELLER_BID_SUBMITTED`, `BID_REVISED`, `BID_EXPIRED`, `BID_ACCEPTED`, `ORDER_CONFIRMED` and relevant cancellations
 
-Event envelope minimum: `event_id UUID`, `event_type`, `schema_version`, `aggregate_id`, `aggregate_version`, `occurred_at`, `ingested_at`, `idempotency_key`, `causation_id`, `consent/purpose policy marker` when required. Use **new next-free Flyway migration** after checking current HEAD; `V23` belongs to media audit; do not reuse its version. `V24` was previously proposed for Favorites, so coordinate exact numbering.
+Event envelope minimum: `event_id UUID`, `event_type`, `schema_version`, `aggregate_id`, `aggregate_version`, `occurred_at`, `ingested_at`, `idempotency_key`, `causation_id`, `consent/purpose policy marker` when required. `V24` is now allocated to ML-R2 event/decision storage. Seller notifications and consent are separate future work; buyer Favorites is assigned **V25 or next available version** after verifying current HEAD.
 
 Deduplication is a **business invariant**, not a cache TTL: unique `(demand_id, seller_id, invitation_policy_version)` for one invitation decision per policy round; unique `event_id` in consumed-event ledger and unique source-aggregate revision. Repeated delivery must produce one business invitation and one training label. No emailing/pushing before explicit delivery policy and consent checks.
 
-**RED first, PostgreSQL Testcontainers:** two workers/one invitation; repeated HTTP, outbox replay, crash between send and ACK, duplicate event ID with conflicting payload, expired demand, foreign seller, revoked visibility, buyer consent revoked, seller no longer eligible; negative tests must show zero unauthorized invitations.
+**Implemented PostgreSQL checks:** RED `MlTradeEventPostgresIT` intentionally failed on missing tables; GREEN tests cover immutable events, bid revisions, duplicate `(demand,seller,policy)` rejection, seller membership/category/public listing/location suppression, expiry, six competing workers, versioned reevaluation. Further required tests before external invitation delivery: real notification consent, HTTP replay, crashed dispatcher, external delivery ACK, database event consumer dedup, revocation and privacy gates.
 
-**Exit gate:** persistent dedup, no PII in ML events, replay-safe downstream projection and proved reliability with a real database; independent S2 on exact SHA.
+**Exit gate:** PostgreSQL journal and candidate evaluation achieved in CI. Full ML-R2 delivery gate **OPEN**: reviewed notification policy/consent, real at-least-once consumer ledger and crash/replay tests, independently verified side effects; independent S2 on exact SHA. No sending from the current service.
 
 ## ML-R3 — PostgreSQL Dataset Builder and time-control
 
