@@ -27,6 +27,8 @@ jobs:
           cache: maven
           cache-dependency-path: backend/pom.xml
       - run: mvn -B -f backend/pom.xml verify
+      - name: QA-02 — measure actual JaCoCo line/branch coverage
+        run: python3 scripts/qa/jacoco_report.py
       - name: Publish test and JaCoCo evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -36,5 +38,6 @@ jobs:
             backend/target/surefire-reports/
             backend/target/failsafe-reports/
             backend/target/site/jacoco/
+            backend/target/qa/
           if-no-files-found: warn
           retention-days: 7

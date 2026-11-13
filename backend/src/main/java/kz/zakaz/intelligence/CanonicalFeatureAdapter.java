@@ -19,7 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
  * trusted server-side services, never from a client/LLM/feature request.
  */
 @Service
-public final class CanonicalFeatureAdapter {
+public class CanonicalFeatureAdapter {
     private final CanonicalProductRepository products;
     private final CatalogSkuFactsResolver skuFacts;
     private final CategoryAttributeRuleRepository categoryRules;
