@@ -104,4 +104,106 @@ class MediaUploadServiceTest {
             mock(MediaMalwareScanner.class),mock(ListingMediaBlobStore.class),0))
             .isInstanceOf(IllegalStateException.class);
     }
+    @Test void forgedSellerIsRejectedBeforeImageReadOrObjectStorage() throws Exception {
+        UUID seller=UUID.randomUUID(),listingId=UUID.randomUUID();
+        var listing=mock(SellerListing.class);
+        var repository=mock(SellerListingRepository.class);
+        var store=mock(ListingMediaBlobStore.class);
+        var multipart=mock(org.springframework.web.multipart.MultipartFile.class);
+        var scanner=mock(MediaMalwareScanner.class);
+        when(repository.findById(listingId)).thenReturn(Optional.of(listing));
+        when(listing.getSellerId()).thenReturn(UUID.randomUUID());
+        var service=new MediaUploadService(repository,mock(JdbcTemplate.class),
+            mock(TransactionTemplate.class),mock(MediaImageSanitizer.class),
+            scanner,store,2);
+        assertThatThrownBy(()->service.upload(seller,listingId,multipart,true))
+            .isInstanceOf(ResponseStatusException.class)
+            .satisfies(e->assertThat(((ResponseStatusException)e).getStatusCode())
+                .isEqualTo(HttpStatus.NOT_FOUND));
+        verify(multipart,never()).getBytes();
+        verifyNoInteractions(scanner,store);
+    }
+
+    @Test void scannerOutageFailsClosedWithoutStoringObject() throws Exception {
+        UUID seller=UUID.randomUUID(),listingId=UUID.randomUUID();
+        var listing=mock(SellerListing.class);
+        var repository=mock(SellerListingRepository.class);
+        var store=mock(ListingMediaBlobStore.class);
+        var scanner=mock(MediaMalwareScanner.class);
+        var multipart=mock(org.springframework.web.multipart.MultipartFile.class);
+        when(repository.findById(listingId)).thenReturn(Optional.of(listing));
+        when(listing.getSellerId()).thenReturn(seller);
+        when(listing.getStatus()).thenReturn(ListingStatus.DRAFT);
+        when(multipart.isEmpty()).thenReturn(false);
+        when(multipart.getSize()).thenReturn(3L);
+        byte[] payload=new byte[]{1,2,3};
+        when(multipart.getBytes()).thenReturn(payload);
+        doThrow(new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,"AV down"))
+            .when(scanner).requireClean(same(payload));
+        var service=new MediaUploadService(repository,mock(JdbcTemplate.class),
+            mock(TransactionTemplate.class),mock(MediaImageSanitizer.class),
+            scanner,store,2);
+        assertThatThrownBy(()->service.upload(seller,listingId,multipart,false))
+            .isInstanceOf(ResponseStatusException.class)
+            .satisfies(e->assertThat(((ResponseStatusException)e).getStatusCode())
+                .isEqualTo(HttpStatus.SERVICE_UNAVAILABLE));
+        verifyNoInteractions(store);
+    }
+
+    @Test void storageFailureCleansPartialObjectsAndSkipsDatabaseWrite() throws Exception {
+        UUID seller=UUID.randomUUID(),listingId=UUID.randomUUID();
+        var listing=mock(SellerListing.class);
+        var repository=mock(SellerListingRepository.class);
+        var store=mock(ListingMediaBlobStore.class);
+        var scanner=mock(MediaMalwareScanner.class);
+        var sanitizer=mock(MediaImageSanitizer.class);
+        var multipart=mock(org.springframework.web.multipart.MultipartFile.class);
+        var tx=mock(TransactionTemplate.class);
+        when(repository.findById(listingId)).thenReturn(Optional.of(listing));
+        when(listing.getSellerId()).thenReturn(seller);
+        when(listing.getStatus()).thenReturn(ListingStatus.DRAFT);
+        when(multipart.isEmpty()).thenReturn(false);
+        when(multipart.getSize()).thenReturn(3L);
+        byte[] payload=new byte[]{1,2,3};
+        when(multipart.getBytes()).thenReturn(payload);
+        when(sanitizer.sanitize(payload)).thenReturn(
+            new MediaImageSanitizer.Sanitized(new byte[]{1},new byte[]{2},
+                "a".repeat(64),1,1));
+        doThrow(new IllegalStateException("RustFS unavailable"))
+            .when(store).put(any(),any(byte[].class));
+        var service=new MediaUploadService(repository,mock(JdbcTemplate.class),
+            tx,sanitizer,scanner,store,2);
+        assertThatThrownBy(()->service.upload(seller,listingId,multipart,false))
+            .isInstanceOf(IllegalStateException.class).hasMessageContaining("RustFS");
+        verify(store,times(2)).delete(any());
+        verifyNoInteractions(tx);
+    }
+
+    @Test void databaseCommitFailureCompensatesBothStoredObjects() throws Exception {
+        UUID seller=UUID.randomUUID(),listingId=UUID.randomUUID();
+        var listing=mock(SellerListing.class);
+        var repository=mock(SellerListingRepository.class);
+        var store=mock(ListingMediaBlobStore.class);
+        var sanitizer=mock(MediaImageSanitizer.class);
+        var multipart=mock(org.springframework.web.multipart.MultipartFile.class);
+        var tx=mock(TransactionTemplate.class);
+        when(repository.findById(listingId)).thenReturn(Optional.of(listing));
+        when(listing.getSellerId()).thenReturn(seller);
+        when(listing.getStatus()).thenReturn(ListingStatus.DRAFT);
+        when(multipart.isEmpty()).thenReturn(false);
+        when(multipart.getSize()).thenReturn(3L);
+        byte[] payload=new byte[]{1,2,3};
+        when(multipart.getBytes()).thenReturn(payload);
+        when(sanitizer.sanitize(payload)).thenReturn(
+            new MediaImageSanitizer.Sanitized(new byte[]{1},new byte[]{2},
+                "a".repeat(64),1,1));
+        when(tx.execute(any())).thenThrow(new IllegalStateException("PostgreSQL failed"));
+        var service=new MediaUploadService(repository,mock(JdbcTemplate.class),
+            tx,sanitizer,mock(MediaMalwareScanner.class),store,2);
+        assertThatThrownBy(()->service.upload(seller,listingId,multipart,false))
+            .isInstanceOf(IllegalStateException.class).hasMessageContaining("PostgreSQL");
+        verify(store,times(2)).put(any(),any(byte[].class));
+        verify(store,times(2)).delete(any());
+    }
+
 }
