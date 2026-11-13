@@ -108,7 +108,8 @@
         "https://__STAGING_DOMAIN__"
       ],
       "attributes": {
-        "pkce.code.challenge.method": "S256"
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "https://__STAGING_DOMAIN__/auth/signed-out"
       },
       "defaultClientScopes": [
         "profile",
@@ -161,7 +162,8 @@
       ],
       "webOrigins": [],
       "attributes": {
-        "pkce.code.challenge.method": "S256"
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "kz.zakaz.mobile:/logout"
       },
       "defaultClientScopes": [
         "profile",
