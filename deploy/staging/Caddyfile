@@ -1,0 +1,22 @@
+# Caddy requests publicly trusted TLS certificates for STAGING_DOMAIN.
+# A real DNS record and ports 80/443 are required. No TLS bypass or HTTP-only app.
+{$STAGING_DOMAIN} {
+  encode zstd gzip
+  @identity path /identity /identity/*
+  handle @identity {
+    reverse_proxy keycloak:8080
+  }
+  handle /api/* {
+    reverse_proxy backend:8080
+  }
+  handle {
+    root * /srv
+    try_files {path} /index.html
+    file_server
+  }
+  header {
+    X-Content-Type-Options nosniff
+    Referrer-Policy strict-origin-when-cross-origin
+    X-Frame-Options DENY
+  }
+}
