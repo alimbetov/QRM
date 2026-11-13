@@ -38,7 +38,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @TestPropertySource(properties={
     "zakaz.catalog.media.enabled=true",
     "zakaz.media.storage.provider=filesystem",
-    "zakaz.media.scanner.provider=dev-only"
+    "zakaz.media.scanner.provider=dev-only",
+    "zakaz.search.http.enabled=true",
+    "zakaz.catalog.feed.enabled=true",
+    "zakaz.search.cursor-secret-base64=U0VBUkNILVQwMS1ub24tcHJvZHVjdGlvbi1yYW5kb20tMzItYnl0ZXM="
 })
 class ListingMediaHttpPostgresIT {
     @Container static PostgreSQLContainer<?> pg=new PostgreSQLContainer<>("postgres:17-alpine");
@@ -107,6 +110,20 @@ class ListingMediaHttpPostgresIT {
         // The media cannot be fetched before Listing PUBLIC and a QR link exists.
         mvc.perform(get("/api/v1/public/media/"+mediaId)).andExpect(status().isNotFound());
         publishing.publishForSeller(f.sellerId(),f.listingId());
+        assertThat(jdbc.queryForObject("""
+            SELECT count(*) FROM catalog_media_audit_event
+            WHERE media_id=? AND event_type='UPLOADED'
+            """,Integer.class,mediaId)).isEqualTo(1);
+        String uniqueTitle=jdbc.queryForObject("""
+            SELECT p.canonical_name FROM catalog_listing l
+            JOIN catalog_product p ON p.id=l.product_id WHERE l.id=?
+            """,String.class,f.listingId());
+        var feed=mvc.perform(get("/api/v1/public/catalog/feed")
+            .param("query",uniqueTitle).param("limit","24"))
+            .andExpect(status().isOk()).andReturn();
+        String feedBody=feed.getResponse().getContentAsString();
+        assertThat(feedBody).contains(mediaId.toString());
+        assertThat(feedBody).contains("coverUrl");
         mvc.perform(get("/api/v1/public/catalog/"+f.listingId()+"/media"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$[0].mediaId").value(mediaId.toString()))

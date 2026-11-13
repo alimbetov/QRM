@@ -66,6 +66,13 @@ class ListingMediaSchemaPostgresIT {
     @Test void onlyOneReadyCoverAndInvalidMediaRejectedAtDatabase() {
         var listing=draft();
         UUID cover=addMedia(listing,"catalog/"+UUID.randomUUID()+"/cover.jpg",true,"READY");
+        assertThat(jdbc.queryForObject("""
+            SELECT count(*) FROM catalog_media_audit_event
+            WHERE media_id=? AND event_type='UPLOADED'
+            """,Integer.class,cover)).isEqualTo(1);
+        assertThatThrownBy(()->jdbc.update(
+            "DELETE FROM catalog_media_audit_event WHERE media_id=?",cover))
+            .isInstanceOf(DataAccessException.class);
         assertThat(cover).isNotNull();
         assertThatThrownBy(()->addMedia(listing,"catalog/"+UUID.randomUUID()+"/duplicate.jpg",true,"READY"))
             .isInstanceOf(DataAccessException.class);

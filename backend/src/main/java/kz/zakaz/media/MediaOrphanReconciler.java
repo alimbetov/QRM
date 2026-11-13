@@ -27,7 +27,13 @@ public final class MediaOrphanReconciler {
             Integer linked=jdbc.queryForObject(
                 "SELECT count(*) FROM catalog_listing_media WHERE object_key=?",
                 Integer.class,original);
-            if(linked!=null&&linked==0) blobs.delete(item.key());
+            if(linked!=null&&linked==0) {
+                blobs.delete(item.key());
+                jdbc.update("""
+                    INSERT INTO catalog_media_orphan_gc_event(id,object_key,deleted_at)
+                    VALUES (?,?,clock_timestamp())
+                    """,java.util.UUID.randomUUID(),item.key());
+            }
         }
     }
 }

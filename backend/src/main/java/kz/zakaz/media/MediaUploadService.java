@@ -37,6 +37,13 @@ public class MediaUploadService {
     public UUID upload(UUID sellerId,UUID listingId,MultipartFile image,boolean cover) {
         if(sellerId==null||listingId==null)
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Seller/listing required");
+        // Reject forged SellerListing BEFORE expensive scanning/object-store writes.
+        var draft=listings.findById(listingId)
+            .orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND,"Listing not found"));
+        if(!sellerId.equals(draft.getSellerId()))
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Listing not found");
+        if(draft.getStatus()!=ListingStatus.DRAFT)
+            throw new ResponseStatusException(HttpStatus.CONFLICT,"Media changes require DRAFT");
         try {
             if(image==null||image.isEmpty()||image.getSize()>5_000_000)
                 throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,"Invalid image");

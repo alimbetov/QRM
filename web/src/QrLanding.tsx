@@ -1,6 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { publicQrApiBase, publicQrPath, validContactPhone, formatPublishedPriceKzt, type QrListing } from './qr-api';
+import {loadListingPhotos, trustedListingPhotoUrl, type ListingPhoto} from './media-api';
 import './styles.css';
+import './photo-detail.css';
 import './qr-landing.css';
 
 type LoadingState = 'loading' | 'ready' | 'notfound' | 'unavailable';
@@ -8,6 +10,7 @@ type SubmitState = 'idle' | 'working' | 'accepted' | 'error' | 'rate-limited';
 
 export default function QrLanding({ token }: { token: string }) {
   const [listing, setListing] = useState<QrListing | null>(null);
+  const [photos, setPhotos] = useState<ListingPhoto[]>([]);
   const [loading, setLoading] = useState<LoadingState>('loading');
   const [phone, setPhone] = useState('');
   const [consent, setConsent] = useState(false);
@@ -32,6 +35,15 @@ export default function QrLanding({ token }: { token: string }) {
     });
     return () => abort.abort();
   }, [token]);
+
+  useEffect(()=>{
+    if(import.meta.env.VITE_CATALOG_MEDIA_ENABLED !== 'true' || !listing?.listingId) return;
+    const controller=new AbortController();
+    loadListingPhotos(listing.listingId,controller.signal)
+      .then(result=>{if(!controller.signal.aborted) setPhotos(result);})
+      .catch(()=>{if(!controller.signal.aborted) setPhotos([]);});
+    return ()=>controller.abort();
+  },[listing?.listingId]);
 
   async function sendContact(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -67,6 +79,13 @@ export default function QrLanding({ token }: { token: string }) {
           <span className="qr-eyebrow">{listing.category}</span>
           <h1>{listing.title}</h1>
           <p className="qr-muted">Опубликованное предложение продавца</p>
+          {photos.length>0 && <div className="qr-photo-gallery" aria-label="Фотографии товара">
+            {photos.map(photo=>{
+              const src=trustedListingPhotoUrl(photo.imageUrl);
+              return src ? <img key={photo.mediaId} loading="lazy" src={src}
+                alt={listing.title} width={photo.width} height={photo.height}/> : null;
+            })}
+          </div>}
           <h2>Варианты товара</h2>
           <ul className="qr-variants">
             {listing.variants.map(variant => <li key={variant.id}>
