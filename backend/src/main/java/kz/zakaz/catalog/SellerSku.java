@@ -1,6 +1,8 @@
 package kz.zakaz.catalog;
 
 import jakarta.persistence.*;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.*;
 import kz.zakaz.domain.types.*;
 
@@ -16,6 +18,8 @@ public class SellerSku {
     @Column(name="seller_sku_code",nullable=false,length=80) private String sellerSkuCode;
     @Enumerated(EnumType.STRING) @Column(name="tracking_mode",nullable=false,length=16) private StockTrackingMode trackingMode;
     @Enumerated(EnumType.STRING) @Column(name="sales_unit",length=20,updatable=false) private MeasurementUnit salesUnit;
+    @Column(name="public_unit_price_kzt",precision=19,scale=2)
+    private BigDecimal publicUnitPriceKzt;
     protected SellerSku(){}
     /** Legacy R1 factory; untyped SKUs cannot be accepted into an order. */
     public static SellerSku create(SellerListing listing,String skuCode,StockTrackingMode mode){
@@ -36,4 +40,18 @@ public class SellerSku {
     public SellerListing getListing(){return listing;}
     public StockTrackingMode getTrackingMode(){return trackingMode;}
     public MeasurementUnit getSalesUnit(){return salesUnit;}
+    public BigDecimal getPublicUnitPriceKzt(){return publicUnitPriceKzt;}
+
+    /**
+     * Strict scale: do not silently round a seller's intended price.
+     * A later revisioned pricing model may add post-publication changes.
+     */
+    void setDraftPublicPriceKzt(BigDecimal price) {
+        if (listing.getStatus()!=ListingStatus.DRAFT)
+            throw new IllegalStateException("Published SKU pricing is immutable");
+        if (price==null || price.signum()<=0 || price.scale()>2
+            || price.precision()-price.scale()>17)
+            throw new IllegalArgumentException("Public price must be positive NUMERIC(19,2)");
+        publicUnitPriceKzt=price.setScale(2,RoundingMode.UNNECESSARY);
+    }
 }
