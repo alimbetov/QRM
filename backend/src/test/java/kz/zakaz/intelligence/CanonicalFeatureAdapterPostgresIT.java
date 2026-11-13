@@ -125,11 +125,13 @@ class CanonicalFeatureAdapterPostgresIT {
             BigDecimal.ONE,BigDecimal.TEN,0.80)).isInstanceOf(IllegalArgumentException.class);
     }
 
-    @Test void draftForeignSellerAndInvalidEnumOptionAreNeverRankable() {
+    @Test void draftSkuIsNeverRankable() {
         Sample draft=sample(false);
         assertThatThrownBy(()->adapter.project(draft.seller(),draft.sku(),
             demand(draft,"256"),verified())).isInstanceOf(IllegalStateException.class);
+    }
 
+    @Test void foreignSellerAndInvalidEnumOptionAreNeverRankable() {
         Sample published=sample(true);
         assertThatThrownBy(()->adapter.project(UUID.randomUUID(),published.sku(),
             demand(published,"256"),verified())).isInstanceOf(SecurityException.class);
