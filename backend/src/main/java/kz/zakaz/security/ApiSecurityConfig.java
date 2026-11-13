@@ -46,6 +46,8 @@ public class ApiSecurityConfig {
                     .hasAuthority("SCOPE_leads:read")
                 .requestMatchers(HttpMethod.GET,"/api/v1/sellers/*/listings/*/qr.png")
                     .hasAuthority("SCOPE_catalog:write")
+                .requestMatchers(HttpMethod.PUT,"/api/v1/sellers/*/listings/*/skus/*/price")
+                    .hasAuthority("SCOPE_catalog:write")
                 .requestMatchers(HttpMethod.POST,"/api/v1/sellers/*/listings/*/publish")
                     .hasAuthority("SCOPE_catalog:write")
                 .anyRequest().denyAll())
