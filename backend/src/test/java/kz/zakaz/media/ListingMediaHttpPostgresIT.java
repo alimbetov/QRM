@@ -37,7 +37,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("test-pg")
 @TestPropertySource(properties={
     "zakaz.catalog.media.enabled=true",
-    "zakaz.media.storage.provider=filesystem"
+    "zakaz.media.storage.provider=filesystem",
+    "zakaz.media.scanner.provider=dev-only"
 })
 class ListingMediaHttpPostgresIT {
     @Container static PostgreSQLContainer<?> pg=new PostgreSQLContainer<>("postgres:17-alpine");

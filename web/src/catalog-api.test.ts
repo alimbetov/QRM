@@ -1,5 +1,5 @@
 import {describe,it,expect,vi,afterEach} from 'vitest';
-import {catalogUrl,loadCatalog,loadCategories} from './catalog-api';
+import {catalogUrl,loadCatalog,loadCategories,photoFeedUrl,loadPhotoFeed,photoMediaUrl} from './catalog-api';
 
 afterEach(() => vi.unstubAllGlobals());
 describe('live catalog HTTP client',()=>{
@@ -35,5 +35,40 @@ describe('live catalog HTTP client',()=>{
     vi.stubGlobal('fetch',vi.fn().mockResolvedValue({ok:true,
       json:async()=>[{code:'01020030000000000000',label:'Товары',productType:'PHYSICAL'}]}));
     expect((await loadCategories())[0].label).toBe('Товары');
+  });
+});
+
+
+describe('photo discovery feed API',()=>{
+  it('encodes Unicode query, category and opaque cursor',()=>{
+    const uri=new URL(photoFeedUrl('болгарка','01020030000000000000','abc.def',24),'http://localhost');
+    expect(uri.pathname).toBe('/api/v1/public/catalog/feed');
+    expect(uri.searchParams.get('query')).toBe('болгарка');
+    expect(uri.searchParams.get('cursor')).toBe('abc.def');
+    expect(uri.searchParams.get('categoryCode')).toBe('01020030000000000000');
+    expect(()=>photoFeedUrl('','',null,100)).toThrow('Invalid feed limit');
+    expect(()=>photoFeedUrl('','bad',null)).toThrow('Invalid feed category');
+  });
+  it('returns real paginated feed only and validates cursor',async()=>{
+    vi.stubGlobal('fetch',vi.fn().mockResolvedValue({
+      ok:true,json:async()=>({items:[{
+        listingId:'listing-uuid',productId:'product-uuid',title:'Test',category:'Tool',
+        categoryCode:'01020030000000000000',productType:'PHYSICAL',
+        qrToken:'a'.repeat(43),variants:[],coverUrl:null,imageCount:0
+      }],nextCursor:'opaque',hasMore:true})
+    }));
+    const res=await loadPhotoFeed('bolg','',null);
+    expect(res.items).toHaveLength(1);
+    expect(res.nextCursor).toBe('opaque');
+    vi.stubGlobal('fetch',vi.fn().mockResolvedValue({
+      ok:true,json:async()=>({items:[],nextCursor:null,hasMore:true})
+    }));
+    await expect(loadPhotoFeed('','',null)).rejects.toThrow('Feed cursor required');
+  });
+  it('accepts only own public media path and rejects arbitrary URLs',()=>{
+    expect(photoMediaUrl('/api/v1/public/media/'+'a'.repeat(36)+'?size=thumb'))
+      .toContain('/api/v1/public/media/');
+    expect(photoMediaUrl('https://other.example/unsafe')).toBeNull();
+    expect(photoMediaUrl('/api/v1/public/media/../admin')).toBeNull();
   });
 });

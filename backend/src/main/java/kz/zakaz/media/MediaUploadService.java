@@ -24,17 +24,26 @@ public class MediaUploadService {
     private final JdbcTemplate jdbc;
     private final TransactionTemplate transactions;
     private final MediaImageSanitizer sanitizer;
+    private final MediaMalwareScanner scanner;
     private final ListingMediaBlobStore store;
 
     public MediaUploadService(SellerListingRepository listings,JdbcTemplate jdbc,
-            TransactionTemplate transactions,MediaImageSanitizer sanitizer,ListingMediaBlobStore store) {
+            TransactionTemplate transactions,MediaImageSanitizer sanitizer,
+            MediaMalwareScanner scanner,ListingMediaBlobStore store) {
         this.listings=listings;this.jdbc=jdbc;this.transactions=transactions;
-        this.sanitizer=sanitizer;this.store=store;
+        this.sanitizer=sanitizer;this.scanner=scanner;this.store=store;
     }
 
     public UUID upload(UUID sellerId,UUID listingId,MultipartFile image,boolean cover) {
         if(sellerId==null||listingId==null)
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Seller/listing required");
+        try {
+            if(image==null||image.isEmpty()||image.getSize()>5_000_000)
+                throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,"Invalid image");
+            scanner.requireClean(image.getBytes());
+        } catch(java.io.IOException e) {
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,"Unreadable image");
+        }
         var ready=sanitizer.sanitize(image);
         UUID mediaId=UUID.randomUUID();
         String prefix="listing/"+listingId+"/"+mediaId+"/";

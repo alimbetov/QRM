@@ -25,6 +25,7 @@ public class ApiSecurityConfig {
             http.authorizeHttpRequests(auth->auth
                 .requestMatchers(HttpMethod.GET,"/api/v1/public/catalog","/api/v1/public/catalog/categories").permitAll()
                 .requestMatchers(HttpMethod.GET,"/api/v1/public/catalog/search","/api/v1/public/search/suggest").permitAll()
+                .requestMatchers(HttpMethod.GET,"/api/v1/public/catalog/feed").permitAll()
                 .requestMatchers(HttpMethod.GET,"/api/v1/public/catalog/*/media","/api/v1/public/media/*").permitAll()
                 .requestMatchers(HttpMethod.GET,"/api/v1/public/q/*").permitAll()
                 .requestMatchers(HttpMethod.POST,"/api/v1/public/q/*/leads").permitAll()
@@ -33,6 +34,7 @@ public class ApiSecurityConfig {
             http.authorizeHttpRequests(auth->auth
                 .requestMatchers(HttpMethod.GET,"/api/v1/public/catalog","/api/v1/public/catalog/categories").permitAll()
                 .requestMatchers(HttpMethod.GET,"/api/v1/public/catalog/search","/api/v1/public/search/suggest").permitAll()
+                .requestMatchers(HttpMethod.GET,"/api/v1/public/catalog/feed").permitAll()
                 .requestMatchers(HttpMethod.GET,"/api/v1/public/catalog/*/media","/api/v1/public/media/*").permitAll()
                 .requestMatchers(HttpMethod.GET,"/api/v1/public/q/*").permitAll()
                 .requestMatchers(HttpMethod.POST,"/api/v1/public/q/*/leads").permitAll()

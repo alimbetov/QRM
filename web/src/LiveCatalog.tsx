@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import LivePhotoFeed from './LivePhotoFeed';
 import { loadCatalog, loadCategories, type LiveCategory, type CatalogPage } from './catalog-api';
 import { formatPublishedPriceKzt, qrTokenPattern } from './qr-api';
 import './live-catalog.css';
@@ -12,7 +13,7 @@ function kindLabel(kind: string): string {
   return 'Предложение';
 }
 
-export default function LiveCatalog() {
+function LegacyLiveCatalog() {
   const [typedSearch, setTypedSearch] = useState('');
   const [query, setQuery] = useState('');
   const [categoryCode, setCategoryCode] = useState('');
@@ -116,4 +117,11 @@ export default function LiveCatalog() {
     </main>
     <footer className="live-footer">ZAKAZ · реальный каталог PostgreSQL · R2.3C</footer>
   </div>;
+}
+
+
+/** Search/photo feed is an opt-in UX rollout. Legacy catalog is unchanged. */
+export default function LiveCatalog() {
+  return import.meta.env.VITE_CATALOG_FEED_ENABLED === 'true'
+    ? <LivePhotoFeed/> : <LegacyLiveCatalog/>;
 }

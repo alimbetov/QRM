@@ -70,3 +70,47 @@ export async function loadCategories(signal?: AbortSignal): Promise<LiveCategory
   if (!Array.isArray(result)) throw new Error('Invalid category response');
   return result;
 }
+
+
+export type PhotoFeedItem = Omit<LiveCatalogItem,'sellerId'> & {
+  coverUrl: string | null;
+  imageCount: number;
+};
+export type PhotoFeedPage = {
+  items: PhotoFeedItem[];
+  nextCursor: string | null;
+  hasMore: boolean;
+};
+
+export function photoFeedUrl(query: string, categoryCode: string,
+                             cursor: string | null, limit = 24): string {
+  if (!Number.isInteger(limit) || limit < 1 || limit > 48) throw new Error('Invalid feed limit');
+  if (query.length > 80) throw new Error('Invalid feed query');
+  if (categoryCode && !/^[0-9]{20}$/.test(categoryCode)) throw new Error('Invalid feed category');
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (query.trim()) params.set('query', query.trim());
+  if (categoryCode) params.set('categoryCode', categoryCode);
+  if (cursor) params.set('cursor', cursor);
+  return publicQrApiBase() + '/api/v1/public/catalog/feed?' + params.toString();
+}
+
+export function photoMediaUrl(relative: string | null): string | null {
+  if (!relative || !/^\/api\/v1\/public\/media\/[0-9a-f-]{36}\?size=thumb$/.test(relative))
+    return null;
+  return publicQrApiBase() + relative;
+}
+
+export async function loadPhotoFeed(query: string, categoryCode: string,
+                                    cursor: string | null,
+                                    signal?: AbortSignal): Promise<PhotoFeedPage> {
+  const result = await readJson<PhotoFeedPage>(
+    photoFeedUrl(query, categoryCode, cursor), signal);
+  if (!result || !Array.isArray(result.items) || typeof result.hasMore !== 'boolean' ||
+      !(result.nextCursor === null || typeof result.nextCursor === 'string') ||
+      result.items.some(item => !item.listingId || !item.productId ||
+        !item.qrToken || !Array.isArray(item.variants))) {
+    throw new Error('Invalid photo feed response');
+  }
+  if (result.hasMore && !result.nextCursor) throw new Error('Feed cursor required');
+  return result;
+}

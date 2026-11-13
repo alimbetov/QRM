@@ -62,9 +62,9 @@ public class PublicSearchReadService {
                    p.canonical_name,c.label AS category,c.hcc_code,c.product_type,
                    lower(p.canonical_name) AS sort_title,
                    CASE
-                       WHEN lower(p.canonical_name)=:term THEN 0
-                       WHEN lower(p.canonical_name) LIKE :contains THEN 1
-                       WHEN to_tsvector('simple',lower(p.canonical_name))
+                       WHEN :term<>'' AND lower(p.canonical_name)=:term THEN 0
+                       WHEN :term<>'' AND lower(p.canonical_name) LIKE :contains THEN 1
+                       WHEN :term<>'' AND to_tsvector('simple',lower(p.canonical_name))
                            @@ plainto_tsquery('simple',:term) THEN 2
                        WHEN EXISTS (
                            SELECT 1 FROM matched_categories m
@@ -82,7 +82,8 @@ public class PublicSearchReadService {
               AND (:categoryCode='' OR c.id IN (SELECT category_id FROM category_filter))
               AND (:productType='' OR c.product_type=:productType)
               AND (
-                  lower(p.canonical_name) LIKE :contains
+                  :term=''
+                  OR lower(p.canonical_name) LIKE :contains
                   OR to_tsvector('simple',lower(p.canonical_name))
                      @@ plainto_tsquery('simple',:term)
                   OR (lower(p.canonical_name) % :term\n                      AND similarity(lower(p.canonical_name),:term)>=0.55)
@@ -107,7 +108,16 @@ public class PublicSearchReadService {
     @Transactional(readOnly=true,isolation=Isolation.REPEATABLE_READ,timeout=5)
     public SearchPage search(String raw,String categoryCode,String productType,
                              int limit,String cursor) {
-        String term=normalize(raw);
+        return find(normalize(raw),categoryCode,productType,limit,cursor);
+    }
+
+    @Transactional(readOnly=true,isolation=Isolation.REPEATABLE_READ,timeout=5)
+    public SearchPage browse(String categoryCode,String productType,int limit,String cursor) {
+        return find("",categoryCode,productType,limit,cursor);
+    }
+
+    private SearchPage find(String term,String categoryCode,String productType,
+                             int limit,String cursor) {
         String category=validateCategory(categoryCode);
         String kind=validateType(productType);
         if(limit<1||limit>48)
