@@ -18,3 +18,7 @@ jobs:
       - run: npm install --no-audit --no-fund
       - run: npm test
       - run: npm run build
+      - name: Compile and enumerate real-staging Playwright scenario (no network/login)
+        env:
+          STAGING_BASE_URL: https://ci.example.org
+        run: npm run e2e:staging -- --list
