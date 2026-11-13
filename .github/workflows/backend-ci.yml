@@ -27,3 +27,14 @@ jobs:
           cache: maven
           cache-dependency-path: backend/pom.xml
       - run: mvn -B -f backend/pom.xml verify
+      - name: Publish test and JaCoCo evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-qa-reports
+          path: |
+            backend/target/surefire-reports/
+            backend/target/failsafe-reports/
+            backend/target/site/jacoco/
+          if-no-files-found: warn
+          retention-days: 7

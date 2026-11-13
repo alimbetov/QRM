@@ -33,7 +33,7 @@ public class InventoryReservation {
                                 UUID locationId,UUID skuId,BigDecimal quantity){
         Objects.requireNonNull(orderId);Objects.requireNonNull(orderLineId);
         Objects.requireNonNull(sellerId);Objects.requireNonNull(locationId);Objects.requireNonNull(skuId);
-        if(quantity==null||quantity.signum()<=0||quantity.scale()>3)
+        if(quantity==null||quantity.signum()<=0||quantity.scale()>3||quantity.precision()>19)
             throw new IllegalArgumentException("Invalid reserved quantity");
         var r=new InventoryReservation();r.id=UUID.randomUUID();r.orderId=orderId;
         r.orderLineId=orderLineId;r.sellerId=sellerId;r.locationId=locationId;

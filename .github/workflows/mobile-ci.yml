@@ -22,4 +22,12 @@ jobs:
         run: flutter analyze
       - name: Tests
         working-directory: mobile
-        run: flutter test
+        run: flutter test --coverage
+      - name: Publish Flutter coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flutter-coverage
+          path: mobile/coverage/lcov.info
+          if-no-files-found: warn
+          retention-days: 7
