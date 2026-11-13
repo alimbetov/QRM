@@ -16,6 +16,13 @@
 - Attributes examples: phones brand/memory; services specialization/on-site work; furniture type/material; filter only eligible category/seller/product type. Locale labels separate from stable codes. Unit/currency normalized; multi-SKU price 'from' policy explicitly defined when several variants have different prices.
 - Seller comparisons are read-only; filter by seller is optional, not enforced by scan origin QR. When arriving via QR, seller context is shown but the user can discover offers from others without modifying original QR attribution.
 
+## Buyer bookmark and category notification extension (SEARCH-001)
+
+- **«Моя памятка»** is a user-facing name for existing planned server-side Favorites; not a second wishlist service. `Favorite(buyerId,listingId)` represents one concrete seller Listing, never all sellers of the same Product. Saved items group automatically by the listing Product's authoritative HCC category (parent/child drilldown), with cursor pagination and unchanged buyer ownership controls. A guest can keep temporary local bookmarks only; signed-in import requires confirmation.
+- A bookmark is **not** marketing/Push consent. Independently configurable opt-ins cover listing/SKU price-watch and category new-public-listing digest. Category subscription is explicit, disabled by default and never inferred from a saved item or category visit. Operational order/offer notifications follow distinct policies.
+- Existing planned Notification Center + Outbox is authoritative; optional FCM/Web Push/Flutter are transport adapters, with OS/browser permission gating, dedup, quiet hours, per-channel/device preferences and opt-out checked again at send time. PUSH delivery is best-effort. No unverified price, availability, discount, private media or seller details are exposed in a notification.
+- Corresponding cross-client RED tests and API proposal: [SEARCH-001](SEARCH-001-UNIFIED-DISCOVERY.md) (SEARCH-FR-24…31, SEARCH-T21…31). New documents are requirements only; no claim that the backend Favorites/notification endpoints currently exist.
+
 ## State and security
 
 - UI sort/filter/pagination are URL shareable (phase 2) and browser back history stable; initial local demo only, page resets on filters and never mixes pages across categories.
