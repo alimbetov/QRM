@@ -49,6 +49,9 @@ class OrderConfirmationPostgresIT {
     @Autowired InventoryReservationRepository reservations;
     @Autowired OrderOutboxEventRepository events;
     @Autowired CustomerOrderRepository orders;
+    @Autowired InventoryStockService stock;
+    @Autowired OrderCancellationService cancellations;
+    @Autowired InventoryMovementRepository movements;
 
     record Market(UUID sellerId,UUID locationId,String sellerSubject,List<UUID> products,
                   List<UUID> skus) {}
@@ -148,5 +151,62 @@ class OrderConfirmationPostgresIT {
                 m.sellerId(),m.locationId(),m.skus().getFirst()).orElseThrow()
                 .getReserved()).isEqualByComparingTo("1");
         } finally {executor.shutdownNow();}
+    }
+    @Test void trustedSellerReceiptIsAuditedAndIdempotent() {
+        var m=market(1,List.of(BigDecimal.ZERO));
+        UUID sku=m.skus().getFirst();
+        stock.receive(token(m.sellerSubject()),m.sellerId(),m.locationId(),sku,
+            new BigDecimal("2.000"),"stock-receipt-one",NOW);
+        stock.receive(token(m.sellerSubject()),m.sellerId(),m.locationId(),sku,
+            new BigDecimal("2.000"),"stock-receipt-one",NOW);
+        var balance=balances.findBySellerIdAndLocationIdAndSkuId(
+            m.sellerId(),m.locationId(),sku).orElseThrow();
+        assertThat(balance.getOnHand()).isEqualByComparingTo("2.000");
+        assertThat(movements.findBySellerIdAndKindAndSourceKey(
+            m.sellerId(),InventoryMovement.Kind.RECEIPT,"stock-receipt-one")).isPresent();
+        assertThatThrownBy(()->stock.receive(token(m.sellerSubject()),m.sellerId(),m.locationId(),
+            sku,BigDecimal.ONE,"stock-receipt-one",NOW))
+            .isInstanceOf(InventoryOperationConflictException.class);
+    }
+
+    @Test void sellerCancellationReleasesEveryReservationExactlyOnceAndPublishesOutbox() {
+        var m=market(1,List.of(BigDecimal.ONE)); UUID orderId=placedOrder(m);
+        var actor=token(m.sellerSubject());
+        confirming.confirm(actor,m.sellerId(),orderId,NOW.plusSeconds(1));
+        cancellations.cancelBySeller(actor,m.sellerId(),orderId,NOW.plusSeconds(2));
+        cancellations.cancelBySeller(actor,m.sellerId(),orderId,NOW.plusSeconds(3));
+        assertThat(orders.findById(orderId).orElseThrow().getStatus())
+            .isEqualTo(OrderStatus.CANCELLED_BY_SELLER);
+        assertThat(reservations.findByOrderId(orderId)).hasSize(1);
+        assertThat(reservations.findByOrderId(orderId).getFirst().getStatus())
+            .isEqualTo("RELEASED");
+        assertThat(balances.findBySellerIdAndLocationIdAndSkuId(
+            m.sellerId(),m.locationId(),m.skus().getFirst()).orElseThrow().getReserved())
+            .isEqualByComparingTo("0.000");
+        assertThat(movements.findByOrderId(orderId)).hasSize(2);
+        assertThat(events.findByAggregateIdAndEventType(orderId,"ORDER_CONFIRMED")).isPresent();
+        assertThat(events.findByAggregateIdAndEventType(orderId,"ORDER_CANCELLED_BY_SELLER")).isPresent();
+    }
+
+    @Test void wrongSellerCannotCancelOrReceiveAnotherMerchantsStock() {
+        var m=market(1,List.of(BigDecimal.ONE)); UUID id=placedOrder(m);
+        assertThatThrownBy(()->cancellations.cancelBySeller(token("attacker"),m.sellerId(),id,NOW))
+            .isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
+        assertThatThrownBy(()->stock.receive(token("attacker"),m.sellerId(),
+            m.locationId(),m.skus().getFirst(),BigDecimal.ONE,"forged",NOW))
+            .isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
+        assertThat(orders.findById(id).orElseThrow().getStatus()).isEqualTo(OrderStatus.PLACED);
+        assertThat(movements.findBySellerIdAndKindAndSourceKey(
+            m.sellerId(),InventoryMovement.Kind.RECEIPT,"forged")).isEmpty();
+    }
+
+    @Test void cancellingPlacedOrderWritesOutboxWithoutInventingReservations() {
+        var m=market(1,List.of(BigDecimal.ONE));UUID id=placedOrder(m);
+        cancellations.cancelBySeller(token(m.sellerSubject()),m.sellerId(),id,NOW.plusSeconds(1));
+        assertThat(orders.findById(id).orElseThrow().getStatus())
+            .isEqualTo(OrderStatus.CANCELLED_BY_SELLER);
+        assertThat(reservations.findByOrderId(id)).isEmpty();
+        assertThat(movements.findByOrderId(id)).isEmpty();
+        assertThat(events.findByAggregateIdAndEventType(id,"ORDER_CANCELLED_BY_SELLER")).isPresent();
     }
 }
