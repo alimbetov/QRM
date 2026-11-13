@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { catalogUrl, loadCatalog, loadCategories, type LiveCategory, type CatalogPage } from './catalog-api';
+import { loadCatalog, loadCategories, type LiveCategory, type CatalogPage } from './catalog-api';
 import { formatPublishedPriceKzt, qrTokenPattern } from './qr-api';
 import './live-catalog.css';
 
