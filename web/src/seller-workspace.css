@@ -57,3 +57,13 @@
   .seller-inline{flex-direction:column;align-items:stretch}
   .seller-sku>label{max-width:none}
 }
+
+/* Owner-scoped commerce and audited callback inbox. */
+.seller-deal-tabs{display:flex;flex-wrap:wrap;gap:.55rem;margin:1rem 0 1.25rem}
+.seller-deal-tabs button[aria-pressed="true"]{background:#164858}
+.seller-deal-tabs button[aria-pressed="false"]{background:#e7eff2;color:#245460}
+.seller-deal-tabs button:focus-visible,.seller-listing-actions button:focus-visible{
+  outline:3px solid #0a7280;outline-offset:3px
+}
+.seller-panel a[href^="tel:"]{font-weight:700;color:#07687a}
+.seller-listing ul{padding-left:1.4rem;line-height:1.6}

@@ -7,6 +7,8 @@ import {
   uuid,validPrice,type WorkspaceListing,type WorkspacePage
 } from './seller-api';
 import {formatPublishedPriceKzt,qrTokenPattern} from './qr-api';
+import SellerDealsPanel from './SellerDealsPanel';
+import {sellerAccounts,type SellerAccount} from './seller-deals-api';
 import './seller-workspace.css';
 
 const SELLER_STORAGE_KEY='zakaz.seller.workspace.selection.v1';
@@ -121,6 +123,8 @@ export default function SellerWorkspace() {
     return uuid.test(saved)?saved:'';
   });
   const [sellerId,setSellerId]=useState('');
+  const [availableSellers,setAvailableSellers]=useState<SellerAccount[]>([]);
+  const [accountsError,setAccountsError]=useState('');
   const [page,setPage]=useState<WorkspacePage|null>(null);
   const [loading,setLoading]=useState(false);
   const [error,setError]=useState('');
@@ -158,6 +162,23 @@ export default function SellerWorkspace() {
       }
     }finally{if(call===generation.current)setLoading(false);}
   },[]);
+
+
+  useEffect(()=>{
+    if(!enabled||!user){setAvailableSellers([]);return;}
+    let active=true;
+    sellerAccounts(user.access_token).then(accounts=>{
+      if(!active)return;
+      setAvailableSellers(accounts);setAccountsError('');
+      if(accounts.length===1){
+        setSellerInput(accounts[0].sellerId);
+        void loadPage(accounts[0].sellerId,user.access_token,0);
+      }
+    }).catch(()=>{
+      if(active)setAccountsError('Список организаций недоступен. Можно ввести известный Seller ID вручную; права всегда проверяются на сервере.');
+    });
+    return ()=>{active=false;};
+  },[enabled,user,loadPage]);
 
   async function connect(event:FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -216,6 +237,16 @@ export default function SellerWorkspace() {
           ()=>setError('Не удалось завершить сеанс Keycloak.'))}>Выйти</button></div>
       <section className="seller-panel">
         <h2>Организация продавца</h2>
+        {availableSellers.length>0&&<label>Разрешённые организации
+          <select aria-label="Доступная организация" value={sellerInput}
+            onChange={e=>setSellerInput(e.target.value)}>
+            {availableSellers.length>1&&<option value="">Выберите организацию</option>}
+            {availableSellers.map(s=><option key={s.sellerId} value={s.sellerId}>
+              {s.sellerId} · {s.role}
+            </option>)}
+          </select>
+        </label>}
+        {accountsError&&<p className="seller-hint" role="status">{accountsError}</p>}
         <form onSubmit={connect} className="seller-inline">
           <label>Seller ID
             <input value={sellerInput} onChange={e=>setSellerInput(e.target.value)}
@@ -262,6 +293,7 @@ export default function SellerWorkspace() {
             onClick={()=>void loadPage(sellerId,user.access_token,page.page+1)}>Далее</button>
         </div>}
       </section>}
+      {sellerId&&<SellerDealsPanel key={sellerId} sellerId={sellerId} token={user.access_token}/>}
     </div>}
     {error&&<p role="alert" className="seller-error">{error}</p>}
     {success&&<p role="status" className="seller-feedback">{success}</p>}
