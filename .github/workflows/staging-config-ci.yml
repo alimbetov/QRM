@@ -25,8 +25,9 @@ jobs:
           python-version: '3.13'
       - name: Validate script syntax
         run: |
-          bash -n deploy/staging/seed-fixture.sh
-          python -m py_compile deploy/staging/render_realm.py deploy/staging/oidc-pkce-login.py deploy/staging/preflight.py
+          bash -n deploy/staging/seed-fixture.sh deploy/staging/smtp-ops.sh
+          python -m py_compile deploy/staging/render_realm.py deploy/staging/oidc-pkce-login.py deploy/staging/preflight.py deploy/staging/keycloak_smtp_ops.py
+          python -m unittest discover -s deploy/staging -p 'test_keycloak_*.py'
           node --check deploy/staging/e2e-real-oidc.mjs
       - name: Validate Compose syntax with dummy-only CI secrets
         run: docker compose --env-file deploy/staging/private.env.example -f deploy/staging/compose.yaml config --quiet
@@ -54,6 +55,9 @@ jobs:
           web=clients['zakaz-buyer-web']
           assert web['redirectUris']==['https://ci.example.org/auth/callback']
           assert web['webOrigins']==['https://ci.example.org']
+          assert web['attributes']['post.logout.redirect.uris']=='https://ci.example.org/auth/signed-out'
+          mobile=clients['zakaz-mobile']
+          assert mobile['attributes']['post.logout.redirect.uris']=='kz.zakaz.mobile:/logout'
           assert '__STAGING_DOMAIN__' not in json.dumps(realm)
           print('PASS: realm PKCE, exact redirects, issuer origin inputs')
           PY
