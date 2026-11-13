@@ -98,8 +98,13 @@ export default function LiveCatalog() {
                   <strong>{formatPublishedPriceKzt(variant.priceKzt)}</strong>
                 </div>)}
               </div>
+              {item.productType === 'PHYSICAL' && item.variants.some(variant => variant.unit && variant.unit !== 'SERVICE' && variant.unit !== 'LICENSE') &&
+                <a className="live-card-link" href={'/buy?productId=' + encodeURIComponent(item.productId) +
+                    '&unit=' + encodeURIComponent(item.variants.find(variant => variant.unit)?.unit || 'PCS')}>
+                  Запросить предложение
+                </a>}
               {qrTokenPattern.test(item.qrToken) &&
-                <a className="live-card-link" href={'/q/' + item.qrToken}>Открыть карточку по QR</a>}
+                <a className="live-card-link live-secondary" href={'/q/' + item.qrToken}>Открыть карточку по QR</a>}
             </article>)}</div>}
         <nav className="live-pagination" aria-label="Страницы каталога">
           <button disabled={page <= 0} onClick={() => setPage(p => Math.max(0, p - 1))}>Назад</button>
