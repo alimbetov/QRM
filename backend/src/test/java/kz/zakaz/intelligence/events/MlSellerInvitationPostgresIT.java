@@ -9,6 +9,7 @@ import kz.zakaz.deal.*;
 import kz.zakaz.domain.types.*;
 import kz.zakaz.security.*;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -34,6 +35,12 @@ class MlSellerInvitationPostgresIT {
     }
 
     @Autowired MlSellerInvitationService invitation;
+    @Autowired MlInvitationConsentService consent;
+    @Autowired JdbcMlEventQueue deliveryQueue;
+    @Autowired JdbcMlEventProjectionSink deliverySink;
+    @BeforeEach void isolateDelivery() {
+        jdbc.execute("TRUNCATE ml_event_projection_inbox,ml_seller_invitation_inbox,ml_event_delivery RESTART IDENTITY");
+    }
     @Autowired JdbcTemplate jdbc;
     @Autowired CategoryRepository categories;
     @Autowired CanonicalProductRepository products;
@@ -144,4 +151,56 @@ class MlSellerInvitationPostgresIT {
             threads.shutdownNow();
         }
     }
+    @Test void invitationsFailClosedWithoutBothExplicitOptIns() {
+        var f=scenario(true,true,true);
+        var candidate=invitation.evaluate(f.demandId(),f.sellerId(),1,Instant.now());
+        assertThat(candidate.status()).isEqualTo("ELIGIBLE");
+        var dispatcher=new MlEventDispatcher(deliveryQueue,deliverySink,"test-no-consent",
+            10,3,java.time.Duration.ofSeconds(30));
+        assertThat(dispatcher.pollOnce()).isEqualTo(1);
+        assertThat(dispatcher.pollOnce()).isEqualTo(1);
+        assertThat(jdbc.queryForObject("""
+            SELECT count(*) FROM ml_seller_invitation_inbox WHERE invitation_id=?
+            """,Integer.class,candidate.id())).isZero();
+        assertThat(deliveryQueue.health().get("delivered")).isEqualTo(2);
+        // Already consumed events cannot be silently replayed as new invitations
+        // when a user opts in after the fact.
+        UUID buyer=jdbc.queryForObject(
+            "SELECT buyer_id FROM buyer_demand_snapshot WHERE id=?",
+            UUID.class,f.demandId());
+        consent.setDemandSharing(buyer,f.demandId(),true);
+        consent.setSellerInApp(f.sellerId(),true);
+        assertThat(dispatcher.pollOnce()).isZero();
+        assertThat(consent.listSellerInbox(f.sellerId(),24)).isEmpty();
+    }
+
+    @Test void optedInSellerGetsExactlyOnePrivateInboxItemAndRevocationHidesIt() {
+        var f=scenario(true,true,true);
+        UUID buyer=jdbc.queryForObject(
+            "SELECT buyer_id FROM buyer_demand_snapshot WHERE id=?",
+            UUID.class,f.demandId());
+        consent.setDemandSharing(buyer,f.demandId(),true);
+        consent.setSellerInApp(f.sellerId(),true);
+        var candidate=invitation.evaluate(f.demandId(),f.sellerId(),1,Instant.now());
+        var dispatcher=new MlEventDispatcher(deliveryQueue,deliverySink,"test-opted-in",
+            10,3,java.time.Duration.ofSeconds(30));
+        assertThat(dispatcher.pollOnce()).isEqualTo(1);
+        assertThat(dispatcher.pollOnce()).isEqualTo(1);
+        assertThat(jdbc.queryForObject(
+            "SELECT count(*) FROM ml_seller_invitation_inbox WHERE invitation_id=?",
+            Integer.class,candidate.id())).isEqualTo(1);
+        assertThat(consent.listSellerInbox(f.sellerId(),24))
+            .extracting(MlInvitationConsentService.InboxItem::invitationId)
+            .containsExactly(candidate.id());
+
+        consent.setDemandSharing(buyer,f.demandId(),false);
+        assertThat(consent.listSellerInbox(f.sellerId(),24)).isEmpty();
+        consent.setDemandSharing(buyer,f.demandId(),true);
+        consent.setSellerInApp(f.sellerId(),false);
+        assertThat(consent.listSellerInbox(f.sellerId(),24)).isEmpty();
+        assertThatThrownBy(()->consent.setDemandSharing(
+            UUID.randomUUID(),f.demandId(),true))
+            .isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
+    }
+
 }

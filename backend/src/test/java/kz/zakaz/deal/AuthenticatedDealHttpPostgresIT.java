@@ -37,7 +37,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
     "zakaz.qr.http.enabled=true",
     "zakaz.buyer.enrollment.enabled=true",
     "zakaz.identity.require-verified-email=true",
-    "zakaz.identity.phone-key-base64=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+    "zakaz.identity.phone-key-base64=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+    "zakaz.ml.r2.consent-api.enabled=true"
 })
 class AuthenticatedDealHttpPostgresIT {
     @Container static PostgreSQLContainer<?> db=new PostgreSQLContainer<>("postgres:17-alpine");
@@ -291,5 +292,45 @@ class AuthenticatedDealHttpPostgresIT {
         mvc.perform(post("/api/v1/sellers/"+UUID.randomUUID()+"/orders/"+UUID.randomUUID()+"/confirm")
                 .header("Authorization","Bearer "+f.sellerToken()))
             .andExpect(status().isForbidden());
+    }
+
+    @Test void invitationSharingRequiresLinkedBuyerAndSellerAdminAndIsNotAutomatic() throws Exception {
+        var f=seed();
+        String deadline=Instant.now().plusSeconds(900).toString();
+        String payload=json.writeValueAsString(Map.of(
+            "city","Almaty","expiresAt",deadline,
+            "lines",List.of(Map.of("productId",f.productId(),"quantity",1,"unit","PCS"))));
+        String enable=json.writeValueAsString(Map.of("enabled",true));
+        String disable=json.writeValueAsString(Map.of("enabled",false));
+        var created=mvc.perform(post("/api/v1/buyers/demands")
+            .header("Authorization","Bearer "+f.buyerToken())
+            .contentType(MediaType.APPLICATION_JSON).content(payload))
+            .andExpect(status().isCreated()).andReturn();
+        UUID demand=idFrom(created.getResponse().getContentAsString(),"demandId");
+        String sharing="/api/v1/buyers/demands/"+demand+"/invitation-sharing";
+        mvc.perform(put(sharing).contentType(MediaType.APPLICATION_JSON)
+            .content(enable)).andExpect(status().isUnauthorized());
+        mvc.perform(put(sharing).header("Authorization","Bearer "+f.buyerToken())
+            .contentType(MediaType.APPLICATION_JSON).content(enable))
+            .andExpect(status().isNoContent());
+
+        String sellerPref="/api/v1/sellers/"+f.sellerId()+"/invitation-preference";
+        mvc.perform(put(sellerPref).header("Authorization","Bearer "+f.sellerToken())
+            .contentType(MediaType.APPLICATION_JSON).content(enable))
+            .andExpect(status().isNoContent());
+        mvc.perform(put("/api/v1/sellers/"+UUID.randomUUID()+"/invitation-preference")
+            .header("Authorization","Bearer "+f.sellerToken())
+            .contentType(MediaType.APPLICATION_JSON).content(enable))
+            .andExpect(status().isForbidden());
+        mvc.perform(get("/api/v1/sellers/"+f.sellerId()+"/invitations")
+            .header("Authorization","Bearer "+f.sellerToken()))
+            .andExpect(status().isOk()).andExpect(jsonPath("$").isArray());
+        mvc.perform(put(sharing).header("Authorization","Bearer "+f.buyerToken())
+            .contentType(MediaType.APPLICATION_JSON).content(disable))
+            .andExpect(status().isNoContent());
+        // Consent records alone must never create an order or send a push.
+        assertThat(jdbc.queryForObject("""
+            SELECT count(*) FROM ml_seller_invitation_inbox WHERE demand_id=?
+            """,Integer.class,demand)).isZero();
     }
 }
