@@ -6,11 +6,11 @@ Spring MVC + JPA/Hibernate + PostgreSQL 17 + Flyway + Spring Security OAuth2 res
 
 - Fast JUnit/H2 tests: `mvn -f backend/pom.xml test`
 - All JUnit + PostgreSQL Testcontainers/Failsafe: `mvn -f backend/pom.xml verify` (Docker required).
-- PostgreSQL `test-pg` uses **Flyway V1–V18** then Hibernate `ddl-auto=validate`. H2 `test` explicitly disables Flyway and creates an isolated test schema. Never use H2 as evidence of production SQL migration compatibility.
+- PostgreSQL `test-pg` uses **Flyway V1–V19** then Hibernate `ddl-auto=validate`. H2 `test` explicitly disables Flyway and creates an isolated test schema. Never use H2 as evidence of production SQL migration compatibility.
 
 ## Database/schema ownership
 
-- Fresh PostgreSQL environments: Flyway applies controlled versioned `db/migration/V1__domain_and_catalog_baseline.sql` through V18 on application startup. Includes existing `customer_order`, `order_line`, `inventory_location`, catalog tables, enum governance and seller membership. JPA only validates; it never updates the PostgreSQL schema.
+- Fresh PostgreSQL environments: Flyway applies controlled versioned `db/migration/V1__domain_and_catalog_baseline.sql` through V19 on application startup. Includes existing `customer_order`, `order_line`, `inventory_location`, catalog tables, enum governance and seller membership. JPA only validates; it never updates the PostgreSQL schema.
 - Existing **pre-Flyway** environments are intentionally blocked from silent migration. `spring.flyway.baseline-on-migrate=false` and `spring.flyway.clean-disabled=true`. Before upgrading a populated DB: backup, compare physical schema and data to V1, rehearse a reviewed adoption/baseline plan and verify checksums + migration history. **Do not** simply enable `baseline-on-migrate=true` or delete old tables.
 - The older `db/manual/V001..V003` scripts remain for isolated historical integration checks; `db/migration/` is authoritative for new PostgreSQL environments. Retire manual duplicates only after transition review.
 - Dev PostgreSQL: `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, then `mvn -f backend/pom.xml spring-boot:run`. Development also uses Flyway; old dev DBs require manual adoption.
@@ -53,3 +53,7 @@ Body: `{"priceKzt":125000.50}`; response: 204. Requires `SCOPE_catalog:write`, c
 Optional anonymous `GET /api/v1/public/catalog?query=&categoryCode=&page=0&size=12` and `GET /api/v1/public/catalog/categories` require `zakaz.catalog.http.enabled=true` (default false). Only PUBLIC listings with QR links appear; owner/stock data is never disclosed. Canonical productId allows a later authenticated BuyerDemand, but indicative public price is not an all-in quote.
 
 Protected `GET /api/v1/buyers/demands/{demandId}/bids` requires `zakaz.commerce.http.enabled=true`, valid JWT with scope `deal:write` and a server-provisioned buyer-account link matching demand ownership. Returns current nonexpired seller quote revisions capped at 50; no seller warehouse PII. Acceptance reuses transactional `BidAcceptanceService`: one PLACED order, no reserve until seller confirmation. See `docs/R2-3C-REAL-CATALOG-BUYER-CLIENTS.md` and S2 issue #3.
+
+## R2.3E — verified Keycloak buyer enrollment (default OFF)
+
+Flyway **V19** adds `buyer_profile`, linked through the existing unique OIDC `buyer_account_link(issuer,subject)`. After a cryptographically verified scoped JWT with `email_verified=true`, `POST /api/v1/buyers/enroll` creates an internal buyerId and a profile atomically, and `GET /api/v1/buyers/me` reads only the caller's profile. Nickname and contact phone are supplied by the buyer; the contact is AES-GCM encrypted, remains `phone_verified=false` and cannot establish account ownership or SMS recovery. A trusted inactive buyer link cannot be reopened by self-registration. Enable only with `zakaz.buyer.enrollment.enabled=true` and the **separate** `zakaz.identity.phone-key-base64` secret. See `docs/R2-3E-KEYCLOAK-VERIFIED-BUYER-ENROLLMENT.md`. Remote SMTP/UAT/S2 and privacy retention gates are still open.
