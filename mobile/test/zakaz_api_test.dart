@@ -53,7 +53,7 @@ void main() {
       return http.Response(jsonEncode({
         'buyerId':'server-id','nickname':'TestBuyer','phoneVerified':false,
         'maskedPhone':'••••0000','email':'buyer@verified.test','created':true
-      }),201);
+      }),201,headers:{'content-type':'application/json; charset=utf-8'});
     });
     final api=ZakazApi('https://staging.example.test',client:client);
     final registered=await api.enrollBuyer('signed-buyer-token','TestBuyer','+77000000000',true);
