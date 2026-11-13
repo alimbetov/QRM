@@ -130,6 +130,33 @@ class BuyerEnrollmentPostgresIT {
             .andExpect(status().isNotFound());
     }
 
+    @Test void simultaneousEnrollmentRetriesShareOneBuyerAndOneEncryptedProfile() throws Exception {
+        String token=identity(true,"deal:write");
+        var pool=Executors.newFixedThreadPool(2);
+        var start=new CountDownLatch(1);
+        try {
+            Callable<Integer> request=()->{
+                if(!start.await(10,TimeUnit.SECONDS)) throw new IllegalStateException("Latch timed out");
+                return mvc.perform(register(token)).andReturn().getResponse().getStatus();
+            };
+            var first=pool.submit(request);
+            var second=pool.submit(request);
+            start.countDown();
+            assertThat(List.of(first.get(45,TimeUnit.SECONDS),
+                               second.get(45,TimeUnit.SECONDS)))
+                .containsExactlyInAnyOrder(201,200);
+            var linked=links.findByIssuerAndSubject(ISSUER,issuerSubject(token)).orElseThrow();
+            assertThat(jdbc.queryForObject(
+                "SELECT count(*) FROM buyer_profile WHERE buyer_id=?",
+                Integer.class,linked.getBuyerId())).isEqualTo(1);
+            assertThat(jdbc.queryForObject(
+                "SELECT count(*) FROM buyer_account_link WHERE issuer=? AND subject=?",
+                Integer.class,ISSUER,issuerSubject(token))).isEqualTo(1);
+        } finally {
+            pool.shutdownNow();
+        }
+    }
+
     @Test void existingBuyerLinkCanCompleteProfileWithoutChangingBuyerIdentity() throws Exception{
         String token=identity(true,"deal:write");
         UUID buyer=UUID.randomUUID();
