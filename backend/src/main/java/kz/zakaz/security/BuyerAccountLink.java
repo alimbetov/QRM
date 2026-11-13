@@ -29,4 +29,5 @@ public class BuyerAccountLink {
         link.subject=subject;link.buyerId=buyerId;link.active=true;return link;
     }
     public UUID getBuyerId(){return buyerId;}
+    public boolean isActive(){return active;}
 }
