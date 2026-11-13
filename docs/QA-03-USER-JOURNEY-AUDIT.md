@@ -176,3 +176,13 @@
 - **Wave 5 — operational qualification:** QA03-002/019/020/021/022, затем ML-R2 delivery ledger и ML-R3.
 
 **Следующий исполняемый шаг:** проверить новый PostgreSQL тест архивации Listing между публичным QR GET и Guest Lead POST, затем написать **PostgreSQL RED** для двухпоточного принятия SellerBid и buyer cancellation (пока RED, если отсутствует API). Пройти независимый S2 review точных оракулов; затем реализовать минимальный GREEN. Это точка входа в доказуемый user-journey coverage, а не ещё один документ со списком возможностей.
+
+## 10. Проверка QA03-003 после базового аудита (дополнение)
+
+**Коммит негативного PostgreSQL-теста:** `177ba53fe41b765b22780d815faadfd72120df0c` (следует после SHA базового аудита).  
+**GitHub Actions:** [Java run 43511158395](https://github.com/alimbetov/QRM/actions/runs/43511158395) — `mvn test` PASS, `mvn verify` PASS.  
+**Проверено в PostgreSQL Testcontainers:** `PublicQrJourneyPostgresIT` **6/6 PASS**, включая новый `archivedBetweenQrViewAndLeadSubmitCannotCreateLeadOrOrder`. Сценарий: GET PUBLIC QR → статус ARCHIVED → GET и POST callback получают 404 → не появляется ни нового PurchaseLead, ни CustomerOrder. Это последовательная state-transition проверка, не одновременная гонка двух PostgreSQL транзакций; UX-01/EDGE-01 остаются PARTIAL до живого browser/UAT и соответствующей гонки.
+
+В этой же точке ветки уже шли параллельные ML-R2 доработки: общий Backend `verify` содержал **105 unit** и **89 PostgreSQL integration** тестов, все PASS. Текущая измеренная JaCoCo точка для указанного коммита: **89.01% line / 63.22% branch** (изменение знаменателя после появления нового ML-кода). Эти показатели **не заменяют** baseline `d075f480...` и не должны произвольно смешиваться с ним.
+
+**Дополнительное S0 противоречие:** мастер-ТЗ упоминает доступ к `UNLISTED` по прямой ссылке, но `PublicQrCatalogService.findPublicLink` в аудированном коде разрешает только `PUBLIC`. Не объявлять direct-link UNLISTED работающим: сначала уточнить security/visibility контракт и написать PostgreSQL RED на переход PUBLIC → UNLISTED → direct access/listing discovery.
