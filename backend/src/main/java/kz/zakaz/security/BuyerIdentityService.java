@@ -2,6 +2,7 @@ package kz.zakaz.security;
 
 import java.util.*;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,13 +14,23 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class BuyerIdentityService {
     private final BuyerAccountLinkRepository accounts;
-    public BuyerIdentityService(BuyerAccountLinkRepository accounts){this.accounts=accounts;}
+    private final boolean requireVerifiedEmail;
+    public BuyerIdentityService(BuyerAccountLinkRepository accounts,
+        @Value("${zakaz.identity.require-verified-email:false}") boolean requireVerifiedEmail){
+        this.accounts=accounts;
+        this.requireVerifiedEmail=requireVerifiedEmail;
+    }
+    private void requireEmailProof(JwtAuthenticationToken jwt){
+        if(requireVerifiedEmail && !Boolean.TRUE.equals(jwt.getToken().getClaim("email_verified")))
+            throw new AccessDeniedException("Verified email required for buyer checkout");
+    }
     @Transactional(readOnly=true)
     public UUID requireBuyer(JwtAuthenticationToken verifiedJwt){
         if(verifiedJwt==null || !verifiedJwt.isAuthenticated() ||
            verifiedJwt.getToken()==null || verifiedJwt.getToken().getIssuer()==null ||
            verifiedJwt.getToken().getSubject()==null)
             throw new AccessDeniedException("Verified buyer required");
+        requireEmailProof(verifiedJwt);
         var jwt=verifiedJwt.getToken();
         return accounts.findByIssuerAndSubjectAndActiveTrue(
             jwt.getIssuer().toString(),jwt.getSubject())
@@ -31,6 +42,7 @@ public class BuyerIdentityService {
            || verifiedJwt.getToken()==null || verifiedJwt.getToken().getIssuer()==null
            || verifiedJwt.getToken().getSubject()==null)
             throw new AccessDeniedException("Verified buyer required");
+        requireEmailProof(verifiedJwt);
         var jwt=verifiedJwt.getToken();
         var buyer=accounts.findByIssuerAndSubjectAndActiveTrue(
             jwt.getIssuer().toString(),jwt.getSubject())
