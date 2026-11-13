@@ -209,4 +209,46 @@ class OrderConfirmationPostgresIT {
         assertThat(movements.findByOrderId(id)).isEmpty();
         assertThat(events.findByAggregateIdAndEventType(id,"ORDER_CANCELLED_BY_SELLER")).isPresent();
     }
+    @Test void twoConcurrentSellerCancellationsReleaseLastReservationOnce() throws Exception {
+        var m=market(1,List.of(BigDecimal.ONE));UUID id=placedOrder(m);
+        var actor=token(m.sellerSubject());
+        confirming.confirm(actor,m.sellerId(),id,NOW.plusSeconds(1));
+        var executor=Executors.newFixedThreadPool(2);
+        var start=new CountDownLatch(1);
+        try {
+            var actions=new ArrayList<Future<UUID>>();
+            for(int i=0;i<2;i++)actions.add(executor.submit(()->{
+                start.await();
+                return cancellations.cancelBySeller(actor,m.sellerId(),id,NOW.plusSeconds(2));
+            }));
+            start.countDown();
+            for(var action:actions)assertThat(action.get(20,TimeUnit.SECONDS)).isEqualTo(id);
+        } finally { executor.shutdownNow(); }
+        assertThat(orders.findById(id).orElseThrow().getStatus())
+            .isEqualTo(OrderStatus.CANCELLED_BY_SELLER);
+        assertThat(balances.findBySellerIdAndLocationIdAndSkuId(
+            m.sellerId(),m.locationId(),m.skus().getFirst()).orElseThrow().getReserved())
+            .isEqualByComparingTo("0");
+        assertThat(movements.findByOrderId(id).stream()
+            .filter(x->x.getDeltaOnHand().signum()==0).count()).isEqualTo(2);
+        assertThat(events.findByAggregateIdAndEventType(id,"ORDER_CANCELLED_BY_SELLER")).isPresent();
+    }
+
+    @Test void outboxUniqueFailureRollsBackEntireCancellationAndRelease() {
+        var m=market(1,List.of(BigDecimal.ONE));UUID id=placedOrder(m);
+        var actor=token(m.sellerSubject());
+        confirming.confirm(actor,m.sellerId(),id,NOW.plusSeconds(1));
+        events.saveAndFlush(OrderOutboxEvent.orderCancelledBySeller(
+            orders.findById(id).orElseThrow(),NOW.plusSeconds(2)));
+        assertThatThrownBy(()->cancellations.cancelBySeller(
+            actor,m.sellerId(),id,NOW.plusSeconds(3)))
+            .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
+        assertThat(orders.findById(id).orElseThrow().getStatus()).isEqualTo(OrderStatus.CONFIRMED);
+        assertThat(reservations.findByOrderId(id).getFirst().getStatus()).isEqualTo("RESERVED");
+        assertThat(balances.findBySellerIdAndLocationIdAndSkuId(
+            m.sellerId(),m.locationId(),m.skus().getFirst()).orElseThrow().getReserved())
+            .isEqualByComparingTo("1");
+        assertThat(movements.findByOrderId(id)).hasSize(1);
+    }
+
 }
