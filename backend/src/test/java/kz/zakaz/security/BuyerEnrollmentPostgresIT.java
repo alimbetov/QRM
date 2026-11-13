@@ -177,6 +177,16 @@ class BuyerEnrollmentPostgresIT {
             .andExpect(status().isNotFound());
     }
 
+    @Test void preexistingBuyerCannotCheckoutWithUnverifiedEmailWhenStagingGateEnabled(){
+        String token=identity(false,"deal:write order:read");
+        UUID buyerId=UUID.randomUUID();
+        links.saveAndFlush(BuyerAccountLink.provision(ISSUER,issuerSubject(token),buyerId));
+        var authenticated=new JwtAuthenticationToken(decoder.decode(token));
+        assertThatThrownBy(()->buyerIdentity.requireBuyer(authenticated))
+            .isInstanceOf(AccessDeniedException.class)
+            .hasMessageContaining("Verified email");
+    }
+
     @Test void existingBuyerLinkCanCompleteProfileWithoutChangingBuyerIdentity() throws Exception{
         String token=identity(true,"deal:write");
         UUID buyer=UUID.randomUUID();
