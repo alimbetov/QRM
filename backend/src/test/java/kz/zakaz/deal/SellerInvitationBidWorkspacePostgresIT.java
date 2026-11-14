@@ -219,4 +219,17 @@ class SellerInvitationBidWorkspacePostgresIT {
             "SELECT count(*) FROM seller_bid_snapshot WHERE demand_id=?",
             Integer.class,f.demand())).isZero();
     }
+    @Test void legacyDemandUuidEndpointCannotBypassBuyerInvitationConsent() throws Exception {
+        var f=fixture(new BigDecimal("5.000"),false,true);
+        String legacy="/api/v1/sellers/"+f.seller()+"/demands/"+f.demand()+"/bids";
+        mvc.perform(post(legacy)
+                .header("Authorization","Bearer "+f.sellerToken())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(offer(f,f.sku(),"99.00",1)))
+            .andExpect(status().isForbidden());
+        assertThat(jdbc.queryForObject(
+            "SELECT count(*) FROM seller_bid_snapshot WHERE demand_id=?",
+            Integer.class,f.demand())).isZero();
+    }
+
 }
