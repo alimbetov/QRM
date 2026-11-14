@@ -2,7 +2,11 @@ package kz.zakaz.catalog;
 
 import java.util.*;
 
-/** Full SKU attribute gate; checked per SKU, not across a seller's combined variants. */
+/**
+ * SKU attribute gate checked per variant. A fact is pinned to its write-time
+ * attribute schema revision; never validate historic values against NEW bounds.
+ * DB FK + append-only revision log enforce the actual revision identity.
+ */
 public final class CatalogPublicationPolicy {
     private CatalogPublicationPolicy(){}
     public static void verify(Category category, List<CategoryAttributeRule> rules,
@@ -22,11 +26,15 @@ public final class CatalogPublicationPolicy {
             if(!allowed.containsKey(id)||!seen.add(id))
                 throw new IllegalArgumentException("Duplicate or disallowed SKU attribute");
             UUID sku=fact.getSku().getId();
-            if(actualSku==null) actualSku=sku;
-            if(!sku.equals(actualSku) || !category.getId().equals(
+            if(actualSku==null)actualSku=sku;
+            if(!sku.equals(actualSku)||!category.getId().equals(
                     fact.getSku().getListing().getProduct().getCategory().getId()))
                 throw new IllegalArgumentException("Mixed SKU facts");
-            if(!fact.getCanonicalValue().equals(fact.getAttribute().canonicalize(fact.getCanonicalValue())))
+            if(!"SKU".equals(fact.getAttribute().getFactScope())
+                    ||fact.getDefinitionRevision()<1
+                    ||fact.getDefinitionRevision()>fact.getAttribute().getSchemaRevision())
+                throw new IllegalArgumentException("Invalid SKU attribute schema revision");
+            if(!fact.getAttribute().isCanonicalForm(fact.getCanonicalValue()))
                 throw new IllegalArgumentException("Not canonicalized");
         }
         for(var r:rules)
