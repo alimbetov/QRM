@@ -104,7 +104,9 @@ public class MlSellerResponseDatasetBuilder {
             rs.getTimestamp("first_at")==null?null:
                 rs.getTimestamp("first_at").toInstant(),
             rs.getBoolean("consent_revoked")),
-            cutoff,cutoff,cutoff,cutoff,cutoff,cutoff);
+            java.sql.Timestamp.from(cutoff),java.sql.Timestamp.from(cutoff),
+            java.sql.Timestamp.from(cutoff),java.sql.Timestamp.from(cutoff),
+            java.sql.Timestamp.from(cutoff),java.sql.Timestamp.from(cutoff));
         var rows=new ArrayList<Sample>();
         int positives=0;
         for(var e:evidence) {
