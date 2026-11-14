@@ -1,6 +1,7 @@
 package kz.zakaz.catalog;
 
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -34,16 +35,18 @@ class CatalogR1BRuleRevisionPostgresIT {
     @Autowired JdbcTemplate jdbc;
     @Autowired CatalogSkuFactsResolver facts;
     private static UUID id(){return UUID.randomUUID();}
+    private static final AtomicInteger rootCode = new AtomicInteger(76);
 
     private record Fixture(UUID category,UUID product,UUID listing,
                            UUID sku,UUID seller,UUID attr) {}
 
     private Fixture publishedPhone() {
         UUID category=id(),product=id(),listing=id(),sku=id(),seller=id(),storage=id();
+        String hcc=String.format("%02d",rootCode.getAndIncrement())+"000000000000000000";
         jdbc.update("""
           INSERT INTO catalog_category(id,hcc_code,product_type,label,active)
-          VALUES (?,'76000000000000000000','PHYSICAL','Pilot phone',true)
-          """,category);
+          VALUES (?,?,'PHYSICAL','Pilot phone',true)
+          """,category,hcc);
         jdbc.update("""
           INSERT INTO catalog_product(id,category_id,canonical_name)
           VALUES (?,?,'Pilot phone')
