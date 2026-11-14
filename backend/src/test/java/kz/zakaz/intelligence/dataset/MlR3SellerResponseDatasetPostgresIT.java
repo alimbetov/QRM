@@ -245,11 +245,19 @@ class MlR3SellerResponseDatasetPostgresIT {
         http.perform(post(url(f,"view"))
                 .header("Authorization","Bearer "+f.token()))
             .andExpect(status().isNoContent());
+        // A revision after the view must not fabricate an initial response.
+        String revised=bid(f).replaceFirst("1,", "2,");
+        http.perform(post(url(f,"bid"))
+                .header("Authorization","Bearer "+f.token())
+                .contentType(MediaType.APPLICATION_JSON).content(revised))
+            .andExpect(status().isCreated());
         var result=dataset.build(Instant.now());
         assertThat(result.samples()).hasSize(1);
         assertThat(result.positives()).isZero();
         assertThat(result.samples().getFirst().label())
             .isEqualTo(MlSellerResponseDatasetBuilder.Label.CENSORED);
+        assertThat(result.samples().getFirst().reason())
+            .isEqualTo("PRIOR_VALID_BID_BEFORE_VIEW");
     }
 
     @Test void maturedUnansweredExposureIsCensoredWithoutContinuousEligibilityAudit() {
@@ -275,6 +283,33 @@ class MlR3SellerResponseDatasetPostgresIT {
         assertThat(result.trainable()).isFalse();
         assertThatThrownBy(()->dataset.build(Instant.now().plusSeconds(3600)))
             .isInstanceOf(IllegalArgumentException.class);
+    }
+
+
+    @Test void repeatedPolicyInvitationsCountAsOneSellerDemandObservation()
+        throws Exception {
+        var f=fixture(true,true);
+        http.perform(post(url(f,"view"))
+                .header("Authorization","Bearer "+f.token()))
+            .andExpect(status().isNoContent());
+        var next=evaluator.evaluate(f.demand(),f.seller(),2,Instant.now());
+        assertThat(next.status()).isEqualTo("ELIGIBLE");
+        var dispatcher=new MlEventDispatcher(queue,sink,"r3-repeat",24,3,
+            Duration.ofSeconds(30));
+        for(int i=0;i<6;i++)dispatcher.pollOnce();
+        String second="/api/v1/sellers/"+f.seller()+"/invitations/"+
+            next.id()+"/view";
+        http.perform(post(second)
+                .header("Authorization","Bearer "+f.token()))
+            .andExpect(status().isNoContent());
+        assertThat(jdbc.queryForObject("""
+            SELECT count(*) FROM ml_seller_invitation_view
+            WHERE demand_id=? AND seller_id=?
+            """,Integer.class,f.demand(),f.seller())).isEqualTo(2);
+        var snapshot=dataset.build(Instant.now());
+        assertThat(snapshot.samples()).hasSize(1);
+        assertThat(snapshot.samples().getFirst().invitationId())
+            .isEqualTo(f.invitation());
     }
 
     @Test void viewAndConsentHistoryAreAppendOnlyAtTheDatabaseBoundary()

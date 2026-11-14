@@ -42,7 +42,8 @@ public class MlSellerResponseDatasetBuilder {
     }
     private record Evidence(UUID invitationId,UUID demandId,UUID sellerId,
                             Instant viewedAt,int lines,Instant demandExpires,
-                            Instant firstValidBid,boolean consentRevoked) {}
+                            Instant firstValidBid,boolean consentRevoked,
+                            boolean previousValidBid) {}
 
     private final JdbcTemplate jdbc;
     public MlSellerResponseDatasetBuilder(JdbcTemplate jdbc) {this.jdbc=jdbc;}
@@ -70,7 +71,22 @@ public class MlSellerResponseDatasetBuilder {
                        AND (
                          (consent.scope='DEMAND' AND consent.object_id=v.demand_id)
                          OR (consent.scope='SELLER' AND consent.object_id=v.seller_id))
-                   ) AS consent_revoked
+                   ) AS consent_revoked,
+                   EXISTS (
+                     SELECT 1 FROM seller_bid_snapshot previous
+                     JOIN bid_quote_snapshot previous_quote
+                       ON previous_quote.bid_id=previous.id
+                     JOIN ml_trade_event previous_event
+                       ON previous_event.aggregate_type='BID'
+                      AND previous_event.aggregate_id=previous.id
+                      AND previous_event.demand_id=v.demand_id
+                      AND previous_event.seller_id=v.seller_id
+                      AND previous_event.event_type IN ('BID_SUBMITTED','BID_REVISED')
+                     WHERE previous.demand_id=v.demand_id
+                       AND previous.seller_id=v.seller_id
+                       AND previous.submitted_at<v.viewed_at
+                       AND previous_event.ingested_at<=?
+                   ) AS previous_valid_bid
             FROM ml_seller_invitation_view v
             JOIN ml_seller_invitation_inbox inbox ON
               inbox.invitation_id=v.invitation_id AND inbox.demand_id=v.demand_id
@@ -103,18 +119,31 @@ public class MlSellerResponseDatasetBuilder {
             rs.getTimestamp("expires_at").toInstant(),
             rs.getTimestamp("first_at")==null?null:
                 rs.getTimestamp("first_at").toInstant(),
-            rs.getBoolean("consent_revoked")),
+            rs.getBoolean("consent_revoked"),
+            rs.getBoolean("previous_valid_bid")),
             java.sql.Timestamp.from(cutoff),java.sql.Timestamp.from(cutoff),
             java.sql.Timestamp.from(cutoff),java.sql.Timestamp.from(cutoff),
-            java.sql.Timestamp.from(cutoff),java.sql.Timestamp.from(cutoff));
+            java.sql.Timestamp.from(cutoff),java.sql.Timestamp.from(cutoff),
+            java.sql.Timestamp.from(cutoff));
+        // Immutable policy revisions may deliver several invitations to one
+        // demand/seller pair. Use its first acknowledged exposure as the one
+        // independent observation; never inflate cohort size on re-evaluation.
+        evidence.sort(Comparator.comparing(Evidence::viewedAt)
+            .thenComparing(e->e.invitationId().toString()));
+        var uniquePairs=new HashSet<String>();
         var rows=new ArrayList<Sample>();
         int positives=0;
         for(var e:evidence) {
+            if(!uniquePairs.add(e.demandId()+"|"+e.sellerId())) continue;
             Label label;
             String reason;
             Instant end=e.viewedAt().plus(Duration.ofHours(24));
             if(e.consentRevoked()) {
                 label=Label.CENSORED;reason="CONSENT_REVOKED";
+            } else if(e.previousValidBid()) {
+                // A later revision of an already-existing bid is NOT
+                // the seller's first response to this new exposure.
+                label=Label.CENSORED;reason="PRIOR_VALID_BID_BEFORE_VIEW";
             } else if(e.firstValidBid()!=null) {
                 label=Label.POSITIVE;reason="VALID_BID_WITHIN_24H";
                 positives++;
