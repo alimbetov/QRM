@@ -81,6 +81,10 @@ class SellerInvitationBidWorkspacePostgresIT {
     }
     private Fixture fixture(BigDecimal stock,boolean share,boolean optIn,
                             boolean manuallyEvaluate) {
+        return fixtureForUnit(stock,share,optIn,manuallyEvaluate,MeasurementUnit.PCS);
+    }
+    private Fixture fixtureForUnit(BigDecimal stock,boolean share,boolean optIn,
+                            boolean manuallyEvaluate,MeasurementUnit unit) {
         String n=UUID.randomUUID().toString().replace("-","");
         String hcc=String.format("%02d%02d%03d",
             1+Integer.parseInt(n.substring(0,2),16)%99,
@@ -91,7 +95,7 @@ class SellerInvitationBidWorkspacePostgresIT {
         UUID seller=UUID.randomUUID(),buyer=UUID.randomUUID();
         var listing=listings.saveAndFlush(SellerListing.draft(seller,product));
         var sku=skus.saveAndFlush(SellerSku.create(listing,"R2-SKU",
-            StockTrackingMode.TRACKED,MeasurementUnit.PCS));
+            StockTrackingMode.TRACKED,unit));
         publishing.publishForSeller(seller,listing.getId());
         var location=origins.saveAndFlush(InventoryLocation.create(
             seller,"SHOP-"+n,"Test shop","KZ-ALA","Almaty region",
@@ -107,7 +111,7 @@ class SellerInvitationBidWorkspacePostgresIT {
         var demand=new BuyerDemand(UUID.randomUUID(),buyer,"Almaty",
             Instant.now().plusSeconds(3600),List.of(
             new BuyerDemand.DemandLine(product.getId(),BigDecimal.ONE,
-                new BigDecimal("250.00"),MeasurementUnit.PCS)));
+                new BigDecimal("250.00"),unit)));
         deals.createDemand(demand,Instant.now());
         consent.setDemandSharing(buyer,demand.id(),share);
         consent.setSellerInApp(seller,optIn);
@@ -335,6 +339,98 @@ class SellerInvitationBidWorkspacePostgresIT {
                 "SELECT count(*) FROM ml_seller_invitation WHERE demand_id=?",
                 Integer.class,f.demand())).isZero();
         }
+    }
+
+    /**
+     * MATCH-001: candidate discovery cannot invite for a unit rejected by
+     * the authoritative SellerBidSubmissionService. SQL is not used to
+     * insert invitation decisions or fabricated business events.
+     */
+    @Test void scannerDoesNotInviteForUnitsRejectedByRealBidWriter() {
+        var service=fixtureForUnit(new BigDecimal("5.000"),true,true,false,
+            MeasurementUnit.SERVICE);
+        var license=fixtureForUnit(new BigDecimal("5.000"),true,true,false,
+            MeasurementUnit.LICENSE);
+        scanner.scanOnce(24);
+        for(var f:List.of(service,license)) {
+            assertThat(jdbc.queryForObject(
+                "SELECT count(*) FROM ml_seller_invitation WHERE demand_id=?",
+                Integer.class,f.demand()))
+                .as("No invitation for an unquotable service/license unit").isZero();
+            assertThat(jdbc.queryForObject(
+                "SELECT count(*) FROM ml_seller_invitation_inbox WHERE demand_id=?",
+                Integer.class,f.demand())).isZero();
+        }
+    }
+
+    /**
+     * MATCH-002: when one qualifying SKU is after the twenty-item UI quote
+     * window, the system must still offer a quoteable stocked SKU. All
+     * initial catalog/stock inserts are isolated synthetic test fixtures.
+     */
+    @Test void scannerInvitedSellerCanQuoteStockedSkuOutsideFirstTwenty() throws Exception {
+        var f=fixture(new BigDecimal("0.000"),true,true,false);
+        UUID productId=jdbc.queryForObject("""
+            SELECT l.product_id FROM catalog_sku s
+            JOIN catalog_listing l ON l.id=s.listing_id WHERE s.id=?
+            """,UUID.class,f.sku());
+        var draft=listings.saveAndFlush(SellerListing.draft(
+            f.seller(),products.findById(productId).orElseThrow()));
+        for(int i=0;i<21;i++) {
+            skus.saveAndFlush(SellerSku.create(draft,"EXTRA-"+i,
+                StockTrackingMode.TRACKED,MeasurementUnit.PCS));
+        }
+        publishing.publishForSeller(f.seller(),draft.getId());
+        UUID stocked=jdbc.queryForObject("""
+            SELECT s.id FROM catalog_sku s
+            JOIN catalog_listing l ON l.id=s.listing_id
+            WHERE l.seller_id=? AND l.product_id=?
+            ORDER BY s.id DESC LIMIT 1
+            """,UUID.class,f.seller(),productId);
+        if(stocked.equals(f.sku())) {
+            assertThat(jdbc.update("""
+                UPDATE inventory_balance SET on_hand=3.000,version=version+1
+                WHERE seller_id=? AND location_id=? AND sku_id=? AND reserved=0
+                """,f.seller(),f.origin(),stocked)).isEqualTo(1);
+        } else {
+            balances.saveAndFlush(InventoryBalance.open(
+                f.seller(),f.origin(),stocked,new BigDecimal("3.000")));
+        }
+        assertThat(scanner.scanOnce(24)).isGreaterThanOrEqualTo(1);
+        UUID invitationId=jdbc.queryForObject("""
+            SELECT id FROM ml_seller_invitation
+            WHERE demand_id=? AND seller_id=? AND policy_version=1
+            """,UUID.class,f.demand(),f.seller());
+        var dispatcher=new MlEventDispatcher(queue,sink,"match-pagination",24,3,
+            Duration.ofSeconds(30));
+        for(int i=0;i<5;i++)dispatcher.pollOnce();
+        var context=new Fixture(f.seller(),f.buyer(),f.demand(),f.sku(),
+            f.origin(),invitationId,f.sellerToken(),f.buyerToken());
+        var response=mvc.perform(get(quoteUrl(context))
+                .header("Authorization","Bearer "+f.sellerToken()))
+            .andExpect(status().isOk()).andReturn();
+        var options=json.readTree(response.getResponse().getContentAsString())
+            .path("lines").get(0).path("skus");
+        boolean stockedVisible=false;
+        for(var option:options) {
+            if(stocked.toString().equals(option.path("skuId").asText()) &&
+                new BigDecimal(option.path("availableByOrigin")
+                    .path(f.origin().toString()).asText("0"))
+                    .compareTo(BigDecimal.ONE)>=0) {
+                stockedVisible=true;
+            }
+        }
+        assertThat(stockedVisible)
+            .as("An eligible seller must see a stocked SKU within the bounded quote context")
+            .isTrue();
+        mvc.perform(post(bidUrl(context))
+                .header("Authorization","Bearer "+f.sellerToken())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(offer(context,stocked,"120.00",1)))
+            .andExpect(status().isCreated());
+        assertThat(jdbc.queryForObject(
+            "SELECT count(*) FROM seller_bid_snapshot WHERE demand_id=?",
+            Integer.class,f.demand())).isEqualTo(1);
     }
 
     @Test void olderActiveInvitationRemainsUsableBeyondNewestHundredInboxRows() throws Exception {
