@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'zakaz_api.dart';
 
@@ -17,6 +19,8 @@ class _SellerBidComposerState extends State<SellerBidComposer> {
   String? origin,error,receipt;
   String method='PICKUP';
   bool busy=false;
+  String? pendingSignature,pendingKey;
+  Map<String,dynamic>? pendingPayload;
   static final pricePattern=RegExp(r'^(?:0|[1-9]\d{0,16})(?:\.\d{1,2})?$');
   static final qtyPattern=RegExp(r'^(?:0|[1-9]\d{0,15})(?:\.\d{1,3})?$');
   @override void initState(){super.initState();load();}
@@ -27,6 +31,7 @@ class _SellerBidComposerState extends State<SellerBidComposer> {
 
   Future<void> load() async {
     if(busy)return;
+    pendingSignature=null;pendingKey=null;pendingPayload=null;
     setState((){busy=true;error=null;receipt=null;quote=null;});
     try {
       final data=await widget.api.sellerBidContext(
@@ -130,14 +135,26 @@ class _SellerBidComposerState extends State<SellerBidComposer> {
         'unitPrice':prices[line['productId']]!.text.trim()
       };
     }).toList();
+    final signature=jsonEncode({
+      'revision':quote!['nextRevision'],'method':method,
+      'originLocationId':origin,'deliveryFee':fee.text.trim(),'lines':rows
+    });
+    if(pendingSignature!=signature){
+      final rng=Random.secure();
+      pendingKey=base64UrlEncode(
+        List<int>.generate(18,(_)=>rng.nextInt(256))).replaceAll('=','');
+      pendingPayload={
+        'revision':quote!['nextRevision'],'expiresAt':expiry.toIso8601String(),
+        'method':method,'originLocationId':origin,
+        'deliveryFee':fee.text.trim(),'lines':rows
+      };
+      pendingSignature=signature;
+    }
     setState((){busy=true;error=null;});
     try{
       final id=await widget.api.sellerSubmitInvitationBid(widget.token,
-        widget.sellerId,widget.invitationId,{
-          'revision':quote!['nextRevision'],'expiresAt':expiry.toIso8601String(),
-          'method':method,'originLocationId':origin,
-          'deliveryFee':fee.text.trim(),'lines':rows
-        });
+        widget.sellerId,widget.invitationId,pendingPayload!,
+        idempotencyKey:pendingKey);
       if(mounted)setState(()=>receipt=id);
     }catch(e){
       if(mounted)setState(()=>error=e is ZakazApiError
