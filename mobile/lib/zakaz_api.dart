@@ -483,5 +483,40 @@ class ZakazApi {
     return result['bidId'] as String;
   }
 
+
+  Future<bool> buyerDemandSharing(String bearer,String demandId) async {
+    _sellerId(demandId);
+    final state=await request('GET',
+      '/api/v1/buyers/demands/'+demandId+'/invitation-sharing',
+      bearer:_requireToken(bearer));
+    if(state['enabled'] is! bool)throw const FormatException('Invalid buyer sharing');
+    return state['enabled'] as bool;
+  }
+
+  Future<void> setBuyerDemandSharing(
+      String bearer,String demandId,bool enabled) async {
+    _sellerId(demandId);
+    await _sellerNoContent(bearer,'PUT',
+      '/api/v1/buyers/demands/'+demandId+'/invitation-sharing',
+      {'enabled':enabled});
+  }
+
+  Future<bool> sellerInvitationPreference(String bearer,String sellerId) async {
+    _sellerId(sellerId);
+    final state=await request('GET',
+      '/api/v1/sellers/'+sellerId+'/invitation-preference',
+      bearer:_requireToken(bearer));
+    if(state['enabled'] is! bool)throw const FormatException('Invalid seller preference');
+    return state['enabled'] as bool;
+  }
+
+  Future<void> setSellerInvitationPreference(
+      String bearer,String sellerId,bool enabled) async {
+    _sellerId(sellerId);
+    await _sellerNoContent(bearer,'PUT',
+      '/api/v1/sellers/'+sellerId+'/invitation-preference',
+      {'enabled':enabled});
+  }
+
   void dispose()=>client.close();
 }
