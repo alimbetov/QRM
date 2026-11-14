@@ -119,3 +119,14 @@ STAGING_R2_DUAL_BROWSER_UAT=true npm run e2e:staging -- --grep "real buyer and s
 ```
 
 Default CI only lists Playwright declarations; it neither provisions live users nor runs this test, therefore there is **NO USER_E2E_VERIFIED claim** until the operator attaches actual test trace, linked PostgreSQL witness, clean absence of leaked PII, and independent S2 sign-off. Test credentials must not be committed to GitHub or CI artifacts.
+
+## R2 exact-SHA CI evidence: 5455bc1 (2026-11-14)
+
+**Fix/hardening commits:** `13c6abe937b319ccf1f08c7895ba05f29a29c888` initially detected SQL text-block concatenation defect and was intentionally **CI RED** (PostgreSQL malformed `$2ORDER`). The corrected `5455bc1e4ad876b104b811d775f3071f449e16d9` completed all **four** GitHub Actions workflows **SUCCESS**:
+- Java 21 fast: **106 tests, 0 failures/errors**.
+- Real PostgreSQL Testcontainers: **111 tests, 0 failures/errors**, including `SellerInvitationBidWorkspacePostgresIT` **8/8 PASS** with the newer-101-inbox regression.
+- React Web UI: Vitest, TypeScript production build and Playwright `--list` **PASS**. The operator-only dual-browser test is discovered, **NOT executed** in normal CI.
+- Flutter Mobile + Staging Configuration: **PASS**.
+- JaCoCo total **89.75% lines**, **63.81% branches**.
+
+This certifies a CODE/DB/API regression slice only, **not** independent S2 approval or live two-user browser/device UAT. Any later HEAD includes independent parallel changes and must be checked at its own SHA. Keep all feature flags OFF until dedicated release qualification.
