@@ -20,7 +20,7 @@ Canonical rule: A seller may be invited for a BuyerDemand only when the *same se
 | MATCH-009 | SellerBid expires, buyer accepts another bid, or last unit is reserved concurrently | State/stock constraints enforced at accept and confirmation; no oversell |
 | MATCH-010 | Browser buyer/seller actions from Listing publication through CONFIRMED | Real HTTPS + two Keycloak contexts + SQL assertions; no internal service calls |
 
-**RED evidence for MATCH-001/002** at \`e774f4d3e0480c63eeec418c66e5bd7364d8fb50\`: [Backend PostgreSQL CI](https://github.com/alimbetov/QRM/actions/runs/43560780199), 113 PostgreSQL integration tests, 2 failures and 0 errors. Both failures are precise domain assertions, not build errors. Fixes are applied in subsequent code commits; final GREEN must be independently confirmed at their exact SHA.
+**RED evidence for MATCH-001/002** at \`e774f4d3e0480c63eeec418c66e5bd7364d8fb50\`: [Backend PostgreSQL CI](https://github.com/alimbetov/QRM/actions/runs/43560780199), 113 PostgreSQL integration tests, 2 failures and 0 errors. Additional MATCH-003 and full-basket parity RED was reproduced in [CI](https://github.com/alimbetov/QRM/actions/runs/43561138000). **GREEN on exact SHA \`9c163e1fd8078c4dc9687205d42dc453278ba8a8\`:** [PostgreSQL verification](https://github.com/alimbetov/QRM/actions/runs/43561775076) **PASS, 123 integration tests, 0 failures/errors/skips;** Web, Flutter and staging workflow checks also PASS on this SHA. This is DB_VERIFIED for the measured scope, not production browser qualification. Earlier overlapping Flyway V28 numbers were reconciled as Catalog V28 and ML V29.
 
 **Do not confuse** internal \`MlSellerInvitationService.evaluate\` with an end-to-end invitation. Real USER_E2E_VERIFIED requires the scheduled scanner, event queue, private inbox, real seller UI and valid bid.
 
@@ -59,8 +59,8 @@ Use a single \`seller_response_24h\` logistic-classification candidate with fixe
 
 | Gate | State |
 | --- | --- |
-| Source-level matching / quote tests | In progress: real RED reproduced |
-| PostgreSQL matching regression final GREEN | Pending final exact-SHA CI |
+| Source-level matching / quote tests | GREEN at exact SHA 9c163e1; targeted PostgreSQL regression passed |
+| PostgreSQL matching regression final GREEN | DB_VERIFIED on 9c163e1 (123 IT, zero failures); newer HEAD requires own CI |
 | Real two-user trade E2E | BLOCKED / not proven |
 | Point-in-time dataset versioned/verified | NOT IMPLEMENTED |
 | Real 24h outcome cohort available | NOT ESTABLISHED |
