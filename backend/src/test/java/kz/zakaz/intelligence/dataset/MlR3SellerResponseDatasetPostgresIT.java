@@ -223,6 +223,12 @@ class MlR3SellerResponseDatasetPostgresIT {
 
         Instant afterBid=Instant.now();
         var actual=dataset.build(afterBid);
+        assertThat(jdbc.queryForObject("""
+            SELECT count(*) FROM ml_invitation_bid_attribution
+            WHERE invitation_id=? AND demand_id=? AND seller_id=?
+            """,Integer.class,f.invitation(),f.demand(),f.seller()))
+            .as("The actual HTTP bid must be linked to this exact invitation")
+            .isEqualTo(1);
         assertThat(actual.samples()).hasSize(1);
         assertThat(actual.positives()).isEqualTo(1);
         assertThat(actual.samples().getFirst().reason())
@@ -258,6 +264,12 @@ class MlR3SellerResponseDatasetPostgresIT {
             .isEqualTo(MlSellerResponseDatasetBuilder.Label.CENSORED);
         assertThat(result.samples().getFirst().reason())
             .isEqualTo("PRIOR_VALID_BID_BEFORE_VIEW");
+        assertThat(jdbc.queryForObject("""
+            SELECT count(*) FROM ml_invitation_bid_attribution
+            WHERE invitation_id=?
+            """,Integer.class,f.invitation()))
+            .as("A prior bid and its revision must not be attributed to a later view")
+            .isZero();
     }
 
     @Test void maturedUnansweredExposureIsCensoredWithoutContinuousEligibilityAudit() {
