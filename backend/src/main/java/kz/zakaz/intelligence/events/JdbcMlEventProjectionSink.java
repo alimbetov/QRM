@@ -79,25 +79,9 @@ public class JdbcMlEventProjectionSink {
                    AND EXISTS (
                      SELECT 1 FROM seller_membership m
                      WHERE m.seller_id=i.seller_id AND m.active=true
-                       AND m.role IN ('SELLER_ADMIN','CATALOG_EDITOR'))
-                   AND EXISTS (
-                     SELECT 1 FROM catalog_listing l
-                     JOIN catalog_product cp ON cp.id=l.product_id
-                     JOIN catalog_category cc ON cc.id=cp.category_id
-                     JOIN catalog_sku sku ON sku.listing_id=l.id
-                     JOIN buyer_demand_line_snapshot dl ON dl.product_id=cp.id
-                     WHERE l.seller_id=i.seller_id AND l.status='PUBLIC'
-                       AND cc.active=true AND sku.tracking_mode='TRACKED'
-                       AND sku.sales_unit=dl.unit AND dl.unit IS NOT NULL
-                       AND dl.demand_id=d.id)
-                   AND (
-                     EXISTS(SELECT 1 FROM seller_delivery_area a
-                            WHERE a.seller_id=i.seller_id AND a.city=d.city
-                              AND a.active=true)
-                     OR EXISTS(SELECT 1 FROM inventory_location l
-                            WHERE l.seller_id=i.seller_id AND l.city=d.city
-                              AND l.active=true AND l.public_pickup_enabled=true)
-                   )
+                       AND m.role='SELLER_ADMIN')
+                   AND """ + MlSellerEligibilityPolicy.stockedOrigin(
+                     "i.seller_id","d.id","d.city") + """
                 ON CONFLICT(invitation_id) DO NOTHING
                 """,event.aggregateId());
         }

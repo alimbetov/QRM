@@ -25,9 +25,10 @@ public class MlSellerInvitationService {
     private record DemandState(String city,Instant expiresAt) {}
 
     private final JdbcTemplate jdbc;
+    private final MlSellerEligibilityPolicy eligibility;
 
-    public MlSellerInvitationService(JdbcTemplate jdbc) {
-        this.jdbc=jdbc;
+    public MlSellerInvitationService(JdbcTemplate jdbc,MlSellerEligibilityPolicy eligibility) {
+        this.jdbc=jdbc;this.eligibility=eligibility;
     }
 
     @Transactional
@@ -57,34 +58,15 @@ public class MlSellerInvitationService {
         } else if(!exists("""
                 SELECT EXISTS(SELECT 1 FROM seller_membership
                     WHERE seller_id=? AND active=true
-                      AND role IN ('SELLER_ADMIN','CATALOG_EDITOR'))
+                      AND role='SELLER_ADMIN')
                 """,trustedSellerId)) {
             reason="NO_ACTIVE_MEMBERSHIP";
-        } else if(!exists("""
-                SELECT EXISTS(
-                    SELECT 1 FROM catalog_listing l
-                    JOIN catalog_product p ON p.id=l.product_id
-                    JOIN catalog_category c ON c.id=p.category_id
-                    JOIN catalog_sku sku ON sku.listing_id=l.id
-                    JOIN buyer_demand_line_snapshot d ON d.product_id=p.id
-                    WHERE l.seller_id=? AND l.status='PUBLIC' AND c.active=true
-                      AND sku.tracking_mode='TRACKED'
-                      AND sku.sales_unit=d.unit AND d.unit IS NOT NULL
-                      AND d.demand_id=?
-                )
-                """,trustedSellerId,demandId)) {
+        } else if(!eligibility.hasFullCatalogBasket(trustedSellerId,demandId)) {
             reason="NO_PUBLIC_COMPATIBLE_SKU";
-        } else if(!exists("""
-                SELECT EXISTS(
-                    SELECT 1 FROM seller_delivery_area a
-                    WHERE a.seller_id=? AND a.city=? AND a.active=true
-                    UNION ALL
-                    SELECT 1 FROM inventory_location l
-                    WHERE l.seller_id=? AND l.city=? AND l.active=true
-                      AND l.public_pickup_enabled=true
-                )
-                """,trustedSellerId,demand.city(),trustedSellerId,demand.city())) {
+        } else if(!eligibility.hasUsableTerritory(trustedSellerId,demand.city())) {
             reason="NO_FULFILLMENT_AREA";
+        } else if(!eligibility.hasStockedOrigin(trustedSellerId,demandId)) {
+            reason="INSUFFICIENT_STOCK";
         } else {
             reason="MATCHED";
         }

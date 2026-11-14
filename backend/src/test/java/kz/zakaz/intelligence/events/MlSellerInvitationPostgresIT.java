@@ -7,6 +7,8 @@ import java.util.concurrent.*;
 import kz.zakaz.catalog.*;
 import kz.zakaz.deal.*;
 import kz.zakaz.domain.types.*;
+import kz.zakaz.inventory.*;
+import kz.zakaz.location.*;
 import kz.zakaz.security.*;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
@@ -50,6 +52,8 @@ class MlSellerInvitationPostgresIT {
     @Autowired DealPersistenceService deals;
     @Autowired SellerMembershipRepository memberships;
     @Autowired SellerDeliveryAreaRepository areas;
+    @Autowired InventoryLocationRepository locations;
+    @Autowired InventoryBalanceRepository balances;
 
     private record Scenario(UUID demandId,UUID sellerId,Instant expiration) {}
     private Scenario scenario(boolean publicListing,boolean member,boolean area) {
@@ -62,12 +66,19 @@ class MlSellerInvitationPostgresIT {
         var product=products.saveAndFlush(CanonicalProduct.create(cat,"Invites "+n));
         UUID seller=UUID.randomUUID();
         var listing=listings.saveAndFlush(SellerListing.draft(seller,product));
-        skus.saveAndFlush(SellerSku.create(listing,"PCS",StockTrackingMode.TRACKED,
+        var sku=skus.saveAndFlush(SellerSku.create(listing,"PCS",StockTrackingMode.TRACKED,
                                           MeasurementUnit.PCS));
         if(publicListing) publishing.publishForSeller(seller,listing.getId());
         if(member) memberships.saveAndFlush(SellerMembership.grant(
             "https://idp.example.test","owner-"+n,seller,SellerMembership.Role.SELLER_ADMIN));
         if(area) areas.saveAndFlush(SellerDeliveryArea.allow(seller,"Almaty"));
+        // The new eligibility policy requires an actionable, stocked origin;
+        // the separate area=false negative uses a private warehouse.
+        var origin=locations.saveAndFlush(InventoryLocation.create(
+            seller,"STOCK-"+n,"ML warehouse","KZ-ALA","Almaty region",
+            "Almaty","Test 1",LocationType.WAREHOUSE,null,false));
+        balances.saveAndFlush(InventoryBalance.open(
+            seller,origin.getId(),sku.getId(),new BigDecimal("5.000")));
         Instant expires=Instant.now().plusSeconds(3600);
         var demand=new BuyerDemand(UUID.randomUUID(),UUID.randomUUID(),
             "Almaty",expires,List.of(new BuyerDemand.DemandLine(

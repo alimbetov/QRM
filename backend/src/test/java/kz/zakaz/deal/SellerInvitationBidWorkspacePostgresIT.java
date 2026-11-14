@@ -244,7 +244,13 @@ class SellerInvitationBidWorkspacePostgresIT {
     }
 
     @Test void foreignSellerWrongSkuAndInsufficientStockFailClosed() throws Exception {
-        var f=fixture(new BigDecimal("0.000"),true,true);
+        var f=fixture(new BigDecimal("5.000"),true,true);
+        // The previously valid invitation is deliberately made stale.
+        // Once stock is exhausted, quote submission must fail closed.
+        jdbc.update("""
+            UPDATE inventory_balance SET on_hand=0.000,version=version+1
+            WHERE seller_id=? AND location_id=? AND sku_id=? AND reserved=0
+            """,f.seller(),f.origin(),f.sku());
         mvc.perform(get(quoteUrl(f))).andExpect(status().isUnauthorized());
         var other=fixture(new BigDecimal("5"),true,true);
         mvc.perform(get(quoteUrl(f))
