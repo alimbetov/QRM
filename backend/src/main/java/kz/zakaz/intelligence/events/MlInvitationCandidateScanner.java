@@ -57,6 +57,7 @@ public class MlInvitationCandidateScanner {
                 ON seller_consent.seller_id=l.seller_id
                 AND seller_consent.in_app_enabled=true
               WHERE requested.unit IS NOT NULL
+                AND requested.unit NOT IN ('SERVICE','LICENSE')
                 AND d.expires_at>clock_timestamp()
                 AND NOT EXISTS (
                   SELECT 1 FROM bid_acceptance accepted WHERE accepted.demand_id=d.id)
