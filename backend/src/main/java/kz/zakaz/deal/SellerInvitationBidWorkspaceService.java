@@ -1,6 +1,9 @@
 package kz.zakaz.deal;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.*;
 import kz.zakaz.intelligence.events.MlInvitationConsentService;
@@ -59,11 +62,39 @@ public class SellerInvitationBidWorkspaceService {
     }
 
     @Transactional
-    public Created submit(UUID sellerId,UUID invitationId,BidRequest request) {
+    public Created submit(UUID sellerId,UUID invitationId,BidRequest request,String key) {
         Objects.requireNonNull(request);
+        if(key!=null && !key.matches("[A-Za-z0-9_.:-]{1,80}"))
+            throw new IllegalArgumentException("Invalid Idempotency-Key");
+        if(key!=null) {
+            // Serialize keyed requests with the same demand lock used by bid
+            // revision writes and acceptance. Cross-pod retries cannot race.
+            jdbc.query("""
+                SELECT d.id FROM ml_seller_invitation_inbox i
+                JOIN buyer_demand_snapshot d ON d.id=i.demand_id
+                WHERE i.invitation_id=? AND i.seller_id=?
+                FOR UPDATE OF d
+                """,(org.springframework.jdbc.core.RowCallbackHandler) rs->{},
+                invitationId,sellerId);
+        }
         // A buyer consent revoke locks the same consent row. Hold its lock
         // through SellerBid+Quote insert to prevent mid-request revocation.
         var ctx=context(sellerId,invitationId,true);
+        String fingerprint=key==null?null:sha256(request.toString());
+        if(key!=null) {
+            var previous=jdbc.query("""
+                SELECT fingerprint,bid_id FROM seller_bid_http_receipt
+                WHERE seller_id=? AND invitation_id=? AND request_key=?
+                """,(rs,n)->new AbstractMap.SimpleEntry<>(
+                    rs.getString("fingerprint"),rs.getObject("bid_id",UUID.class)),
+                sellerId,invitationId,key);
+            if(!previous.isEmpty()) {
+                if(!fingerprint.equals(previous.getFirst().getKey()))
+                    throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "Bid idempotency key reused for different terms");
+                return new Created(previous.getFirst().getValue());
+            }
+        }
         if(request.revision()!=ctx.nextRevision() || request.revision()<1)
             throw new ResponseStatusException(HttpStatus.CONFLICT,"Stale bid revision");
         Instant now=Instant.now();
@@ -117,7 +148,21 @@ public class SellerInvitationBidWorkspaceService {
             request.revision(),request.expiresAt(),lines);
         var quote=new SellerBidSubmissionService.QuoteRequest(
             request.method(),request.originLocationId(),request.deliveryFee());
-        return new Created(bids.submit(sellerId,bid,quote,now));
+        UUID bidId=bids.submit(sellerId,bid,quote,now);
+        if(key!=null)jdbc.update("""
+            INSERT INTO seller_bid_http_receipt(
+                seller_id,invitation_id,request_key,fingerprint,bid_id)
+            VALUES (?,?,?,?,?)
+            """,sellerId,invitationId,key,fingerprint,bidId);
+        return new Created(bidId);
+    }
+
+    private static String sha256(String data) {
+        try {
+            byte[] digest=MessageDigest.getInstance("SHA-256").digest(
+                data.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(digest);
+        }catch(NoSuchAlgorithmException e){throw new IllegalStateException(e);}
     }
 
     private Context context(UUID seller,UUID invitation,boolean lockConsent) {
