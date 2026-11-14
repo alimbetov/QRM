@@ -79,3 +79,12 @@ Flyway V27 creates seller_bid_http_receipt: durable, transactionally committed i
 Test additions: PostgreSQL duplicate request and changed terms, old API consent-bypass denial, Flutter consent API checks, native success/conflict/expired invite tests. These are code-level tests, not evidence of physical Android/iOS AppAuth UAT or external staging Playwright execution.
 
 Deployment gate: Keep backend/React/Flutter bid flags disabled until exact-SHA CI passes, independent S2 review (transaction locks, consent revocation, fingerprint, Flyway V27), and a two-role live Keycloak+PostgreSQL E2E. Legacy direct bid API should eventually be restricted unconditionally after remaining non-invitation workflows are explicitly separated under a trusted internal policy.
+
+
+## R3 autonomous candidate discovery (code candidate, qualification pending)
+
+A separate, bounded internal candidate scanner now closes the previously manual BuyerDemand-to-invitation step. It is enabled ONLY when both existing zakaz.ml.r2.invitation-evaluation.enabled=true and the new zakaz.ml.r2.candidate-scanner.enabled=true; default is OFF in application.properties and staging Compose. It does not send Push/SMS/email. The scheduler defaults to a 24-pair batch every 5 seconds; configurable batch range is 1 to 100.
+
+The scanner considers only unexpired, unaccepted buyer demand with explicitly enabled buyer-sharing consent and seller in-app preference, published compatible tracked SKU, active SELLER_ADMIN membership, active territory/pickup, and enough unreserved stock to supply the COMPLETE basket at a single seller location. Rechecks remain in MlSellerInvitationService.evaluate and MlEventProjectionSink; the existing PostgreSQL unique demand/seller/policy decision and transactional event queue enforce duplicate suppression under concurrent scanner pods. ML-R2 delivery worker is separate and must be explicitly enabled to populate Seller Inbox.
+
+PostgreSQL tests validate successful automatic discovery and current consent, zero-stock and seller-opt-out suppression. The implementation still supports only policy version 1 and does not automatically retry invitations whose earlier historical decision was suppressed or whose delivery was missed due to revoked consent; policy-version/re-evaluation rules and multi-pod throughput must be reviewed before production. Operator must verify a naturally generated invitation in live dual-user staging, without manual SQL/service calls, before declaring USER_E2E_VERIFIED.
