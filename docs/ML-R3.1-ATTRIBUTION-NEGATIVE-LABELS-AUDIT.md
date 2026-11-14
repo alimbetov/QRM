@@ -107,5 +107,12 @@ reproduced missing exact bid attribution. Implementation was added in
 R3.1-specific tests passed 10/10 in
 [Actions 43593744391](https://github.com/alimbetov/QRM/actions/runs/43593744391);
 overall CI was blocked by *independent catalog R1B RED tests*, not by
-R3.1 tests. A final exact-SHA full CI PASS is required before ML-R3.1 is
-marked DB_VERIFIED.
+R3.1 tests. **Final DB_VERIFIED proof:** commit
+`e0f59edb61373a11df4b684867e81fd359423a2f`,
+[Java 21 Backend run](https://github.com/alimbetov/QRM/actions/runs/43594435737):
+110/110 Java unit tests PASS, 144 PostgreSQL integration tests (0 failures,
+0 errors, 3 skipped), ML-R3.1 dataset suite 12/12 PASS, Flyway through V31.
+Web, Flutter and staging-configuration workflows also succeeded on the
+exact same commit. The synthetic 24-hour fixture is not an observed production
+cohort. Independent S2, real browser E2E, throughput qualification and model
+promotion remain HOLD.
