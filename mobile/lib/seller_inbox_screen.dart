@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 import 'buyer_auth.dart';
 import 'seller_auth.dart';
+import 'seller_bid_composer.dart';
 import 'zakaz_api.dart';
 
 /// Native seller inbox; AppAuth stays in the external system browser.
 class SellerInboxScreen extends StatefulWidget {
   final ZakazApi api;
   final BuyerAuthGateway? authGateway;
-  const SellerInboxScreen({required this.api,this.authGateway,super.key});
+  final bool bidWorkspaceEnabled;
+  const SellerInboxScreen({required this.api,this.authGateway,
+    this.bidWorkspaceEnabled=const bool.fromEnvironment(
+      'ZAKAZ_SELLER_BID_WORKSPACE_ENABLED',defaultValue:false),super.key});
   @override State<SellerInboxScreen> createState()=>_SellerInboxScreenState();
 }
 
@@ -229,7 +233,15 @@ class _SellerInboxScreenState extends State<SellerInboxScreen> {
             ...?invitations?.map((item){
               final i=item as Map<String,dynamic>;
               return ListTile(title:Text('Demand: '+(i['demandId'] as String)),
-                subtitle:Text('Получено: '+(i['deliveredAt'] as String)));
+                subtitle:Text('Получено: '+(i['deliveredAt'] as String)),
+                trailing:widget.bidWorkspaceEnabled?OutlinedButton(
+                  onPressed:busy?null:(){
+                    Navigator.of(context).push(MaterialPageRoute<void>(
+                      builder:(_)=>SellerBidComposer(api:widget.api,
+                        token:session!.accessToken,sellerId:sellerId!,
+                        invitationId:i['invitationId'] as String)));
+                  },
+                  child:const Text('Ответить ставкой')):null);
             }),
           ],
         ],
