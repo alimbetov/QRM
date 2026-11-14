@@ -232,4 +232,33 @@ class SellerInvitationBidWorkspacePostgresIT {
             Integer.class,f.demand())).isZero();
     }
 
+    @Test void keyedSellerBidRetryReturnsSameReceiptAndRejectsChangedTerms() throws Exception {
+        var f=fixture(new BigDecimal("5.000"),true,true);
+        String key="seller-bid-retry-"+UUID.randomUUID();
+        String body=offer(f,f.sku(),"120.00",1);
+        String original=mvc.perform(post(bidUrl(f))
+                .header("Authorization","Bearer "+f.sellerToken())
+                .header("Idempotency-Key",key)
+                .contentType(MediaType.APPLICATION_JSON).content(body))
+            .andExpect(status().isCreated())
+            .andReturn().getResponse().getContentAsString();
+        UUID created=from(original,"bidId");
+        mvc.perform(post(bidUrl(f)).header("Authorization","Bearer "+f.sellerToken())
+                .header("Idempotency-Key",key)
+                .contentType(MediaType.APPLICATION_JSON).content(body))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.bidId").value(created.toString()));
+        mvc.perform(post(bidUrl(f)).header("Authorization","Bearer "+f.sellerToken())
+                .header("Idempotency-Key",key)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(offer(f,f.sku(),"121.00",1)))
+            .andExpect(status().isConflict());
+        assertThat(jdbc.queryForObject(
+            "SELECT count(*) FROM seller_bid_snapshot WHERE demand_id=?",
+            Integer.class,f.demand())).isEqualTo(1);
+        assertThat(jdbc.queryForObject(
+            "SELECT count(*) FROM seller_bid_http_receipt WHERE seller_id=? AND invitation_id=?",
+            Integer.class,f.seller(),f.invitation())).isEqualTo(1);
+    }
+
 }
