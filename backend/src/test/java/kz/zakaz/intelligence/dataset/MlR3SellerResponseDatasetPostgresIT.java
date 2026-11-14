@@ -63,6 +63,7 @@ class MlR3SellerResponseDatasetPostgresIT {
     @Autowired InventoryBalanceRepository balances;
     @Autowired SellerDeliveryAreaRepository areas;
     @Autowired DealPersistenceService deals;
+    @Autowired SellerBidSubmissionService bidWriter;
     @Autowired MlInvitationConsentService consent;
     @Autowired MlSellerInvitationService evaluator;
     @Autowired JdbcMlEventQueue queue;
@@ -72,7 +73,8 @@ class MlR3SellerResponseDatasetPostgresIT {
 
     @BeforeEach void isolateConsumerAndResearchEvidence() {
         jdbc.execute("""
-            TRUNCATE ml_seller_invitation_view,ml_invitation_consent_audit,
+            TRUNCATE ml_invitation_bid_attribution,ml_seller_invitation_view,
+              ml_invitation_consent_audit,
               seller_bid_http_receipt,ml_event_projection_inbox,ml_seller_invitation_inbox,ml_event_delivery
             RESTART IDENTITY
             """);
@@ -290,7 +292,7 @@ class MlR3SellerResponseDatasetPostgresIT {
         var result=dataset.build(Instant.now());
         assertThat(result.samples()).hasSize(1);
         assertThat(result.samples().getFirst().reason())
-            .isEqualTo("UNVERIFIED_CONTINUOUS_ELIGIBILITY");
+            .isEqualTo("PRE_MONITOR_EXPOSURE");
         assertThat(result.negatives()).isZero();
         assertThat(result.trainable()).isFalse();
         assertThatThrownBy(()->dataset.build(Instant.now().plusSeconds(3600)))
@@ -322,6 +324,131 @@ class MlR3SellerResponseDatasetPostgresIT {
         assertThat(snapshot.samples()).hasSize(1);
         assertThat(snapshot.samples().getFirst().invitationId())
             .isEqualTo(f.invitation());
+        // A real first bid against the SECOND URI must never be reassigned to
+        // the earlier invitation, nor be double-counted as two observations.
+        http.perform(post(second.replace("/view","/bid"))
+                .header("Authorization","Bearer "+f.token())
+                .contentType(MediaType.APPLICATION_JSON).content(bid(f)))
+            .andExpect(status().isCreated());
+        assertThat(jdbc.queryForObject("""
+            SELECT count(*) FROM ml_invitation_bid_attribution
+            WHERE invitation_id=?
+            """,Integer.class,next.id())).isEqualTo(1);
+        assertThat(jdbc.queryForObject("""
+            SELECT count(*) FROM ml_invitation_bid_attribution
+            WHERE invitation_id=?
+            """,Integer.class,f.invitation())).isZero();
+        var after=dataset.build(Instant.now());
+        assertThat(after.samples()).hasSize(1);
+        assertThat(after.positives()).isZero();
+        assertThat(after.samples().getFirst().reason())
+            .isEqualTo("MULTIPLE_EXPOSURES_IN_WINDOW");
+    }
+
+
+    /**
+     * Synthetic clock shift is test-only. Production views are server
+     * timestamps, and pre-monitor views can NEVER become negative.
+     */
+    @Test void completeAuditedTwentyFourHoursCanProduceOneVerifiedNegative()
+        throws Exception {
+        var f=fixture(true,true);
+        Instant exposedAt=Instant.now().minus(Duration.ofDays(2));
+        jdbc.update("""
+            UPDATE ml_seller_invitation_inbox SET delivered_at=?
+            WHERE invitation_id=?
+            """,Timestamp.from(exposedAt.minusSeconds(30)),f.invitation());
+        jdbc.update("""
+            INSERT INTO ml_seller_invitation_view(
+              invitation_id,demand_id,seller_id,viewed_at,recorded_at,requested_lines)
+            VALUES (?,?,?,?,?,1)
+            """,f.invitation(),f.demand(),f.seller(),
+            Timestamp.from(exposedAt),Timestamp.from(exposedAt));
+        try {
+            // Test fixture only: emulate a migration epoch before the
+            // synthetic observation. Real production epoch is immutable.
+            jdbc.execute("TRUNCATE ml_r31_monitor_epoch");
+            jdbc.update("""
+                INSERT INTO ml_r31_monitor_epoch(singleton,started_at)
+                VALUES (true,?)
+                """,Timestamp.from(exposedAt.minusSeconds(3600)));
+            var negative=dataset.build(Instant.now());
+            assertThat(negative.samples()).hasSize(1);
+            assertThat(negative.negatives()).isEqualTo(1);
+            assertThat(negative.samples().getFirst().label())
+                .isEqualTo(MlSellerResponseDatasetBuilder.Label.NEGATIVE);
+            assertThat(negative.samples().getFirst().reason())
+                .isEqualTo("VERIFIED_NO_RESPONSE_24H");
+            assertThat(negative.trainable()).isFalse();
+
+            // Even one warehouse stock change in the window voids the proof.
+            jdbc.update("""
+                INSERT INTO ml_r31_eligibility_change(
+                    seller_id,source_table,recorded_at) VALUES (?,?,?)
+                """,f.seller(),"inventory_balance",
+                Timestamp.from(exposedAt.plusSeconds(3600)));
+            var changed=dataset.build(Instant.now());
+            assertThat(changed.negatives()).isZero();
+            assertThat(changed.samples().getFirst().reason())
+                .isEqualTo("ELIGIBILITY_CHANGED_IN_WINDOW");
+            assertThat(changed.sha256()).isNotEqualTo(negative.sha256());
+        } finally {
+            jdbc.execute("TRUNCATE ml_r31_monitor_epoch");
+            jdbc.execute("""
+                INSERT INTO ml_r31_monitor_epoch(singleton,started_at)
+                VALUES (true,clock_timestamp())
+                """);
+        }
+    }
+
+    @Test void qualifiedBidWithoutExactInvitationProvenanceIsNeverPositive()
+        throws Exception {
+        var f=fixture(true,true);
+        http.perform(post(url(f,"view"))
+                .header("Authorization","Bearer "+f.token()))
+            .andExpect(status().isNoContent());
+        var directBid=new SellerBid(UUID.randomUUID(),f.demand(),f.seller(),1,
+            Instant.now().plusSeconds(900),List.of(
+                new SellerBid.BidLine(f.product(),f.sku(),
+                    BigDecimal.ONE,new BigDecimal("120.00"))));
+        var directQuote=new SellerBidSubmissionService.QuoteRequest(
+            SellerBidQuoteSnapshot.Method.PICKUP,f.origin(),BigDecimal.ZERO);
+        // Valid authoritative commerce write, but deliberately NOT initiated
+        // through the invitation-scoped HTTP endpoint.
+        bidWriter.submit(f.seller(),directBid,directQuote,Instant.now());
+        assertThat(jdbc.queryForObject("""
+            SELECT count(*) FROM ml_invitation_bid_attribution
+            WHERE invitation_id=?
+            """,Integer.class,f.invitation())).isZero();
+        var rows=dataset.build(Instant.now());
+        assertThat(rows.positives()).isZero();
+        assertThat(rows.negatives()).isZero();
+        assertThat(rows.samples()).hasSize(1);
+        assertThat(rows.samples().getFirst().reason())
+            .isEqualTo("UNATTRIBUTED_BID_IN_WINDOW");
+    }
+
+    @Test void realInventoryMutationLeavesAnImmutableSellerScopedAuditEvent()
+        throws Exception {
+        var f=fixture(true,true);
+        http.perform(post(url(f,"view"))
+                .header("Authorization","Bearer "+f.token()))
+            .andExpect(status().isNoContent());
+        Instant before=Instant.now();
+        assertThat(jdbc.update("""
+            UPDATE inventory_balance SET reserved=1.000,version=version+1
+            WHERE seller_id=? AND location_id=? AND sku_id=?
+            """,f.seller(),f.origin(),f.sku())).isEqualTo(1);
+        assertThat(jdbc.queryForObject("""
+            SELECT count(*) FROM ml_r31_eligibility_change
+            WHERE seller_id=? AND source_table='inventory_balance'
+              AND recorded_at>=?
+            """,Integer.class,f.seller(),Timestamp.from(before)))
+            .isGreaterThan(0);
+        // An audit event cannot be retrospectively deleted by an app worker.
+        assertThatThrownBy(()->jdbc.update("""
+            DELETE FROM ml_r31_eligibility_change WHERE seller_id=?
+            """,f.seller())).isInstanceOf(DataIntegrityViolationException.class);
     }
 
     @Test void viewAndConsentHistoryAreAppendOnlyAtTheDatabaseBoundary()

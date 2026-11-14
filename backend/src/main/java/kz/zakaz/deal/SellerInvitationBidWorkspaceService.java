@@ -149,6 +149,19 @@ public class SellerInvitationBidWorkspaceService {
         var quote=new SellerBidSubmissionService.QuoteRequest(
             request.method(),request.originLocationId(),request.deliveryFee());
         UUID bidId=bids.submit(sellerId,bid,quote,now);
+        // The exact authenticated URL invitation is attributed ONLY when a
+        // real seller view was previously acknowledged, and ONLY for the first
+        // bid revision. Both the immutable bid and provenance link commit or
+        // roll back together. Legacy/non-viewed bids remain un-attributed.
+        if(request.revision()==1)jdbc.update("""
+            INSERT INTO ml_invitation_bid_attribution(
+                bid_id,invitation_id,demand_id,seller_id)
+            SELECT ?,v.invitation_id,v.demand_id,v.seller_id
+            FROM ml_seller_invitation_view v
+            WHERE v.invitation_id=? AND v.demand_id=? AND v.seller_id=?
+              AND v.viewed_at<=?
+            """,bidId,invitationId,ctx.demandId(),sellerId,
+            java.sql.Timestamp.from(now));
         if(key!=null)jdbc.update("""
             INSERT INTO seller_bid_http_receipt(
                 seller_id,invitation_id,request_key,fingerprint,bid_id)

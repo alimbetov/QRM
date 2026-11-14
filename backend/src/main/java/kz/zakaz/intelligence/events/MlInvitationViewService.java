@@ -30,6 +30,16 @@ public class MlInvitationViewService {
     public Instant acknowledge(UUID trustedSellerId, UUID invitationId) {
         Objects.requireNonNull(trustedSellerId);Objects.requireNonNull(invitationId);
 
+        // ML-R3.1 monitoring must serialize eligibility-affecting DML and
+        // view acknowledgement, otherwise a concurrent stock/catalog change
+        // could occur before view while the audit event is written afterward.
+        // GLOBAL shared lock first, seller-specific exclusive lock second.
+        jdbc.query("SELECT pg_advisory_xact_lock_shared(42931,1)",
+            (org.springframework.jdbc.core.RowCallbackHandler)rs->{});
+        jdbc.query("SELECT pg_advisory_xact_lock(hashtextextended(?::text,9021))",
+            (org.springframework.jdbc.core.RowCallbackHandler)rs->{},
+            trustedSellerId.toString());
+
         // Serialize with buyer consent / seller opt-out updates: the same
         // row locks are used by the existing seller bid workspace.
         var accessible=jdbc.query("""
