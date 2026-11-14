@@ -35,10 +35,11 @@ public class SellerInvitationBidWorkspaceController {
     public ResponseEntity<SellerInvitationBidWorkspaceService.Created> submit(
         @PathVariable UUID sellerId,@PathVariable UUID invitationId,
         @RequestBody SellerInvitationBidWorkspaceService.BidRequest body,
+        @RequestHeader(value="Idempotency-Key",required=false) String key,
         JwtAuthenticationToken actor) {
         UUID owner=identity.requireSellerAdmin(actor,sellerId);
         return ResponseEntity.status(HttpStatus.CREATED)
             .cacheControl(CacheControl.noStore())
-            .body(workspace.submit(owner,invitationId,body));
+            .body(workspace.submit(owner,invitationId,body,key));
     }
 }
