@@ -1,14 +1,14 @@
 # CAT-R0 — Аудит согласованности каталогов, Search, ML и Commerce
 
 **Дата:** 2026-11-14  
-**Исходный проверенный SHA:** \`0c6580e812b985f426b14e8fd2fa00a936cf1932\`  
-**Ветка:** \`docs/adr-002-jpa-architecture-review\`, PR #2 Draft, \`main\` не изменять.  
+**Исходный проверенный SHA:** `0c6580e812b985f426b14e8fd2fa00a936cf1932`  
+**Ветка:** `docs/adr-002-jpa-architecture-review`, PR #2 Draft, `main` не изменять.  
 **Статус:** **SOURCE_REVIEW_COMPLETED / DESIGN_BASELINE_PROPOSED**; независимый S2, новая PostgreSQL RED→GREEN квалификация, браузерные и мобильные E2E **не выполнены в рамках CAT-R0**.  
 **Нормативная основа:** [CAT-001](CAT-001-UNIVERSAL-CATALOG-EXPANSION-MASTER-SPEC.md), [REQUIREMENTS](REQUIREMENTS.md), [DEC-UCE-001](DEC-UCE-001-UNIVERSAL-CLASSIFICATION.md), [DEC-INTELLIGENCE-001](DEC-INTELLIGENCE-001-TASK-SEGMENTATION.md), [SEARCH-001](SEARCH-001-UNIFIED-DISCOVERY.md), [ADR-002](ADR-002-MVC-JPA.md).
 
 ## 1. Метод и ограничения доказательств
 
-Реально прочитаны классы, SQL, контроллеры, тестовые исходники и React/Flutter клиентов из проверенного commit SHA. GitHub Actions **для исходного SHA** показал 4 завершённых \`success\` workflows: Java 21 Backend, Buyer Web UI, Flutter Mobile, Staging Configuration (GitHub run IDs 43559854920, 43559854942, 43559854935, 43559854982). Это **не новая проверка четырёх пилотов** и не доказательство работы новых типов/отраслей. Нет подключения к реальной business БД, нет EXPLAIN/нагрузки, не проводился независимый reviewer approval. Каждый нижеуказанный результат — **исходный аудит кода**. Последующие изменения ветки требуют обновления матрицы.
+Реально прочитаны классы, SQL, контроллеры, тестовые исходники и React/Flutter клиентов из проверенного commit SHA. GitHub Actions **для исходного SHA** показал 4 завершённых `success` workflows: Java 21 Backend, Buyer Web UI, Flutter Mobile, Staging Configuration (GitHub run IDs 43559854920, 43559854942, 43559854935, 43559854982). Это **не новая проверка четырёх пилотов** и не доказательство работы новых типов/отраслей. Нет подключения к реальной business БД, нет EXPLAIN/нагрузки, не проводился независимый reviewer approval. Каждый нижеуказанный результат — **исходный аудит кода**. Последующие изменения ветки требуют обновления матрицы.
 
 Evidence: ссылки далее ведут к конкретному исходному commit, а не плавающему HEAD.
 
@@ -16,11 +16,11 @@ Evidence: ссылки далее ведут к конкретному исхо�
 
 | Область | Факт в коде | Текущий рубеж |
 |---|---|---|
-| HCC | Category: UUID id, immutable String hccCode 20, ProductType, parent FK, \`@Version\`; HccPath 2/2/3/5/8 | READY_TO_REUSE, без версионной бизнес-таксономии |
+| HCC | Category: UUID id, immutable String hccCode 20, ProductType, parent FK, `@Version`; HccPath 2/2/3/5/8 | READY_TO_REUSE, без версионной бизнес-таксономии |
 | Attribute | Definition: ENUM/DECIMAL/BOOLEAN/TEXT, canonicalUnit; Rule: required/filterable по exact Category; EnumOption | минимальная SKU-схема, не отраслевой универсальный реестр |
 | Canonical | CanonicalProduct category + canonicalName; SellerListing sellerId/product/status; SellerSku variant/stock/unit/price | товары: базовая модель, service flow ограничен |
-| Registry | SkuAttributeValue: \`canonical_value varchar(256)\`, UNIQUE(sku_id,attribute_id), immutable after PUBLIC | single-value SKU, нет LOT/DATE/MULTI |
-| Search | SearchTerm(locale, normalized_term), TermCategory, \`pg_trgm\`, FTS, HMAC cursor, PUBLIC+QR checks | словари и текстовые выдачи, не полный typed facets |
+| Registry | SkuAttributeValue: `canonical_value varchar(256)`, UNIQUE(sku_id,attribute_id), immutable after PUBLIC | single-value SKU, нет LOT/DATE/MULTI |
+| Search | SearchTerm(locale, normalized_term), TermCategory, `pg_trgm`, FTS, HMAC cursor, PUBLIC+QR checks | словари и текстовые выдачи, не полный typed facets |
 | ML | FeatureRegistry, CanonicalFeatureAdapter, ClassifiedOfferMatcher, ML-R2 event journal | source-backed deterministic match, отдельно от обученных prod models |
 | Commerce | BuyerDemandLine productId/quantity/unit, SellerBid SKU, OrderLine immutable; tracked stock + InventoryReservation | точное совпадение единицы/SKU, одна строка — один source balance |
 | Seller UX | React SellerWorkspace вводит Product UUID руками; backend createDraft ограничен PHYSICAL+TRACKED | не mass-category onboarding, не service catalog |
@@ -41,32 +41,32 @@ Evidence: ссылки далее ведут к конкретному исхо�
 
 | ID | P | Тип | Подтверждение | Согласованное направление / обязательный gate |
 |---|---|---|---|---|
-| CAT-AUD-01 | P0 | CODE_LIMIT | \`SellerCatalogWorkspaceService.createDraft\` требует \`PHYSICAL\` и \`TRACKED\`; \`OrderConfirmationService\` аналогично проверяет TRACKED | SERVICE требует собственную политику исполнения; запрет делать fake tracked inventory |
-| CAT-AUD-02 | P0 | CODE_LIMIT | \`AttributeDefinition.validateValue\` отвергает все отрицательные DECIMAL; действующий unit test ожидает reject(-1) | Перейти к per-attribute signed range: storage temp -18 разрешено, storage GB -1 запрещено; RED до GREEN |
-| CAT-AUD-03 | P0 | DESIGN_GAP | \`catalog_sku_attribute_value\` только строка и UNIQUE(sku,attribute); \`CategoryAttributeRule\` без revision, scope, inherited rules | Версионированные scoped typed facts; не перетирать публичные SKU/исторические snapshots |
-| CAT-AUD-04 | P0 | DESIGN_GAP | \`inventory_balance\` UNIQUE(seller,location,sku), \`inventory_reservation\` order_line/location/sku; нет lot/expiry | Отдельный Lot + allocations через ADR, не ломать existing reserve/locks; FEFO только после доказательства |
-| CAT-AUD-05 | P0 | DESIGN_GAP | \`MeasurementUnit\`: PCS, KG, G, L, ML, M, M2, M3, HOUR, SERVICE, LICENSE; нет verified pack conversion; \`OrderConfirmationService\` требует точное совпадение sales unit | Разделить sellable unit и content; сравнение в базовой единице только после authoritative conversion; checkout legacy untouched |
-| CAT-AUD-06 | P0 | DESIGN_GAP | \`CanonicalProduct\` category/name, в DDL нет uniqueness по canonical identity | Зафиксировать stable identity/approved canonical key с правилами brand/model/cultivar и dedup queue; новые ограничения only after data audit |
-| CAT-AUD-07 | P0 | DESIGN_GAP | HCC строка неизменна, код \`Category\` не предоставляет полной rev/alias/translation/move модели; SQL не обеспечивает полный consistency tree | Сохранить существующий HCC/UUID; approve mapping, immutable revisions, no renumber; PostgreSQL integrity tests |
-| CAT-AUD-08 | P1 | CODE_LIMIT | \`PublicSearchController.search\` имеет q/categoryCode/productType/limit/cursor; в SQL нет typed filter по SKU attribute и packaging | Query whitelisting + typed filters with PG indexes and P95 benchmark, без dynamic unsafe SQL |
+| CAT-AUD-01 | P0 | CODE_LIMIT | `SellerCatalogWorkspaceService.createDraft` требует `PHYSICAL` и `TRACKED`; `OrderConfirmationService` аналогично проверяет TRACKED | SERVICE требует собственную политику исполнения; запрет делать fake tracked inventory |
+| CAT-AUD-02 | P0 | CODE_LIMIT | `AttributeDefinition.validateValue` отвергает все отрицательные DECIMAL; действующий unit test ожидает reject(-1) | Перейти к per-attribute signed range: storage temp -18 разрешено, storage GB -1 запрещено; RED до GREEN |
+| CAT-AUD-03 | P0 | DESIGN_GAP | `catalog_sku_attribute_value` только строка и UNIQUE(sku,attribute); `CategoryAttributeRule` без revision, scope, inherited rules | Версионированные scoped typed facts; не перетирать публичные SKU/исторические snapshots |
+| CAT-AUD-04 | P0 | DESIGN_GAP | `inventory_balance` UNIQUE(seller,location,sku), `inventory_reservation` order_line/location/sku; нет lot/expiry | Отдельный Lot + allocations через ADR, не ломать existing reserve/locks; FEFO только после доказательства |
+| CAT-AUD-05 | P0 | DESIGN_GAP | `MeasurementUnit`: PCS, KG, G, L, ML, M, M2, M3, HOUR, SERVICE, LICENSE; нет verified pack conversion; `OrderConfirmationService` требует точное совпадение sales unit | Разделить sellable unit и content; сравнение в базовой единице только после authoritative conversion; checkout legacy untouched |
+| CAT-AUD-06 | P0 | DESIGN_GAP | `CanonicalProduct` category/name, в DDL нет uniqueness по canonical identity | Зафиксировать stable identity/approved canonical key с правилами brand/model/cultivar и dedup queue; новые ограничения only after data audit |
+| CAT-AUD-07 | P0 | DESIGN_GAP | HCC строка неизменна, код `Category` не предоставляет полной rev/alias/translation/move модели; SQL не обеспечивает полный consistency tree | Сохранить существующий HCC/UUID; approve mapping, immutable revisions, no renumber; PostgreSQL integrity tests |
+| CAT-AUD-08 | P1 | CODE_LIMIT | `PublicSearchController.search` имеет q/categoryCode/productType/limit/cursor; в SQL нет typed filter по SKU attribute и packaging | Query whitelisting + typed filters with PG indexes and P95 benchmark, без dynamic unsafe SQL |
 | CAT-AUD-09 | P1 | DESIGN_GAP | V20 словарь содержит SYNONYM/CATEGORY_TERM/RELATED/SERVICE_INTENT; one term may have multiple category mappings; search expands categories | Поддержать polysemy с explicit intent; не записывать RELATED/INSTALLED_BY как SYNONYM |
-| CAT-AUD-10 | P1 | DESIGN_GAP | \`FeatureRegistry\` task/version хранит in-memory names; \`IntelligenceDictionarySeed\` smoke-словарь классов, не постоянный catalog source | Не создавать вторую production taxonomy; record stable revisions and model feature schema hash, reprocessing; smoke namespace не authoritative |
-| CAT-AUD-11 | P1 | DESIGN_GAP | \`ClassifiedOfferMatcher\` требует exact productId + classCode; compatible substitutes ещё не реализованы | Hard equality по каноническому предмету по умолчанию; substitute only curated compatibility+explicit opt-in |
-| CAT-AUD-12 | P1 | DESIGN_GAP | \`SellerWorkspace.tsx\` требует ручной Product UUID; нет operator taxonomy management UI | Admin review/import и seller typed category picker, не direct create of canonical terms |
-| CAT-AUD-13 | P1 | DESIGN_GAP | \`catalog_category.label\` одиночный язык, V20 SearchTerm поддерживает ru/kk/en/zh | Approved translation records+locale fallback without changing identity |
+| CAT-AUD-10 | P1 | DESIGN_GAP | `FeatureRegistry` task/version хранит in-memory names; `IntelligenceDictionarySeed` smoke-словарь классов, не постоянный catalog source | Не создавать вторую production taxonomy; record stable revisions and model feature schema hash, reprocessing; smoke namespace не authoritative |
+| CAT-AUD-11 | P1 | DESIGN_GAP | `ClassifiedOfferMatcher` требует exact productId + classCode; compatible substitutes ещё не реализованы | Hard equality по каноническому предмету по умолчанию; substitute only curated compatibility+explicit opt-in |
+| CAT-AUD-12 | P1 | DESIGN_GAP | `SellerWorkspace.tsx` требует ручной Product UUID; нет operator taxonomy management UI | Admin review/import и seller typed category picker, не direct create of canonical terms |
+| CAT-AUD-13 | P1 | DESIGN_GAP | `catalog_category.label` одиночный язык, V20 SearchTerm поддерживает ru/kk/en/zh | Approved translation records+locale fallback without changing identity |
 | CAT-AUD-14 | P1 | CODE_LIMIT | Данные сырого продукта/партии: нет DATE/REFERENCE/MULTI_ENUM, подтверждённых claims и packaging scope | Scope-aware attributes+evidence; compliance policies applied before publication |
-| CAT-AUD-15 | P1 | DOC_DRIFT | \`REQUIREMENTS.md\` содержит исторические утверждения «BuyerDemand только Java records», но HTTP и persistence присутствуют | Зафиксировать source-of-truth HEAD; корректировать устаревшие status-параграфы отдельным doc revision, не подменять код документацией |
-| CAT-AUD-16 | P1 | PENDING | \`DEC-UCE-001\` проектирует BIGINT DictionaryNode, а реальные \`Category/AttributeDefinition\` используют UUID | **Решение для CAT-R1:** UUID остаётся authoritative persistence identity; отдельный bigint только если ADR докажет необходимость; никаких массовых FK migrations |
+| CAT-AUD-15 | P1 | DOC_DRIFT | `REQUIREMENTS.md` содержит исторические утверждения «BuyerDemand только Java records», но HTTP и persistence присутствуют | Зафиксировать source-of-truth HEAD; корректировать устаревшие status-параграфы отдельным doc revision, не подменять код документацией |
+| CAT-AUD-16 | P1 | PENDING | `DEC-UCE-001` проектирует BIGINT DictionaryNode, а реальные `Category/AttributeDefinition` используют UUID | **Решение для CAT-R1:** UUID остаётся authoritative persistence identity; отдельный bigint только если ADR докажет необходимость; никаких массовых FK migrations |
 
 ## 4. Review vs existing tests: что уже доказано в тестовых исходниках
 
 | ID | Existing automated evidence in repo | CAT gap |
 |---|---|---|
-| HCC parent consistency | \`CatalogR1B2HccParentTest\`, \`CatalogFoundationTest\` | DB parent graph/cycle/reclassification after published data |
-| Publish fact gate | \`CatalogR1B2PublishedImmutabilityTest\`, \`CatalogPostgresPublishedGuardIT\`, \`CatalogSkuFactsResolverTest\` | schema revision, inherited rules, lot/food validations |
-| Search | \`SearchDictionaryPostgresIT\` alias/locale/cursor/public gates | polysemy, 4-pilot facets, category related-vs-same, 100k+ perf |
-| ML projection | \`CanonicalFeatureAdapterPostgresIT\` hard mismatch, enum revocation, repeatable vector | cross-revision train/infer, unknown vs zero, lot/food scope, event asOf provenance |
-| Commerce | \`OrderConfirmationPostgresIT\`, inventory Postgres IT, OrderLine integrity tests | package conversion, lot allocation, service availability (not yet implemented) |
+| HCC parent consistency | `CatalogR1B2HccParentTest`, `CatalogFoundationTest` | DB parent graph/cycle/reclassification after published data |
+| Publish fact gate | `CatalogR1B2PublishedImmutabilityTest`, `CatalogPostgresPublishedGuardIT`, `CatalogSkuFactsResolverTest` | schema revision, inherited rules, lot/food validations |
+| Search | `SearchDictionaryPostgresIT` alias/locale/cursor/public gates | polysemy, 4-pilot facets, category related-vs-same, 100k+ perf |
+| ML projection | `CanonicalFeatureAdapterPostgresIT` hard mismatch, enum revocation, repeatable vector | cross-revision train/infer, unknown vs zero, lot/food scope, event asOf provenance |
+| Commerce | `OrderConfirmationPostgresIT`, inventory Postgres IT, OrderLine integrity tests | package conversion, lot allocation, service availability (not yet implemented) |
 
 Это **кодовые тестовые источники**. В CAT-R0 не проводился локальный повторный запуск JUnit/Testcontainers, не утверждалась полнота покрытия для новых предметных областей. Исторические CI PASS подтверждают прежние сценарии, но не CAT-R1.
 
@@ -74,11 +74,11 @@ Evidence: ссылки далее ведут к конкретному исхо�
 
 **TECHNICAL_BASELINE_ACCEPTED_FOR_TEST_DESIGN** (не S2 и не production approval):
 
-1. Один \`Category/HccPath\` и UUID Category/Attribute/Product; HCC не ordinal и не автоматически выделяемый user text.
-2. \`AttributeDefinition\` глобален; \`CategoryAttributeRule\` задаёт applicability и версию. Каждому атрибуту выделить single authoritative \`FACT_SCOPE\`: PRODUCT, SKU, LOT, SERVICE_SPEC или SERVICE_OFFER. Не создавать одновременно «те же» значения в нескольких местах.
+1. Один `Category/HccPath` и UUID Category/Attribute/Product; HCC не ordinal и не автоматически выделяемый user text.
+2. `AttributeDefinition` глобален; `CategoryAttributeRule` задаёт applicability и версию. Каждому атрибуту выделить single authoritative `FACT_SCOPE`: PRODUCT, SKU, LOT, SERVICE_SPEC или SERVICE_OFFER. Не создавать одновременно «те же» значения в нескольких местах.
 3. Типизированная модель обязана уметь отрицательные значения при индивидуальных bounds, DATE, controlled multi-values, verified reference, null/missing semantics. Эти расширения пока design-only.
 4. Package и продажная единица разные. No implicit BOX→KG or PACK→L. Для текущего checkout оставить exact unit; новые пересчёты потребуют нового ADR.
-5. Срок годности, происхождение партии, даты производства/урожая и claims — в LOT/evidence либо product-specific claim scope. Ни один флаг \`organic=true\` не равен сертификации.
+5. Срок годности, происхождение партии, даты производства/урожая и claims — в LOT/evidence либо product-specific claim scope. Ни один флаг `organic=true` не равен сертификации.
 6. PHYSICAL продолжает существующий order/reserve, SERVICE реализуется отдельным domain flow; SellerBid может переиспользовать коммерческую семантику лишь после отдельного HTTP+DB contract.
 7. Search — PostgreSQL + current safety gates, typed facets как расширение; semantic RELATED/service-intent отдельно от identity/synonym.
 8. ML — только canonical approved facts → deterministic eligibility → task-scoped feature projection с revision/hash и fallback. Сохранить существующие adapter/registry.
