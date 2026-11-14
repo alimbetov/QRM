@@ -81,8 +81,6 @@ public class MlSellerResponseDatasetBuilder {
                    ) AS consent_revoked,
                    EXISTS (
                      SELECT 1 FROM seller_bid_snapshot previous
-                     JOIN bid_quote_snapshot previous_quote
-                       ON previous_quote.bid_id=previous.id
                      JOIN ml_trade_event previous_event
                        ON previous_event.aggregate_type='BID'
                       AND previous_event.aggregate_id=previous.id
@@ -105,7 +103,6 @@ public class MlSellerResponseDatasetBuilder {
                    ) AS another_exposure,
                    EXISTS (
                      SELECT 1 FROM seller_bid_snapshot b2
-                     JOIN bid_quote_snapshot q2 ON q2.bid_id=b2.id
                      JOIN ml_trade_event e2 ON e2.aggregate_type='BID'
                        AND e2.aggregate_id=b2.id AND e2.demand_id=v.demand_id
                        AND e2.seller_id=v.seller_id

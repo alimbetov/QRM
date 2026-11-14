@@ -451,6 +451,63 @@ class MlR3SellerResponseDatasetPostgresIT {
             """,f.seller())).isInstanceOf(DataIntegrityViolationException.class);
     }
 
+    @Test void unquotedTradeActivityCannotBecomeAFalseNegative() throws Exception {
+        var f=fixture(true,true);
+        http.perform(post(url(f,"view"))
+                .header("Authorization","Bearer "+f.token()))
+            .andExpect(status().isNoContent());
+        // Synthetic direct-SQL anomaly: an immutable SellerBid and its V24
+        // event exist, but the corresponding quote snapshot was never saved.
+        // This must never be treated as no seller activity.
+        Instant now=Instant.now();
+        assertThat(jdbc.update("""
+            INSERT INTO seller_bid_snapshot(
+                id,demand_id,seller_id,revision,expires_at,submitted_at,version)
+            VALUES (?,?,?,?,?,?,0)
+            """,UUID.randomUUID(),f.demand(),f.seller(),1,
+            Timestamp.from(now.plusSeconds(1800)),Timestamp.from(now)))
+            .isEqualTo(1);
+        var result=dataset.build(Instant.now());
+        assertThat(result.samples()).hasSize(1);
+        assertThat(result.negatives()).isZero();
+        assertThat(result.positives()).isZero();
+        assertThat(result.samples().getFirst().reason())
+            .isEqualTo("UNATTRIBUTED_BID_IN_WINDOW");
+    }
+
+    @Test void membershipTerritoryAndGlobalSchemaMutationsAreAudited()
+        throws Exception {
+        var f=fixture(true,true);
+        http.perform(post(url(f,"view"))
+                .header("Authorization","Bearer "+f.token()))
+            .andExpect(status().isNoContent());
+        assertThat(jdbc.update("""
+            UPDATE seller_membership SET active=false
+            WHERE seller_id=? AND active=true
+            """,f.seller())).isEqualTo(1);
+        assertThat(jdbc.update("""
+            UPDATE seller_delivery_area SET active=false
+            WHERE seller_id=? AND active=true
+            """,f.seller())).isEqualTo(1);
+        var sources=jdbc.query("""
+            SELECT DISTINCT source_table FROM ml_r31_eligibility_change
+            WHERE seller_id=?
+            """,(rs,n)->rs.getString(1),f.seller());
+        assertThat(sources).contains("seller_membership","seller_delivery_area");
+
+        assertThat(jdbc.update("""
+            INSERT INTO catalog_attribute_definition(
+                id,code,kind,active)
+            VALUES (?,?,'BOOLEAN',true)
+            """,UUID.randomUUID(),"AUDIT_"+UUID.randomUUID().toString().replace("-","")
+            )).isEqualTo(1);
+        assertThat(jdbc.queryForObject("""
+            SELECT count(*) FROM ml_r31_eligibility_change
+            WHERE seller_id IS NULL
+              AND source_table='catalog_attribute_definition'
+            """,Integer.class)).isGreaterThan(0);
+    }
+
     @Test void viewAndConsentHistoryAreAppendOnlyAtTheDatabaseBoundary()
         throws Exception {
         var f=fixture(true,true);
