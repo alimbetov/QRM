@@ -346,6 +346,29 @@ class SellerInvitationBidWorkspacePostgresIT {
      * the authoritative SellerBidSubmissionService. SQL is not used to
      * insert invitation decisions or fabricated business events.
      */
+    /**
+     * MATCH-003 RED: direct internal evaluator must not bypass the same
+     * seller trade permissions or unit restrictions as the bid endpoint.
+     */
+    @Test void internalEvaluatorNeverApprovesUnquotableUnitsOrNonBidderRoles() {
+        var license=fixtureForUnit(new BigDecimal("5.000"),true,true,false,
+            MeasurementUnit.LICENSE);
+        var unsupported=evaluator.evaluate(license.demand(),license.seller(),
+            1,Instant.now());
+        assertThat(unsupported.status()).isEqualTo("SUPPRESSED");
+        assertThat(unsupported.reasonCode()).isEqualTo("NO_PUBLIC_COMPATIBLE_SKU");
+
+        var editor=fixture(new BigDecimal("5.000"),true,true,false);
+        assertThat(jdbc.update("""
+            UPDATE seller_membership SET role='CATALOG_EDITOR'
+            WHERE seller_id=? AND active=true
+            """,editor.seller())).isEqualTo(1);
+        var noBidRights=evaluator.evaluate(editor.demand(),editor.seller(),
+            1,Instant.now());
+        assertThat(noBidRights.status()).isEqualTo("SUPPRESSED");
+        assertThat(noBidRights.reasonCode()).isEqualTo("NO_ACTIVE_MEMBERSHIP");
+    }
+
     @Test void scannerDoesNotInviteForUnitsRejectedByRealBidWriter() {
         var service=fixtureForUnit(new BigDecimal("5.000"),true,true,false,
             MeasurementUnit.SERVICE);
