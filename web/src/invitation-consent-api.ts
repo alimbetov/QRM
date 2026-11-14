@@ -31,11 +31,15 @@ async function update(path:string,token:string,enabled:boolean):Promise<void>{
   });
   if(response.status!==204)throw new Error('Consent update HTTP '+response.status);
 }
-export const loadDemandSharing=(demandId:string,token:string)=>
-  read(buyerPath(demandId),token);
-export const setDemandSharing=(demandId:string,token:string,enabled:boolean)=>
-  update(buyerPath(demandId),token,enabled);
-export const loadSellerPreference=(sellerId:string,token:string)=>
-  read(sellerPath(sellerId),token);
-export const setSellerPreference=(sellerId:string,token:string,enabled:boolean)=>
-  update(sellerPath(sellerId),token,enabled);
+export async function loadDemandSharing(demandId:string,token:string):Promise<boolean>{
+  return read(buyerPath(demandId),token);
+}
+export async function setDemandSharing(demandId:string,token:string,enabled:boolean):Promise<void>{
+  return update(buyerPath(demandId),token,enabled);
+}
+export async function loadSellerPreference(sellerId:string,token:string):Promise<boolean>{
+  return read(sellerPath(sellerId),token);
+}
+export async function setSellerPreference(sellerId:string,token:string,enabled:boolean):Promise<void>{
+  return update(sellerPath(sellerId),token,enabled);
+}
