@@ -463,8 +463,7 @@ class ZakazApi {
       Map<String,dynamic> payload,{String? idempotencyKey}) async {
     _sellerId(sellerId);_sellerId(invitationId);
     if(idempotencyKey!=null &&
-       !RegExp(r'^[A-Za-z0-9_.:-]{1,80}
-    final path='/api/v1/sellers/'+sellerId+
+       !RegExp(r'^[A-Za-z0-9_.:-]{1,80}'/api/v1/sellers/'+sellerId+
       '/invitations/'+invitationId+'/bid';
     final req=http.Request('POST',url(path));
     req.headers.addAll({
@@ -472,67 +471,6 @@ class ZakazApi {
       'Accept':'application/json',
       'Content-Type':'application/json',
       if(idempotencyKey!=null)'Idempotency-Key':idempotencyKey
-    });
-    req.body=jsonEncode(payload);
-    final response=await http.Response.fromStream(
-      await client.send(req)).timeout(requestTimeout);
-    if(response.statusCode!=201)throw ZakazApiError(response.statusCode);
-    final result=jsonDecode(utf8.decode(response.bodyBytes));
-    if(result is! Map<String,dynamic> ||
-       result['bidId'] is! String ||
-       !_sellerUuid.hasMatch(result['bidId'] as String)) {
-      throw const FormatException('Invalid seller bid receipt');
-    }
-    return result['bidId'] as String;
-  }
-
-
-  Future<bool> buyerDemandSharing(String bearer,String demandId) async {
-    _sellerId(demandId);
-    final state=await request('GET',
-      '/api/v1/buyers/demands/'+demandId+'/invitation-sharing',
-      bearer:_requireToken(bearer));
-    if(state['enabled'] is! bool)throw const FormatException('Invalid buyer sharing');
-    return state['enabled'] as bool;
-  }
-
-  Future<void> setBuyerDemandSharing(
-      String bearer,String demandId,bool enabled) async {
-    _sellerId(demandId);
-    await _sellerNoContent(bearer,'PUT',
-      '/api/v1/buyers/demands/'+demandId+'/invitation-sharing',
-      {'enabled':enabled});
-  }
-
-  Future<bool> sellerInvitationPreference(String bearer,String sellerId) async {
-    _sellerId(sellerId);
-    final state=await request('GET',
-      '/api/v1/sellers/'+sellerId+'/invitation-preference',
-      bearer:_requireToken(bearer));
-    if(state['enabled'] is! bool)throw const FormatException('Invalid seller preference');
-    return state['enabled'] as bool;
-  }
-
-  Future<void> setSellerInvitationPreference(
-      String bearer,String sellerId,bool enabled) async {
-    _sellerId(sellerId);
-    await _sellerNoContent(bearer,'PUT',
-      '/api/v1/sellers/'+sellerId+'/invitation-preference',
-      {'enabled':enabled});
-  }
-
-  void dispose()=>client.close();
-}
-).hasMatch(idempotencyKey)) {
-      throw ArgumentError('Invalid seller bid idempotency key');
-    }
-    final path='/api/v1/sellers/'+sellerId+
-      '/invitations/'+invitationId+'/bid';
-    final req=http.Request('POST',url(path));
-    req.headers.addAll({
-      'Authorization':'Bearer '+_requireToken(bearer),
-      'Accept':'application/json',
-      'Content-Type':'application/json'
     });
     req.body=jsonEncode(payload);
     final response=await http.Response.fromStream(
