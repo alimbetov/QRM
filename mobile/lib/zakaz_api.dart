@@ -463,7 +463,10 @@ class ZakazApi {
       Map<String,dynamic> payload,{String? idempotencyKey}) async {
     _sellerId(sellerId);_sellerId(invitationId);
     if(idempotencyKey!=null &&
-       !RegExp(r'^[A-Za-z0-9_.:-]{1,80}'/api/v1/sellers/'+sellerId+
+       !RegExp(r'^[A-Za-z0-9_.:-]{1,80}$').hasMatch(idempotencyKey)) {
+      throw ArgumentError('Invalid seller bid idempotency key');
+    }
+    final path='/api/v1/sellers/'+sellerId+
       '/invitations/'+invitationId+'/bid';
     final req=http.Request('POST',url(path));
     req.headers.addAll({
@@ -484,7 +487,6 @@ class ZakazApi {
     }
     return result['bidId'] as String;
   }
-
 
   Future<bool> buyerDemandSharing(String bearer,String demandId) async {
     _sellerId(demandId);
