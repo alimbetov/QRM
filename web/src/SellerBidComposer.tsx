@@ -1,4 +1,4 @@
-import {useEffect,useState,type FormEvent} from 'react';
+import {useEffect,useRef,useState,type FormEvent} from 'react';
 import {
   loadInvitationQuote,submitInvitationBid,priceKzt,stockCovers,
   type InvitationQuoteContext,type BidInput,type MatchingSku
@@ -16,8 +16,10 @@ export default function SellerBidComposer({sellerId,invitationId,token}:{
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState('');
   const [receipt,setReceipt]=useState('');
+  const pending=useRef<{signature:string;terms:BidInput;key:string}|null>(null);
   useEffect(()=>{
     let active=true;
+    pending.current=null;
     setContext(null);setError('');setReceipt('');setBusy(true);
     loadInvitationQuote(sellerId,invitationId,token).then(data=>{
       if(!active)return;
@@ -53,7 +55,12 @@ export default function SellerBidComposer({sellerId,invitationId,token}:{
   async function submit(event:FormEvent<HTMLFormElement>){
     event.preventDefault();
     if(!context||!ready)return;
-    const terms:BidInput={
+    const signature=JSON.stringify({revision:context.nextRevision,originId,
+      method,fee,chosen,prices,demandId:context.demandId});
+    // Keep the exact same terms and key on a retry after a network timeout.
+    // Editing any field begins a new idempotency scope.
+    if(!pending.current || pending.current.signature!==signature){
+      const terms:BidInput={
       revision:context.nextRevision,
       expiresAt:new Date(Math.min(
         new Date(context.expiresAt).getTime()-1000,Date.now()+30*60*1000)).toISOString(),
@@ -62,11 +69,16 @@ export default function SellerBidComposer({sellerId,invitationId,token}:{
         productId:line.productId,skuId:chosen[line.productId],
         quantity:line.quantity,unitPrice:prices[line.productId]
       }))
-    };
+      };
+      pending.current={signature,terms,key:crypto.randomUUID()};
+    }
     if(!window.confirm('Отправить ставку покупателю? Это НЕ создаёт заказ и НЕ резервирует склад.'))return;
     setBusy(true);setError('');
     try{
-      const id=await submitInvitationBid(sellerId,invitationId,token,context,terms);
+      const request=pending.current!;
+      const id=await submitInvitationBid(
+        sellerId,invitationId,token,context,request.terms,request.key);
+      pending.current=null;
       setReceipt(id);
     }catch{
       setError('Ставка не подтверждена сервером. Не отправляйте повторно без обновления заявки: возможно, изменились согласия, остатки или ревизия.');
