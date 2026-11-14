@@ -42,7 +42,11 @@ test('seller submits first valid SellerBid from live ML-R2 invitation',async({pa
   const form=invited.getByRole('region',{name:'Подготовка ставки'});
   await expect(form.getByText('Предложение по заявке')).toBeVisible();
   // One-line pre-provisioned fixture; full basket is mandatory on Backend.
-  await form.getByLabel('Мой SKU').selectOption({label:new RegExp(skuCode)});
+  const selector=form.getByLabel('Мой SKU');
+  const skuOption=selector.locator('option').filter({hasText:skuCode});
+  const optionValue=await skuOption.getAttribute('value');
+  expect(optionValue).not.toBeNull();
+  await selector.selectOption(optionValue!);
   await form.getByLabel(/Моя цена за/).fill(price);
   await expect(form.getByRole('button',{name:'Отправить ставку покупателю'}))
     .toBeEnabled();

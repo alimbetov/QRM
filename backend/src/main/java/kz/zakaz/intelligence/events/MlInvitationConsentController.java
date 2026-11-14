@@ -33,15 +33,21 @@ public class MlInvitationConsentController {
 
 
     @GetMapping("/buyers/demands/{demandId}/invitation-sharing")
-    public Status buyerStatus(@PathVariable UUID demandId,JwtAuthenticationToken actor) {
+    public org.springframework.http.ResponseEntity<Status> buyerStatus(
+        @PathVariable UUID demandId,JwtAuthenticationToken actor) {
         UUID buyer=buyerIdentity.requireBuyer(actor);
-        return new Status(policy.demandSharingEnabled(buyer,demandId));
+        return org.springframework.http.ResponseEntity.ok()
+            .cacheControl(org.springframework.http.CacheControl.noStore())
+            .body(new Status(policy.demandSharingEnabled(buyer,demandId)));
     }
 
     @GetMapping("/sellers/{sellerId}/invitation-preference")
-    public Status sellerStatus(@PathVariable UUID sellerId,JwtAuthenticationToken actor) {
+    public org.springframework.http.ResponseEntity<Status> sellerStatus(
+        @PathVariable UUID sellerId,JwtAuthenticationToken actor) {
         UUID seller=sellerIdentity.requireSellerAdmin(actor,sellerId);
-        return new Status(policy.sellerInAppEnabled(seller));
+        return org.springframework.http.ResponseEntity.ok()
+            .cacheControl(org.springframework.http.CacheControl.noStore())
+            .body(new Status(policy.sellerInAppEnabled(seller)));
     }
 
     @PutMapping("/buyers/demands/{demandId}/invitation-sharing")
