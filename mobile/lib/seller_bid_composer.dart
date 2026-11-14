@@ -16,6 +16,7 @@ class _SellerBidComposerState extends State<SellerBidComposer> {
   final Map<String,String> selected={};
   final Map<String,TextEditingController> prices={};
   final fee=TextEditingController(text:'0.00');
+  final listController=ScrollController();
   String? origin,error,receipt;
   String method='PICKUP';
   bool busy=false;
@@ -26,6 +27,7 @@ class _SellerBidComposerState extends State<SellerBidComposer> {
   @override void initState(){super.initState();load();}
   @override void dispose(){
     for(final c in prices.values){c.dispose();}
+    listController.dispose();
     fee.dispose();super.dispose();
   }
 
@@ -155,7 +157,17 @@ class _SellerBidComposerState extends State<SellerBidComposer> {
       final id=await widget.api.sellerSubmitInvitationBid(widget.token,
         widget.sellerId,widget.invitationId,pendingPayload!,
         idempotencyKey:pendingKey);
-      if(mounted)setState(()=>receipt=id);
+      if(mounted){
+        setState(()=>receipt=id);
+        // After submitting at the bottom of a long form, bring the server
+        // acknowledgement into the user's visible viewport.
+        WidgetsBinding.instance.addPostFrameCallback((_){
+          if(mounted&&listController.hasClients){
+            listController.animateTo(0,
+              duration:const Duration(milliseconds:180),curve:Curves.easeOut);
+          }
+        });
+      }
     }catch(e){
       if(mounted)setState(()=>error=e is ZakazApiError
         ? 'Ставка отклонена: HTTP '+e.statusCode.toString()+
@@ -167,7 +179,7 @@ class _SellerBidComposerState extends State<SellerBidComposer> {
   @override Widget build(BuildContext context) {
     final total=totalCents();
     return Scaffold(appBar:AppBar(title:const Text('Ответить ставкой')),
-      body:ListView(padding:const EdgeInsets.all(16),children:[
+      body:ListView(controller:listController,padding:const EdgeInsets.all(16),children:[
         if(busy)const LinearProgressIndicator(),
         if(error!=null)Text(error!,
           style:TextStyle(color:Theme.of(context).colorScheme.error)),
