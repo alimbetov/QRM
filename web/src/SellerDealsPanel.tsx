@@ -1,4 +1,5 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
+import SellerBidComposer from './SellerBidComposer';
 import {
   changeSellerOrder,markSellerLead,sellerInvitations,sellerLeads,sellerOrders,
   type SellerLead,type SellerOrdersPage,type SellerInvitation
@@ -10,6 +11,8 @@ export default function SellerDealsPanel({sellerId,token}:{
   sellerId:string;token:string
 }) {
   const [tab,setTab]=useState<Tab>('orders');
+  const [replyTo,setReplyTo]=useState<string|null>(null);
+  const quoteEnabled=import.meta.env.VITE_SELLER_BID_WORKSPACE_ENABLED==='true';
   const [orders,setOrders]=useState<SellerOrdersPage|null>(null);
   const [leads,setLeads]=useState<SellerLead[]|null>(null);
   const [invitations,setInvitations]=useState<SellerInvitation[]|null>(null);
@@ -147,7 +150,16 @@ export default function SellerDealsPanel({sellerId,token}:{
       {invitations?.map(i=><article className="seller-listing" key={i.invitationId}>
         <h3>Запрос покупателя</h3>
         <p>Demand: {i.demandId} · получен: {new Date(i.deliveredAt).toLocaleString('ru-RU')}</p>
-        <p className="seller-hint">Формирование SellerBid из приглашения — отдельный следующий этап.</p>
+        {quoteEnabled?<div className="seller-quote-action">
+          <button type="button" disabled={busy} onClick={()=>
+            setReplyTo(replyTo===i.invitationId?null:i.invitationId)}>
+            {replyTo===i.invitationId?'Закрыть форму':'Ответить ставкой'}
+          </button>
+          {replyTo===i.invitationId&&<SellerBidComposer
+            key={i.invitationId} invitationId={i.invitationId}
+            sellerId={sellerId} token={token}/>}
+        </div>:<p className="seller-hint">
+          Ответ ставкой через React отключён до приёмки R2 и включения Backend.</p>}
       </article>)}
       <button type="button" disabled={busy} onClick={()=>void openInvitations()}>
         Обновить приглашения</button>
