@@ -73,7 +73,7 @@ class MlR3SellerResponseDatasetPostgresIT {
     @BeforeEach void isolateConsumerAndResearchEvidence() {
         jdbc.execute("""
             TRUNCATE ml_seller_invitation_view,ml_invitation_consent_audit,
-              ml_event_projection_inbox,ml_seller_invitation_inbox,ml_event_delivery
+              seller_bid_http_receipt,ml_event_projection_inbox,ml_seller_invitation_inbox,ml_event_delivery
             RESTART IDENTITY
             """);
     }

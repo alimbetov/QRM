@@ -41,7 +41,7 @@ class MlSellerInvitationPostgresIT {
     @Autowired JdbcMlEventQueue deliveryQueue;
     @Autowired JdbcMlEventProjectionSink deliverySink;
     @BeforeEach void isolateDelivery() {
-        jdbc.execute("TRUNCATE seller_bid_http_receipt,ml_event_projection_inbox,ml_seller_invitation_inbox,ml_event_delivery RESTART IDENTITY");
+        jdbc.execute("TRUNCATE ml_seller_invitation_view,seller_bid_http_receipt,ml_event_projection_inbox,ml_seller_invitation_inbox,ml_event_delivery RESTART IDENTITY");
     }
     @Autowired JdbcTemplate jdbc;
     @Autowired CategoryRepository categories;
