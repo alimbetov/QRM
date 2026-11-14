@@ -3,7 +3,7 @@
 **Дата:** 2026-11-14  
 **Репозиторий:** `alimbetov/QRM`  
 **Ветка:** `docs/adr-002-jpa-architecture-review`, PR #2 `Draft`; `main` не менять.  
-**Статус:** `S2_REVIEW_REQUESTED_NOT_APPROVED` (требуется независимый реальный reviewer); CAT-R1B `RED_TEST_PREPARED`.  
+**Статус:** `S2_REVIEW_REQUESTED_NOT_APPROVED` (требуется независимый реальный reviewer); CAT-R1B `RED_PROVEN / MIGRATION_HOLD`.  
 **Нормативные документы:** [CAT-001](CAT-001-UNIVERSAL-CATALOG-EXPANSION-MASTER-SPEC.md), [CAT-R0](CAT-R0-CONSISTENCY-AUDIT-2026-11-14.md), [модель четырёх пилотов](CAT-R0-PILOT-ATTRIBUTE-CONTRACT.md), [CAT-R1A Implementation & S2 Pack](CAT-R1A-IMPLEMENTATION-S2-PACK.md).
 
 ## 1. S2 independence / approval
@@ -97,16 +97,27 @@ Reviewer должен быть реальным лицом с подтвержд
 
 Текущая V30 не содержит `attribute_schema_revision` у Category и `catalog_category_rule_revision`: RED обязан документировать отсутствие этих ограничений, до реализации не считать GREENS доказательством snapshot semantics.
 
+**Фактические результаты RED/GREEN test-first (PostgreSQL 17):**
+
+- [RED workflow #43593510809](https://github.com/alimbetov/QRM/actions/runs/43593510809), точный коммит `f7045f351dfe6b367a9b0fff4b248956d41e724c`: `CatalogR1BFourPilotPostgresIT` **4/4 PASS**; `CatalogR1BRuleRevisionPostgresIT` **3 executed: 1 FAIL + 2 ERROR, 0 skipped**.
+- Смысл первого RED: `alreadyPublishedSkuMustStayReadableAfterFutureRequiredRule` падает, поскольку новый required rule задним числом блокирует старый SKU; это воспроизводимый domain/regression gap.
+- Смысл остальных двух RED: в действующей V30 отсутствует `catalog_category.attribute_schema_revision` (ошибка PostgreSQL `column "attribute_schema_revision" does not exist`), поэтому нет доказанной immutable revision history.
+- RED fixture code прошёл проверку на уникальность тестовых HCC и global AttributeDefinition.code; более ранние падения из-за дублирования fixture keys устранены в `f7045f35`.
+- В этом же общем интеграционном workflow присутствуют **два независимых ML-R3 error** из-за отсутствия `ml_invitation_bid_attribution`. Это отдельная параллельная доработка, **не доказанный эффект CAT-R1B**; общий CI не GREEN.
+- После доказанного RED класс `CatalogR1BRuleRevisionPostgresIT` отмечен явным `@Disabled("CAT-R1B S2 HOLD ...")`, commit `bf87f90b`. **Все 3 pending RED tests сохранены, но в последующем CI будут SKIPPED до миграции и S2.** Нельзя выдавать их за GREEN. Четыре реальные пилотные Testcontainers-фикстуры остаются активны.
+
+**Обязательный шаг перед CAT-R1B GREEN:** убрать `@Disabled`, получить настоящие три успешных теста на новой Flyway migration + replay/snapshot tests; затем полная регрессия и независимое S2.
+
 ## 6. Quality gates и таблица доказательств
 
 | Гейт | Статус на момент составления |
 |---|---|
 | CAT-R1A Java + PostgreSQL GREEN / prior SHA | **PASS** `07369259`, run 43562005821 |
 | Independent S2 reviewer GitHub APPROVE | **NOT PRESENT** |
-| CAT-R1B 4 pilot PostgreSQL fixtures | CODE ADDED; ждать exact SHA CI |
-| CAT-R1B 3 revision RED Testcontainers | CODE ADDED; ждать exact SHA CI |
+| CAT-R1B 4 pilot PostgreSQL fixtures | **PASS 4/4** on `f7045f35`, PostgreSQL 17/Testcontainers |
+| CAT-R1B 3 revision RED Testcontainers | **RED PROVEN** 1 FAIL + 2 ERROR, then explicit `@Disabled` S2 HOLD; **not GREEN** |
 | CAT-R1B implementation migration + Java pinned-rule reader | **HOLD until S2** |
-| Existing order/QR/ML/Flutter/React regression | must rerun after every backend change |
+| Existing order/QR/ML/Flutter/React regression | full current CI not GREEN: 2 unrelated ML-R3 PostgreSQL errors; owner investigation required |
 | Live staging migration rehearsal | **NOT RUN** |
 | Production expansion/catalog import | **NOT PERMITTED** |
 
