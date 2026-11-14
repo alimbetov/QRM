@@ -27,9 +27,20 @@ Workflow Java Backend `43561342501`: fast succeeded; PostgreSQL failed. Прям
 
 **ВНИМАНИЕ:** на том же SHA параллельно упали некоторые существующие SellerInvitation / ML PostgreSQL тесты по ограничениям приглашений. RED не является чистым единственным падением только CAT-R1A. Нельзя утверждать, что все ранее существовавшие PostgreSQL тесты были GREEN до добавления CAT-R1A; regression baseline требует нового clean verification.
 
-## 3. GREEN evidence
+## 3. GREEN evidence (verified)
 
-**PENDING:** здесь должен быть указан exact tested SHA, GitHub Workflow URL, postgres job, число тестов, failures/errors, JAVA fast, Flyway V28/V29, Web/Flutter/Staging workflows. До подтверждения здесь не писать PASS.
+**Code SHA tested:** `0736925968b3ab685df4c7658069a77212d97ca0`.
+
+- Java 21 Backend: [GitHub Actions run 43562005821](https://github.com/alimbetov/QRM/actions/runs/43562005821) — **SUCCESS**.
+- Backend fast job `132347546384`: `mvn test` **SUCCESS**.
+- Backend postgres job `132347546038`: `mvn verify` **BUILD SUCCESS**, 124 integration tests, **0 failures, 0 errors**, 106 unit tests, 0 failures/errors. These are run-level counts from Maven output, not claims of new CAT-R1A-only coverage.
+- CAT-R1A targeted: `CatalogR1ASchemaPostgresIT` **5/5 PASS**, `CatalogR1AAttributePolicyTest` **4/4 PASS**.
+- Flyway: successfully validated/applied **V1–V29**, with CAT-R1A at V28 and concurrent ML at V29. No duplicate version on tested SHA.
+- QA-02 JaCoCo: **89.71% line coverage** (2 939 covered / 337 missed), **63.81% branch coverage** (1 398 covered / 793 missed), report job SUCCESS.
+- Buyer Web UI / Flutter Mobile / Staging Configuration on the same source SHA — all **SUCCESS**.
+- A previous candidate run `b31535e6` had one SellerBid Workspace HTTP assertion 422 vs 404; on `07369259` the entire `SellerInvitationBidWorkspacePostgresIT` completed **12/12 PASS**, and the overall verify returned GREEN. This establishes a clean final test run, but the earlier intermittent or concurrent-change symptom should be watched for flakiness.
+
+**Release distinction:** CI GREEN does not equal external staging, independently approved S2, or production compatibility on an existing non-empty database. The documentation-only commits after tested SHA do not modify backend code. Any subsequent backend change requires new exact-SHA verification.
 
 ## 4. DB migration contract / safety
 
