@@ -4,7 +4,8 @@ import java.util.NoSuchElementException;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 
-@RestControllerAdvice(assignableTypes=SellerInvitationBidWorkspaceController.class)
+@RestControllerAdvice(assignableTypes={SellerInvitationBidWorkspaceController.class,
+    kz.zakaz.intelligence.events.MlInvitationViewController.class})
 public class SellerInvitationBidWorkspaceErrors {
     public record Error(String code) {}
     @ExceptionHandler(NoSuchElementException.class)
