@@ -188,8 +188,7 @@ public class SellerInvitationBidWorkspaceService {
         var header=invited.getFirst();
         // The existing ML-R2 inbox is the source for live visibility, taxonomy,
         // seller preference, and delivery eligibility.
-        if(consent.listSellerInbox(seller,100).stream()
-            .noneMatch(x->x.invitationId().equals(invitation)))
+        if(!consent.isSellerInvitationVisible(seller,invitation))
             throw new NoSuchElementException("Invitation not currently visible");
 
         var requested=jdbc.query("""

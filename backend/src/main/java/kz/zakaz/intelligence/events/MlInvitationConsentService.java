@@ -91,7 +91,25 @@ public class MlInvitationConsentService {
     public List<InboxItem> listSellerInbox(UUID verifiedSeller,int limit) {
         Objects.requireNonNull(verifiedSeller);
         if(limit<1||limit>100)throw new IllegalArgumentException("Invalid inbox limit");
-        return jdbc.query("""
+        return visibleSellerInbox(verifiedSeller,null,limit);
+    }
+
+    /**
+     * Exact invitation visibility, independent of inbox page size or sort order.
+     * An older delivered/consented invitation must not disappear just because a
+     * merchant has received more than 100 newer invitations.
+     */
+    @Transactional(readOnly=true)
+    public boolean isSellerInvitationVisible(UUID verifiedSeller,UUID invitationId) {
+        Objects.requireNonNull(verifiedSeller);
+        Objects.requireNonNull(invitationId);
+        return !visibleSellerInbox(verifiedSeller,invitationId,1).isEmpty();
+    }
+
+    private List<InboxItem> visibleSellerInbox(UUID verifiedSeller,
+                                                UUID invitationId,int limit) {
+        String byInvitation=invitationId==null?"":" AND inbox.invitation_id=?";
+        String sql="""
             SELECT inbox.invitation_id,inbox.demand_id,inbox.delivered_at
             FROM ml_seller_invitation_inbox inbox
             JOIN buyer_demand_snapshot d ON d.id=inbox.demand_id
@@ -122,10 +140,15 @@ public class MlInvitationConsentService {
                          WHERE l.seller_id=inbox.seller_id AND l.city=d.city
                            AND l.active=true AND l.public_pickup_enabled=true)
               )
+            """+byInvitation+"""
             ORDER BY inbox.delivered_at DESC,inbox.invitation_id DESC LIMIT ?
-            """,(rs,i)->new InboxItem(rs.getObject("invitation_id",UUID.class),
-                    rs.getObject("demand_id",UUID.class),
-                    rs.getTimestamp("delivered_at").toInstant()),
-            verifiedSeller,limit);
+            """;
+        return invitationId==null?
+            jdbc.query(sql,(rs,i)->new InboxItem(rs.getObject("invitation_id",UUID.class),
+                rs.getObject("demand_id",UUID.class),
+                rs.getTimestamp("delivered_at").toInstant()),verifiedSeller,limit):
+            jdbc.query(sql,(rs,i)->new InboxItem(rs.getObject("invitation_id",UUID.class),
+                rs.getObject("demand_id",UUID.class),
+                rs.getTimestamp("delivered_at").toInstant()),verifiedSeller,invitationId,limit);
     }
 }

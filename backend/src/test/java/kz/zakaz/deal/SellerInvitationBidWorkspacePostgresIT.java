@@ -337,4 +337,42 @@ class SellerInvitationBidWorkspacePostgresIT {
         }
     }
 
+    @Test void olderActiveInvitationRemainsUsableBeyondNewestHundredInboxRows() throws Exception {
+        var f=fixture(new BigDecimal("5.000"),true,true);
+        // Regression for previous preview code: listSellerInbox(seller,100)
+        // hid any valid invitation older than the newest hundred.
+        // These extra invitations are synthetic SQL fixtures ONLY for pagination,
+        // not proof that the ML dispatcher evaluated or delivered them.
+        int policies=jdbc.update("""
+            INSERT INTO ml_seller_invitation(
+                id,demand_id,seller_id,policy_version,status,reason_code,evaluated_at)
+            SELECT gen_random_uuid(),?,?,series.version,'ELIGIBLE','MATCHED',clock_timestamp()
+            FROM generate_series(2,102) AS series(version)
+            """,f.demand(),f.seller());
+        assertThat(policies).isEqualTo(101);
+        int delivered=jdbc.update("""
+            INSERT INTO ml_seller_invitation_inbox(
+                invitation_id,demand_id,seller_id,delivered_at)
+            SELECT id,demand_id,seller_id,clock_timestamp()+interval '1 minute'
+            FROM ml_seller_invitation
+            WHERE demand_id=? AND seller_id=? AND policy_version BETWEEN 2 AND 102
+            """,f.demand(),f.seller());
+        assertThat(delivered).isEqualTo(101);
+        assertThat(consent.listSellerInbox(f.seller(),100))
+            .extracting(MlInvitationConsentService.InboxItem::invitationId)
+            .doesNotContain(f.invitation());
+        assertThat(consent.isSellerInvitationVisible(f.seller(),f.invitation()))
+            .isTrue();
+        mvc.perform(get(quoteUrl(f))
+            .header("Authorization","Bearer "+f.sellerToken()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.invitationId").value(f.invitation().toString()));
+        consent.setDemandSharing(f.buyer(),f.demand(),false);
+        assertThat(consent.isSellerInvitationVisible(f.seller(),f.invitation()))
+            .isFalse();
+        mvc.perform(get(quoteUrl(f))
+            .header("Authorization","Bearer "+f.sellerToken()))
+            .andExpect(status().isNotFound());
+    }
+
 }
