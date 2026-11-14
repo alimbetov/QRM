@@ -197,8 +197,10 @@ public class SellerInvitationBidWorkspaceService {
                     SELECT location_id,on_hand-reserved AS available
                     FROM inventory_balance
                     WHERE seller_id=? AND sku_id=?
-                    """,rs->byOrigin.put(rs.getObject(1,UUID.class),
-                        rs.getBigDecimal(2).toPlainString()),seller,sku.id());
+                    """,(org.springframework.jdbc.core.RowCallbackHandler) rs -> {
+                        byOrigin.put(rs.getObject(1,UUID.class),
+                            rs.getBigDecimal(2).toPlainString());
+                    },seller,sku.id());
                 options.add(new SkuOption(sku.id(),sku.code(),
                     sku.price()==null?null:sku.price().toPlainString(),
                     Map.copyOf(byOrigin)));
