@@ -170,6 +170,16 @@ class SellerInvitationBidWorkspacePostgresIT {
                 .header("Idempotency-Key","r2-accept-"+f.demand()))
             .andExpect(status().isCreated()).andReturn();
         UUID order=from(accepted.getResponse().getContentAsString(),"orderId");
+        // Acceptance creates a PLACED economic snapshot, never an early stock hold.
+        assertThat(jdbc.queryForObject(
+            "SELECT status FROM customer_order WHERE id=?",String.class,order))
+            .isEqualTo("PLACED");
+        assertThat(jdbc.queryForObject(
+            "SELECT count(*) FROM inventory_reservation WHERE order_id=?",
+            Integer.class,order)).isZero();
+        assertThat(jdbc.queryForObject(
+            "SELECT count(*) FROM order_outbox_event WHERE aggregate_id=? AND event_type='ORDER_CONFIRMED'",
+            Integer.class,order)).isZero();
         mvc.perform(post("/api/v1/sellers/"+f.seller()+"/orders/"+order+"/confirm")
                 .header("Authorization","Bearer "+f.sellerToken()))
             .andExpect(status().isNoContent());
@@ -179,6 +189,26 @@ class SellerInvitationBidWorkspacePostgresIT {
         assertThat(jdbc.queryForObject(
             "SELECT status FROM customer_order WHERE id=?",String.class,order))
             .isEqualTo("CONFIRMED");
+        assertThat(jdbc.queryForObject(
+            "SELECT reserved FROM inventory_balance WHERE seller_id=? AND location_id=? AND sku_id=?",
+            BigDecimal.class,f.seller(),f.origin(),f.sku()))
+            .isEqualByComparingTo("1.000");
+        assertThat(jdbc.queryForObject(
+            "SELECT count(*) FROM inventory_movement WHERE order_id=? AND kind='RESERVATION'",
+            Integer.class,order)).isEqualTo(1);
+        assertThat(jdbc.queryForObject(
+            "SELECT count(*) FROM order_outbox_event WHERE aggregate_id=? AND event_type='ORDER_CONFIRMED'",
+            Integer.class,order)).isEqualTo(1);
+        // Retry is no new stock movement, order or outbox event.
+        mvc.perform(post("/api/v1/sellers/"+f.seller()+"/orders/"+order+"/confirm")
+                .header("Authorization","Bearer "+f.sellerToken()))
+            .andExpect(status().isNoContent());
+        assertThat(jdbc.queryForObject(
+            "SELECT count(*) FROM inventory_movement WHERE order_id=? AND kind='RESERVATION'",
+            Integer.class,order)).isEqualTo(1);
+        assertThat(jdbc.queryForObject(
+            "SELECT count(*) FROM order_outbox_event WHERE aggregate_id=? AND event_type='ORDER_CONFIRMED'",
+            Integer.class,order)).isEqualTo(1);
     }
 
     @Test void nonConsentedOrRevokedInvitationNeverExposesDemandOrCreatesBid() throws Exception {
