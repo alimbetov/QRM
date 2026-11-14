@@ -55,7 +55,8 @@ void main(){
     await tester.pumpAndSettle();
     final visibleText=tester.widgetList<Text>(find.byType(Text)).map((t)=>t.data??'').join(' | ');
     expect(find.textContaining('Город:'),findsOneWidget,reason:visibleText);
-    await tester.scrollUntilVisible(find.text('Отправить SellerBid'), 180);
+    await tester.scrollUntilVisible(find.text('Отправить SellerBid'), 180,
+      scrollable: find.byType(Scrollable).first);
     expect(find.text('Итого с доставкой: 120.00 KZT'),findsOneWidget);
     expect(bidCalls,0);
     await tester.tap(find.text('Отправить SellerBid'));
@@ -81,7 +82,8 @@ void main(){
     await tester.pumpAndSettle();
     final visibleText=tester.widgetList<Text>(find.byType(Text)).map((t)=>t.data??'').join(' | ');
     expect(find.textContaining('Город:'),findsOneWidget,reason:visibleText);
-    await tester.scrollUntilVisible(find.text('Отправить SellerBid'), 180);
+    await tester.scrollUntilVisible(find.text('Отправить SellerBid'), 180,
+      scrollable: find.byType(Scrollable).first);
     await tester.tap(find.text('Отправить SellerBid'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Отправить').last);
