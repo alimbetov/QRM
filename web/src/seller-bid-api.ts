@@ -82,10 +82,13 @@ export function validateBidInput(context:InvitationQuoteContext,input:BidInput){
   }
 }
 export async function submitInvitationBid(sellerId:string,invitationId:string,token:string,
-  context:InvitationQuoteContext,input:BidInput):Promise<string>{
+  context:InvitationQuoteContext,input:BidInput,key?:string):Promise<string>{
   validateBidInput(context,input);
+  if(key!==undefined && !/^[A-Za-z0-9_.:-]{1,80}$/.test(key))
+    throw new Error('Invalid bid idempotency key');
   const response=await fetch(publicQrApiBase()+invitationPath(sellerId,invitationId)+'/bid',{
-    method:'POST',headers:{...auth(token),'Content-Type':'application/json'},
+    method:'POST',headers:{...auth(token),'Content-Type':'application/json',
+      ...(key?{'Idempotency-Key':key}:{})},
     credentials:'omit',cache:'no-store',body:JSON.stringify(input)
   });
   if(response.status!==201)throw new Error('Seller bid HTTP '+response.status);
