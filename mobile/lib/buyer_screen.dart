@@ -31,6 +31,7 @@ class _BuyerScreenState extends State<BuyerScreen> {
   String? token,demandId,orderId,error;
   Map<String,dynamic>? quotes,order,profile;
   bool busy=false,enrollmentChecked=false,consent=false;
+  bool? demandSharing;
   @override void dispose(){
     session=null;token=null;nickname.dispose();phone.dispose();city.dispose();quantity.dispose();super.dispose();
   }
@@ -76,6 +77,7 @@ class _BuyerScreenState extends State<BuyerScreen> {
       profile=null;
       enrollmentChecked=false;
       demandId=null;
+      demandSharing=null;
       orderId=null;
       quotes=null;
       order=null;
@@ -97,7 +99,7 @@ class _BuyerScreenState extends State<BuyerScreen> {
     if(current==null)throw StateError('No active OIDC session');
     await auth.signOut(current);
     if(mounted)setState((){
-      session=null;token=null;demandId=null;orderId=null;
+      session=null;token=null;demandId=null;demandSharing=null;orderId=null;
       quotes=null;order=null;profile=null;enrollmentChecked=false;
       consent=false;keys.clear();
     });
@@ -120,8 +122,20 @@ class _BuyerScreenState extends State<BuyerScreen> {
     }
     final id=await widget.api.createDemand(token!,widget.productId,widget.unit,
                                           city.text.trim(),quantity.text);
-    if(mounted)setState(()=>demandId=id);
+    if(mounted)setState((){demandId=id;demandSharing=null;});
     await refreshBidsDirect();
+  });
+
+  // Explicit, independently consented seller outreach. Never enable by default.
+  Future<void> loadSharing()=>action(()async {
+    final enabled=await widget.api.buyerDemandSharing(token!,demandId!);
+    if(mounted)setState(()=>demandSharing=enabled);
+  });
+  Future<void> updateSharing(bool enabled)=>action(()async {
+    await widget.api.setBuyerDemandSharing(token!,demandId!,enabled);
+    // Re-read persisted state instead of assuming that the server accepted it.
+    final state=await widget.api.buyerDemandSharing(token!,demandId!);
+    if(mounted)setState(()=>demandSharing=state);
   });
 
   Future<void> refreshBidsDirect() async {
@@ -213,6 +227,13 @@ class _BuyerScreenState extends State<BuyerScreen> {
         ],
         if(demandId!=null && orderId==null) ...[
           Text('Заявка: $demandId'),
+          OutlinedButton(onPressed:busy?null:loadSharing,
+            child:const Text('Настроить приглашения продавцов')),
+          if(demandSharing!=null)SwitchListTile(
+            value:demandSharing!,
+            title:const Text('Разрешить приглашения продавцов'),
+            subtitle:const Text('Без согласия заявка не попадёт в Seller Inbox.'),
+            onChanged:busy?null:updateSharing),
           OutlinedButton(onPressed:busy?null:refreshBids,child:const Text('Обновить предложения')),
           if(bids.isEmpty)const Text('Пока нет предложений продавцов. Обновите список позже.'),
           ...bids.map((data){
