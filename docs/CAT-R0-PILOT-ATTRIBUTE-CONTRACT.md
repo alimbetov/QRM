@@ -54,11 +54,11 @@ status: PROPOSED
 
 ## 3. Пилот A — Овощи и фрукты (яблоки + картофель)
 
-**Классификационный охват:** свежие яблоки, картофель; категория отлична от сорта/фасовки/партии. CanonicalProduct \`FRESH_APPLE\` и \`POTATO\` — только примеры идентичности. \`CULTIVAR_CODE=GALA\` — SKU hard-attribute при точном требовании, не новая HCC-ветвь. Условные коды справочника подлежат лингвистической/предметной модерации.
+**Классификационный охват:** свежие яблоки, картофель; категория отлична от сорта/фасовки/партии. CanonicalProduct \`FRESH_APPLE\` и \`POTATO\` — только примеры идентичности. \`VARIETY_CODE=GALA\` — SKU hard-attribute при точном требовании, не новая HCC-ветвь. Условные коды справочника подлежат лингвистической/предметной модерации.
 
 | Код характеристики | Тип | Факт/владелец | Ед. | Треб. | Search | Matching / policy |
 |---|---|---|---|---|---|---|
-| `CULTIVAR_CODE` | ENUM | `SKU` | — | C | Y | SELECTABLE_HARD |
+| `VARIETY_CODE` | ENUM | `SKU` | — | C | Y | SELECTABLE_HARD |
 | `GRADE_CODE` | ENUM | `SKU` | — | O | Y | SELECTABLE_HARD |
 | `CALIBER_MM` | DECIMAL | `SKU` | MM | O | Y | SELECTABLE_HARD |
 | `PACKAGE_TYPE` | ENUM | `SKU` | — | M | Y | INFO |
@@ -99,8 +99,8 @@ status: PROPOSED
 | `LOT_CODE` | TEXT | `LOT` | — | C | N | INFO |
 | `COLD_CHAIN_REQUIRED` | BOOLEAN | `SKU` | — | C | Y | POLICY_GATE |
 | `COMPLIANCE_CLAIM_STATUS` | ENUM | `LOT` | — | O | N | VERIFIED_ONLY |
-| `PACK_NET_MASS_KG` | DECIMAL | `SKU` | KG | C | Y | HARD_FOR_CONVERSION |
-| `COUNTRY_ORIGIN_CODE` | ENUM | `LOT` | — | O | Y | SELECTABLE_HARD |
+| `PACKAGE_NET_MASS_KG` | DECIMAL | `SKU` | KG | C | Y | HARD_FOR_CONVERSION |
+| `ORIGIN_COUNTRY_CODE` | ENUM | `LOT` | — | O | Y | SELECTABLE_HARD |
 
 **Нормативные случаи:**
 - \`PACK_VOLUME_L=1\` и \`PACK_VOLUME_L=0.9\` не равны при точном запросе; цена за L отображается только при доверенном объёме. Нельзя автоматически превращать цену «за пакет» в цену «за литр» без достоверной информации.
