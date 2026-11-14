@@ -162,3 +162,14 @@ The current `catalog_listing` has no `category_schema_revision` column; `Catalog
 ### S2 gate / implementation rule
 
 Until a real independent GitHub APPROVE explicitly addresses S2-CAT-01/02 and S2-CAT-09/10/11, the only permitted CAT-R1B work is review, test-only evidence, or documentation. Do not add a category-rule Flyway migration or change active published SKU rule lookup under a pseudo-approval. Existing CAT-R1A V28, other ML migrations and historical orders/QR remain immutable.
+
+
+### S2-CAT-13 — Reuse of one global definition across pilot categories (P1)
+
+An additional active PostgreSQL test was added in `CatalogR1BFourPilotPostgresIT` at code commit `cbec38407384ee4dc41583f806bf9245f6551719`:
+
+- `oneGlobalAttributeDefinitionIsReusableAcrossPilotCategoriesWithoutFactLeakage`: two different ProductTypes? No: two PHYSICAL categories (electrical and electronics), **one** global `PILOT_GLOBAL_COLOR` AttributeDefinition with category-scoped rule applicability, two published Listings, distinct seller/SKU-specific values and forbidden cross-seller read.
+- Invariant: **one definition, multiple category rule memberships, no SKU fact leakage**.
+- This is the **fifth** active fixture test in the class, separate from the historical 4/4 PASS. **Do not claim 5/5 until the new exact-SHA Maven verify is complete.**
+
+The latest pre-change baseline CI at SHA `c57b22ecbcc7e4f45b4c64d36fcf76b6f3901c48` (run [43594738635](https://github.com/alimbetov/QRM/actions/runs/43594738635)) had a PostgreSQL job **infrastructure** failure because Maven Central could not resolve `org.apache.maven.plugins:maven-jar-plugin:3.4.2` before integration tests started; fast lane succeeded. Failed PostgreSQL job was manually re-run. The CI failure is **not** proof of broken catalog semantics, but it is also **not** a qualification pass.
