@@ -23,6 +23,7 @@ class _SellerInboxScreenState extends State<SellerInboxScreen> {
   Map<String,dynamic>? orders;
   List<dynamic>? leads,invitations;
   bool busy=false;
+  bool? invitationPreference;
   int page=0,tab=0;
 
   @override void initState(){
@@ -64,7 +65,7 @@ class _SellerInboxScreenState extends State<SellerInboxScreen> {
     if(!mounted)return;
     setState((){
       session=current;sellerId=null;memberships=[];orders=null;
-      leads=null;invitations=null;tab=0;
+      leads=null;invitations=null;invitationPreference=null;tab=0;
     });
     await loadMembershipsDirect();
   });
@@ -73,14 +74,14 @@ class _SellerInboxScreenState extends State<SellerInboxScreen> {
     await auth.signOut(session!);
     if(mounted)setState((){
       session=null;sellerId=null;memberships=[];orders=null;
-      leads=null;invitations=null;tab=0;page=0;
+      leads=null;invitations=null;invitationPreference=null;tab=0;page=0;
     });
   });
   Future<void> selectSeller(String id)=>action(()async {
     if(!memberships.any((e)=>e['sellerId']==id))
       throw StateError('Unverified seller');
     setState((){
-      sellerId=id;orders=null;leads=null;invitations=null;tab=0;page=0;
+      sellerId=id;orders=null;leads=null;invitations=null;invitationPreference=null;tab=0;page=0;
     });
     await loadOrdersDirect();
   });
@@ -131,9 +132,26 @@ class _SellerInboxScreenState extends State<SellerInboxScreen> {
     });
   }
   Future<void> openInvitations()=>action(()async {
-    setState((){tab=2;invitations=null;});
-    final data=await widget.api.sellerInvitations(session!.accessToken,sellerId!);
+    setState((){tab=2;invitations=null;invitationPreference=null;});
+    final token=session!.accessToken;
+    final seller=sellerId!;
+    if(widget.bidWorkspaceEnabled){
+      final preference=await widget.api.sellerInvitationPreference(token,seller);
+      if(mounted)setState(()=>invitationPreference=preference);
+    }
+    final data=await widget.api.sellerInvitations(token,seller);
     if(mounted)setState(()=>invitations=data);
+  });
+
+  Future<void> setInvitationPreference(bool enabled)=>action(()async {
+    await widget.api.setSellerInvitationPreference(
+      session!.accessToken,sellerId!,enabled);
+    final state=await widget.api.sellerInvitationPreference(
+      session!.accessToken,sellerId!);
+    final data=await widget.api.sellerInvitations(session!.accessToken,sellerId!);
+    if(mounted)setState((){
+      invitationPreference=state;invitations=data;
+    });
   });
 
   Widget orderTile(Map<String,dynamic> o){
@@ -228,6 +246,12 @@ class _SellerInboxScreenState extends State<SellerInboxScreen> {
           ],
           if(tab==2)...[
             const Text('Приглашения с согласиями. Без автоматических SMS/Push.'),
+            if(widget.bidWorkspaceEnabled && invitationPreference!=null)
+              SwitchListTile(
+                value:invitationPreference!,
+                title:const Text('Получать приглашения от покупателей'),
+                subtitle:const Text('Настройка хранится на сервере и выключена по умолчанию.'),
+                onChanged:busy?null:setInvitationPreference),
             if(invitations!=null&&invitations!.isEmpty)
               const Text('Приглашений пока нет.'),
             ...?invitations?.map((item){
