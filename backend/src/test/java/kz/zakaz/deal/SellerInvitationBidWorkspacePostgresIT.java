@@ -245,28 +245,40 @@ class SellerInvitationBidWorkspacePostgresIT {
 
     @Test void foreignSellerWrongSkuAndInsufficientStockFailClosed() throws Exception {
         var f=fixture(new BigDecimal("5.000"),true,true);
-        // The previously valid invitation is deliberately made stale.
-        // Once stock is exhausted, quote submission must fail closed.
-        jdbc.update("""
-            UPDATE inventory_balance SET on_hand=0.000,version=version+1
-            WHERE seller_id=? AND location_id=? AND sku_id=? AND reserved=0
-            """,f.seller(),f.origin(),f.sku());
         mvc.perform(get(quoteUrl(f))).andExpect(status().isUnauthorized());
-        var other=fixture(new BigDecimal("5"),true,true);
+        var other=fixture(new BigDecimal("5.000"),true,true);
         mvc.perform(get(quoteUrl(f))
             .header("Authorization","Bearer "+other.sellerToken()))
             .andExpect(status().isForbidden());
+        // Wrong SKU has a precise validation failure while the invitation
+        // still has usable stock, independently of later stock changes.
         mvc.perform(post(bidUrl(f)).header("Authorization","Bearer "+f.sellerToken())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(offer(f,UUID.randomUUID(),"10.00",1)))
             .andExpect(status().isUnprocessableEntity());
+
+        // A concurrent authoritative stock correction invalidates this
+        // previously valid invitation. The latest policy now hides it entirely.
+        assertThat(jdbc.update("""
+            UPDATE inventory_balance SET on_hand=0.000,version=version+1
+            WHERE seller_id=? AND location_id=? AND sku_id=? AND reserved=0
+            """,f.seller(),f.origin(),f.sku())).isEqualTo(1);
+        mvc.perform(get(quoteUrl(f))
+            .header("Authorization","Bearer "+f.sellerToken()))
+            .andExpect(status().isNotFound());
         mvc.perform(post(bidUrl(f)).header("Authorization","Bearer "+f.sellerToken())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(offer(f,f.sku(),"10.00",1)))
-            .andExpect(status().isConflict());
+            .andExpect(status().isNotFound());
         assertThat(jdbc.queryForObject(
             "SELECT count(*) FROM seller_bid_snapshot WHERE demand_id=?",
             Integer.class,f.demand())).isZero();
+        assertThat(jdbc.queryForObject(
+            "SELECT count(*) FROM seller_bid_http_receipt WHERE invitation_id=?",
+            Integer.class,f.invitation())).isZero();
+        assertThat(jdbc.queryForObject(
+            "SELECT count(*) FROM inventory_reservation WHERE seller_id=? AND sku_id=?",
+            Integer.class,f.seller(),f.sku())).isZero();
     }
     @Test void legacyDemandUuidEndpointCannotBypassBuyerInvitationConsent() throws Exception {
         var f=fixture(new BigDecimal("5.000"),false,true);
