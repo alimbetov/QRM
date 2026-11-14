@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/v1")
 public class MlInvitationConsentController {
     public record Choice(@NotNull Boolean enabled) {}
+    public record Status(boolean enabled) {}
 
     private final MlInvitationConsentService policy;
     private final BuyerIdentityService buyerIdentity;
@@ -28,6 +29,19 @@ public class MlInvitationConsentController {
         this.policy=policy;
         this.buyerIdentity=buyerIdentity;
         this.sellerIdentity=sellerIdentity;
+    }
+
+
+    @GetMapping("/buyers/demands/{demandId}/invitation-sharing")
+    public Status buyerStatus(@PathVariable UUID demandId,JwtAuthenticationToken actor) {
+        UUID buyer=buyerIdentity.requireBuyer(actor);
+        return new Status(policy.demandSharingEnabled(buyer,demandId));
+    }
+
+    @GetMapping("/sellers/{sellerId}/invitation-preference")
+    public Status sellerStatus(@PathVariable UUID sellerId,JwtAuthenticationToken actor) {
+        UUID seller=sellerIdentity.requireSellerAdmin(actor,sellerId);
+        return new Status(policy.sellerInAppEnabled(seller));
     }
 
     @PutMapping("/buyers/demands/{demandId}/invitation-sharing")

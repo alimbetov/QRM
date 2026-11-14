@@ -8,6 +8,7 @@ import {
 import { formatPublishedPriceKzt } from './qr-api';
 import {enrollBuyer,loadBuyerProfile,type BuyerProfile} from './enrollment-api';
 import './buyer-flow.css';
+import BuyerInvitationSharing from './BuyerInvitationSharing';
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const supportedUnits = new Set(['PCS','KG','G','L','ML','M','M2','M3','HOUR']);
@@ -199,9 +200,12 @@ export default function BuyerFlow() {
         {demandId && !orderId && <section className="buyer-panel">
           <h2>2. Предложения продавцов</h2>
           <p className="buyer-muted">Номер заявки: {demandId}</p>
+          {import.meta.env.VITE_ML_R2_CONSENT_UI_ENABLED==='true'&&user&&
+            <BuyerInvitationSharing demandId={demandId} token={user.access_token}/>}
+
           <button disabled={busy} onClick={()=>{void refreshBids();}}>Обновить предложения</button>
           {!quotes && <p>Загружаем предложения…</p>}
-          {quotes && quotes.bids.length===0 && <p>Предложений пока нет. Продавец должен направить SellerBid через авторизованный API.</p>}
+          {quotes && quotes.bids.length===0 && <p>Предложений пока нет. Продавец может ответить ставкой через свой кабинет после получения разрешённого приглашения.</p>}
           {quotes?.bids.map(bid=><article key={bid.bidId} className="buyer-quote">
             <p><strong>Продавец {bid.sellerId.slice(0,8)}</strong> · версия {bid.revision}</p>
             <h3>{formatPublishedPriceKzt(bid.totalKzt)}</h3>

@@ -581,4 +581,47 @@ class AuthenticatedDealHttpPostgresIT {
             .isEqualTo("RELEASED");
     }
 
+    @Test void invitationConsentStatusIsPrivateExplicitAndMissingMeansDisabled() throws Exception {
+        var f=seed();
+        String expiration=Instant.now().plusSeconds(1200).toString();
+        String input="{\"city\":\"Almaty\",\"expiresAt\":\""+expiration+
+            "\",\"lines\":[{\"productId\":\""+f.productId()+
+            "\",\"quantity\":\"1.000\",\"unit\":\"PCS\"}]}";
+        var created=mvc.perform(post("/api/v1/buyers/demands")
+            .header("Authorization","Bearer "+f.buyerToken())
+            .contentType(MediaType.APPLICATION_JSON).content(input))
+            .andExpect(status().isCreated()).andReturn();
+        UUID demand=idFrom(created.getResponse().getContentAsString(),"demandId");
+        String buyerPath="/api/v1/buyers/demands/"+demand+"/invitation-sharing";
+        String sellerPath="/api/v1/sellers/"+f.sellerId()+"/invitation-preference";
+        mvc.perform(get(buyerPath)).andExpect(status().isUnauthorized());
+        mvc.perform(get(buyerPath).header("Authorization","Bearer "+f.sellerToken()))
+            .andExpect(status().isForbidden());
+        mvc.perform(get(buyerPath).header("Authorization","Bearer "+f.buyerToken()))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.enabled").value(false));
+        mvc.perform(put(buyerPath).header("Authorization","Bearer "+f.buyerToken())
+            .contentType(MediaType.APPLICATION_JSON).content("{\"enabled\":true}"))
+            .andExpect(status().isNoContent());
+        mvc.perform(get(buyerPath).header("Authorization","Bearer "+f.buyerToken()))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.enabled").value(true));
+        mvc.perform(get("/api/v1/buyers/demands/"+UUID.randomUUID()+
+            "/invitation-sharing").header("Authorization","Bearer "+f.buyerToken()))
+            .andExpect(status().isForbidden());
+
+        mvc.perform(get(sellerPath).header("Authorization","Bearer "+f.buyerToken()))
+            .andExpect(status().isForbidden());
+        mvc.perform(get(sellerPath).header("Authorization","Bearer "+f.sellerToken()))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.enabled").value(false));
+        mvc.perform(put(sellerPath).header("Authorization","Bearer "+f.sellerToken())
+            .contentType(MediaType.APPLICATION_JSON).content("{\"enabled\":true}"))
+            .andExpect(status().isNoContent());
+        mvc.perform(get(sellerPath).header("Authorization","Bearer "+f.sellerToken()))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.enabled").value(true));
+        mvc.perform(put(buyerPath).header("Authorization","Bearer "+f.buyerToken())
+            .contentType(MediaType.APPLICATION_JSON).content("{\"enabled\":false}"))
+            .andExpect(status().isNoContent());
+        mvc.perform(get(buyerPath).header("Authorization","Bearer "+f.buyerToken()))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.enabled").value(false));
+    }
+
 }

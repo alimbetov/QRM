@@ -56,3 +56,13 @@ Both `zakaz.seller.bid-workspace.enabled` and `zakaz.ml.r2.consent-api.enabled` 
 3. Seller product picker + stock setup and deterministic idempotency key on seller bid POST.
 4. Complete two-browser Playwright buyer accept → Seller Studio reserve and negative consent/no-stock cases.
 5. Independent S2 review must be external to the implementation author; CI PASS alone is not APPROVE.
+
+## R2 consent UI + acceptance evidence
+
+The first bid-only baseline `780f6afcabce19007e8fa549c9c6e642607cf38e` passed all four workflows; Java fast **106**, real PostgreSQL **105** tests PASS, incl. `SellerInvitationBidWorkspacePostgresIT` **3/3** verifying delivery→bid→buyer acceptance→seller confirmation/reservation and deny/stock failures; JaCoCo **89.99% line**, **63.46% branch**. React Vitest/build, Flutter and Staging Configuration PASS. This is not a real-browser certification.
+
+Added optional **`VITE_ML_R2_CONSENT_UI_ENABLED=false`** buyer/seller consent views and owner-only GET status endpoints. `GET /api/v1/buyers/demands/{demandId}/invitation-sharing` requires verified buyer + deal:write; `GET /api/v1/sellers/{sellerId}/invitation-preference` requires verified SELLER_ADMIN + deal:bid. Both return `{"enabled":boolean}`, missing means false, other owner denied. Existing PUT APIs perform actual opt-in/opt-out. Buyer consent is **per demand** and never implied by account registration; seller choice is per organization and remains separate. No phone/marketing permission is inferred, and setting a flag does not automatically generate a candidate, send Push, or contact the buyer.
+
+Operator-only `web/e2e/staging-seller-bid.e2e.ts` accepts real seller credentials, a preprovisioned delivered invitation, own published SKU and stock; it is enumerated but **not executed by CI**. It validates actual React quote selection and POST 201. Full dual-browser flow still needs a server-side invitation evaluation scheduler/candidate finder with bounded consent/coverage, a complete seller stock/location setup UI and verified buyer Keycloak session. **Do not represent the current bid composer as autonomous discovery or automatic invitation delivery.**
+
+To enable in private staging after S2 review: Backend `ZAKAZ_SELLER_BID_WORKSPACE_ENABLED=true`, `ZAKAZ_ML_R2_CONSENT_API_ENABLED=true`, `ZAKAZ_ML_R2_DELIVERY_ENABLED=true` (only internal event projection); React `VITE_SELLER_BID_WORKSPACE_ENABLED=true`, `VITE_ML_R2_CONSENT_UI_ENABLED=true`. Evaluate and deliver invitations under a separate trusted scheduler/workflow, never via a public invitation creation endpoint. New backend and web flags default **OFF**.

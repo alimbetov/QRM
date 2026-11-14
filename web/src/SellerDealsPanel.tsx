@@ -1,5 +1,6 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
 import SellerBidComposer from './SellerBidComposer';
+import SellerInvitationPreference from './SellerInvitationPreference';
 import {
   changeSellerOrder,markSellerLead,sellerInvitations,sellerLeads,sellerOrders,
   type SellerLead,type SellerOrdersPage,type SellerInvitation
@@ -146,6 +147,9 @@ export default function SellerDealsPanel({sellerId,token}:{
     </>}
     {tab==='invitations'&&<>
       <p className="seller-hint">Только разрешённые покупателем и продавцом in-app приглашения. Никакие Push/SMS автоматически не отправляются.</p>
+      {import.meta.env.VITE_ML_R2_CONSENT_UI_ENABLED==='true'&&
+        <SellerInvitationPreference sellerId={sellerId} token={token}/>}
+
       {invitations?.length===0&&<p>Доступных приглашений сейчас нет.</p>}
       {invitations?.map(i=><article className="seller-listing" key={i.invitationId}>
         <h3>Запрос покупателя</h3>

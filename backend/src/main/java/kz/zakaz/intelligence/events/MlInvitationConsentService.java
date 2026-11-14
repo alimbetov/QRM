@@ -59,6 +59,34 @@ public class MlInvitationConsentService {
             """,verifiedSeller,enabled);
     }
 
+
+    /** Missing consent/pref is false; verified buyer ownership is mandatory. */
+    @Transactional(readOnly=true)
+    public boolean demandSharingEnabled(UUID verifiedBuyer,UUID demandId) {
+        Objects.requireNonNull(verifiedBuyer);
+        Objects.requireNonNull(demandId);
+        Integer owner=jdbc.queryForObject("""
+            SELECT count(*) FROM buyer_demand_snapshot WHERE id=? AND buyer_id=?
+            """,Integer.class,demandId,verifiedBuyer);
+        if(owner==null||owner!=1)
+            throw new AccessDeniedException("Buyer does not own demand");
+        var values=jdbc.query("""
+            SELECT enabled FROM ml_buyer_demand_invitation_consent
+            WHERE demand_id=? AND buyer_id=?
+            """,(rs,row)->rs.getBoolean(1),demandId,verifiedBuyer);
+        return !values.isEmpty()&&values.getFirst();
+    }
+
+    @Transactional(readOnly=true)
+    public boolean sellerInAppEnabled(UUID verifiedSeller) {
+        Objects.requireNonNull(verifiedSeller);
+        var values=jdbc.query("""
+            SELECT in_app_enabled FROM ml_seller_invitation_preference
+            WHERE seller_id=?
+            """,(rs,row)->rs.getBoolean(1),verifiedSeller);
+        return !values.isEmpty()&&values.getFirst();
+    }
+
     @Transactional(readOnly=true)
     public List<InboxItem> listSellerInbox(UUID verifiedSeller,int limit) {
         Objects.requireNonNull(verifiedSeller);
