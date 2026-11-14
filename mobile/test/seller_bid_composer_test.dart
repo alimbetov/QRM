@@ -65,9 +65,19 @@ void main(){
     await tester.tap(find.text('Отправить').last);
     await tester.pumpAndSettle();
     expect(bidCalls,1);
+    // Successful POST adds receipt above the currently visible submit action.
+    // Scroll the outer ListView (not an EditableText nested Scrollable).
+    await tester.scrollUntilVisible(
+      find.text('Предложение отправлено. Покупатель может его принять.'),
+      -180, scrollable:find.byType(Scrollable).first);
     expect(find.text('Предложение отправлено. Покупатель может его принять.'),
       findsOneWidget);
-    expect(find.text('Отправить SellerBid'),findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Отправить SellerBid'), 180,
+      scrollable:find.byType(Scrollable).first);
+    final button=tester.widget<FilledButton>(
+      find.ancestor(of:find.text('Отправить SellerBid'),
+        matching:find.byType(FilledButton)));
+    expect(button.onPressed,isNull); // no duplicate after success
     api.dispose();
   });
 
