@@ -98,3 +98,24 @@ The fix introduces a targeted `isSellerInvitationVisible(sellerId,invitationId)`
 The real PostgreSQL regression `olderActiveInvitationRemainsUsableBeyondNewestHundredInboxRows` creates a genuine consented delivered candidate via the existing ML event mechanism, then inserts 101 additional synthetic SQL inbox rows solely as a deterministic pagination test fixture; it asserts the original is absent from the newest 100, remains accessible through quote-context, and becomes inaccessible immediately after buyer consent is revoked. Synthetic rows are **not** evidence of real notification/ML consumer delivery.
 
 This fix does **not** qualify external seller/buyer browser E2E, Android/iOS, multi-pod delivery, live RustFS/ClamAV, load tests or independent S2. GitHub exact-SHA CI must be verified after committing it.
+
+## R2 dual-browser acceptance without REST shortcuts — operator-run
+
+`web/e2e/staging-r2-dual-browser.e2e.ts` exercises two **separate** browser contexts with genuine Keycloak Authorization Code/PKCE, never copies either JWT into the other context and never uses Playwright `request.get/post` to create demands, bid, acceptance or order. All business actions use actual React controls:
+
+1. Verified SELLER_ADMIN signs in at `/seller`, selects their organization and explicitly enables in-app invitations.
+2. Verified BUYER signs in at `/buy?productId=<fixture>&unit=PCS`, creates an actual BuyerDemand and explicitly enables sharing of that one demand.
+3. Real scanner + ML-R2 worker must evaluate and deliver the matching invitation; the seller UI polls its actual inbox.
+4. Seller selects its matching published SKU at an active origin, enters exact KZT price and submits SellerBid. Buyer explicitly accepts, creating `PLACED`.
+5. Seller opens own orders and confirms the *specific public order number* received by buyer. Buyer refreshes and sees `CONFIRMED`. PostgreSQL reserve/outbox invariants remain the responsibility of DB integration tests and an operator read-only DB witness.
+
+**Execution gate:** `STAGING_R2_DUAL_BROWSER_UAT=true` plus private `STAGING_R2_PRODUCT_ID`, `STAGING_R2_SELLER_ID`, `STAGING_R2_SELLER_SKU_CODE`, `STAGING_R2_UNIT_PRICE`, `STAGING_BROWSER_BUYER_USERNAME`, `STAGING_BROWSER_BUYER_PASSWORD`, `STAGING_SELLER_BROWSER_USERNAME`, `STAGING_SELLER_BROWSER_PASSWORD` and a real `STAGING_BASE_URL=https://...`. Operator must provision verified user accounts and membership, active public physical SKU with sufficient actual unreserved inventory, active pickup/territory, and run with separate seller/buyer consent UI flags, seller studio and bid workspace flags, candidate scanner + delivery worker enabled. No blanket activation of these flags in production.
+
+Invoke explicitly from a provisioned secure staging environment:
+
+```sh
+cd web
+STAGING_R2_DUAL_BROWSER_UAT=true npm run e2e:staging -- --grep "real buyer and seller browsers"
+```
+
+Default CI only lists Playwright declarations; it neither provisions live users nor runs this test, therefore there is **NO USER_E2E_VERIFIED claim** until the operator attaches actual test trace, linked PostgreSQL witness, clean absence of leaked PII, and independent S2 sign-off. Test credentials must not be committed to GitHub or CI artifacts.
