@@ -34,6 +34,11 @@ public final class CatalogPublicationPolicy {
                     ||fact.getDefinitionRevision()<1
                     ||fact.getDefinitionRevision()>fact.getAttribute().getSchemaRevision())
                 throw new IllegalArgumentException("Invalid SKU attribute schema revision");
+            // A stale DRAFT cannot be newly published under an obsolete policy.
+            // Published facts remain readable under their pinned historical revision.
+            if(fact.getSku().getListing().getStatus()==kz.zakaz.domain.types.ListingStatus.DRAFT
+                    && fact.getDefinitionRevision()!=fact.getAttribute().getSchemaRevision())
+                throw new IllegalArgumentException("Draft fact uses stale attribute schema revision");
             if(!fact.getAttribute().isCanonicalForm(fact.getCanonicalValue()))
                 throw new IllegalArgumentException("Not canonicalized");
         }
