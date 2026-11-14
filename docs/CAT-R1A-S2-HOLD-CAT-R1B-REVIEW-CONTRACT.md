@@ -124,3 +124,41 @@ Reviewer должен быть реальным лицом с подтвержд
 ## 7. Reviewer action
 
 Открыть [Draft PR #2](https://github.com/alimbetov/QRM/pull/2), прочитать `docs/CAT-R1A-IMPLEMENTATION-S2-PACK.md`, `V28`, новые тесты, категорийные lookup/publication path и этот документ. Оставить **независимый GitHub APPROVE либо REQUEST_CHANGES с конкретными findings и SHA**. До этого gate нельзя снимать, даже при полном CI GREEN. Не создавать ветки и не выполнять merge.
+
+
+## 8. Additional S2 blockers discovered during CAT-R1B review (2026-11-14)
+
+**Reviewer independence:** PR #2 still has no submitted GitHub review or assigned reviewer on the independently inspected HEAD `c57b22ecbcc7e4f45b4c64d36fcf76b6f3901c48`. The existing issue comment requesting review is not approval. No real external identity may be inferred or impersonated by this implementation.
+
+### S2-CAT-09 — Rule INSERT vs separately approved activation (P0)
+
+The CAT-R1B RED test `ruleMutationMustCreateReproducibleImmutableCategorySchemaRevision` currently performs **a direct INSERT** into `catalog_category_attribute_rule` and expects `catalog_category.attribute_schema_revision` to increase immediately. This describes **automatic activation of an unreviewed rule**. But CAT-001 and §4.1 above require `proposal → validate → review → approve → atomic activation`. Those are incompatible acceptance oracles.
+
+**Required S2 resolution before GREEN:** do not implement a trigger that silently activates every raw INSERT/UPDATE/DELETE of a current rule as an approved schema revision. Define one of two mutually exclusive paths:
+
+- **Recommended:** separate *staging/proposal* from the *active* `catalog_category_attribute_rule`. A privileged approval transaction locks the Category, confirms expected current revision, validates all rules, stores the immutable full snapshot and approval provenance, swaps the active projection and increments Category schema revision atomically. Any unauthorized raw change after Category has been published must fail closed.
+- **Alternative, not recommended:** automatically version every low-level rule mutation with an auditable system actor. This does **not** meet human approval provenance and must not be called approved. Requires an explicit deviation ADR and retention of intermediate partial-snapshot states.
+
+The **existing RED trace remains valid evidence of missing history** but the literal auto-increment oracle is **NOT approved** as the target GREEN behavior. Rewrite that test to invoke an approved, privileged governance transaction (or a test-only approved SQL procedure with explicit actor/provenance) *after* S2 selects an API. Do not remove `@Disabled` before then.
+
+### S2-CAT-10 — Publication and approval transaction race (P0)
+
+`CatalogPublishingService.publishForSeller` currently locks the Listing, not the Category governance row. The proposed activation writes new rules/category revision separately. Thus a concurrent seller publication can validate an old subset and then pin an unrelated new revision unless both paths serialize on a shared Category lock with a deterministic acquisition order.
+
+**Required oracle:** transaction A begins publication, transaction B approves new rule; exactly one consistent Category revision is used for both full-rule validation and pinned `catalog_listing.category_schema_revision`, or one operation aborts and retries. No mixed snapshot, dangling revision, or partially updated QR/listing is allowed.
+
+### S2-CAT-11 — Direct SQL writes on historical pinned listing (P0)
+
+The current `catalog_listing` has no `category_schema_revision` column; `CatalogSkuFactsResolver` re-reads current rules. Simply adding a column is insufficient if a privileged SQL UPDATE can rewrite a non-null pinned revision, or if a migration leaves historical PUBLIC/UNLISTED/ARCHIVED without an auditable legacy snapshot.
+
+**Required oracle:** existing published SKU retains its full original rule snapshot under later approved rule additions; unauthorized updates to `catalog_listing.category_schema_revision` and UPDATE/DELETE of `catalog_category_rule_revision` are rejected at PostgreSQL level. Legacy backfill carries provenance `LEGACY_BASELINE`, never fabricated human approver.
+
+### S2-CAT-12 — Pilot fixture authoritativeness boundary (P1)
+
+`CatalogR1BFourPilotPostgresIT` currently sets Listing `PUBLIC` by raw SQL and uses generated fake HCC root codes; this is valid for isolated **fact read** tests but **does not** exercise real `CatalogPublishingService`, public QR issuance, authorized seller API, approval governance, or actual ServiceOrder. Do not misrepresent 4/4 as full four-pilot E2E.
+
+**Before CAT-R1B GREEN:** add a separate PostgreSQL business-flow test for approved category-rule activation plus real seller publication/QR and old-versus-new revision reads. Keep fake test HCC scoped to Testcontainers only.
+
+### S2 gate / implementation rule
+
+Until a real independent GitHub APPROVE explicitly addresses S2-CAT-01/02 and S2-CAT-09/10/11, the only permitted CAT-R1B work is review, test-only evidence, or documentation. Do not add a category-rule Flyway migration or change active published SKU rule lookup under a pseudo-approval. Existing CAT-R1A V28, other ML migrations and historical orders/QR remain immutable.
