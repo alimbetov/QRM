@@ -51,9 +51,10 @@ void main(){
     await tester.pumpWidget(MaterialApp(home:SellerBidComposer(
       api:api,token:'seller-token',sellerId:seller,invitationId:invite)));
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Отправить SellerBid'), 180);
     expect(find.text('Итого с доставкой: 120.00 KZT'),findsOneWidget);
     expect(bidCalls,0);
-    await tester.ensureVisible(find.text('Отправить SellerBid'));
+    await tester.scrollUntilVisible(find.text('Отправить SellerBid'), 180);
     await tester.tap(find.text('Отправить SellerBid'));
     await tester.pumpAndSettle();
     expect(bidCalls,0); // explicit confirmation required
@@ -75,7 +76,7 @@ void main(){
       api:ZakazApi('https://stage.example.test',client:client),
       token:'seller-token',sellerId:seller,invitationId:invite)));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Отправить SellerBid'));
+    await tester.scrollUntilVisible(find.text('Отправить SellerBid'), 180);
     await tester.tap(find.text('Отправить SellerBid'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Отправить').last);
