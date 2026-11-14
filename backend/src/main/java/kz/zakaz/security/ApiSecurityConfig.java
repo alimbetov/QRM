@@ -66,6 +66,8 @@ public class ApiSecurityConfig {
                     .hasAuthority("SCOPE_deal:bid")
                 .requestMatchers(HttpMethod.POST,"/api/v1/sellers/*/invitations/*/bid")
                     .hasAuthority("SCOPE_deal:bid")
+                .requestMatchers(HttpMethod.POST,"/api/v1/sellers/*/invitations/*/view")
+                    .hasAuthority("SCOPE_deal:bid")
                 .requestMatchers(HttpMethod.POST,"/api/v1/sellers/*/demands/*/bids")
                     .hasAuthority("SCOPE_deal:bid")
                 .requestMatchers(HttpMethod.GET,"/api/v1/sellers/me")
