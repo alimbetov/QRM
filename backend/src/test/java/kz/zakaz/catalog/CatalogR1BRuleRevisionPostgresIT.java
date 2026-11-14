@@ -3,6 +3,7 @@ package kz.zakaz.catalog;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Disabled;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -23,6 +24,7 @@ import static org.assertj.core.api.Assertions.*;
  * Use the RED CI SHA as proof, then hold the tests without pretending
  * category-rule history exists in production.
  */
+@Disabled("CAT-R1B S2 HOLD: executed RED in GitHub Actions run 43593510809 on commit f7045f35; enable only with reviewed category rule migration")
 @SpringBootTest @ActiveProfiles("test-pg") @Testcontainers
 class CatalogR1BRuleRevisionPostgresIT {
     @Container static PostgreSQLContainer<?> postgres =
