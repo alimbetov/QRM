@@ -35,7 +35,7 @@ void main(){
       expect(request.headers['authorization'],'Bearer seller-token');
       expect(request.url.path,'/api/v1/sellers/'+seller+'/invitations/'+invite+
         (request.method=='GET'?'/quote-context':'/bid'));
-      if(request.method=='GET')return http.Response(jsonEncode(fixture()),200);
+      if(request.method=='GET')return http.Response.bytes(utf8.encode(jsonEncode(fixture())),200);
       bidCalls++;
       final payload=jsonDecode(request.body) as Map<String,dynamic>;
       expect(request.method,'POST');
@@ -72,7 +72,7 @@ void main(){
 
   testWidgets('409 does not display success and requires reloading', (tester) async {
     final client=MockClient((request) async {
-      if(request.method=='GET')return http.Response(jsonEncode(fixture()),200);
+      if(request.method=='GET')return http.Response.bytes(utf8.encode(jsonEncode(fixture())),200);
       return http.Response('conflict',409);
     });
     await tester.pumpWidget(MaterialApp(home:SellerBidComposer(
