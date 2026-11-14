@@ -61,6 +61,7 @@ class SellerInvitationBidWorkspacePostgresIT {
     @Autowired DealPersistenceService deals;
     @Autowired MlInvitationConsentService consent;
     @Autowired MlSellerInvitationService evaluator;
+    @Autowired MlInvitationCandidateScanner scanner;
     @Autowired JdbcMlEventQueue queue;
     @Autowired JdbcMlEventProjectionSink sink;
     @Autowired BuyerAccountLinkRepository buyers;
@@ -76,6 +77,10 @@ class SellerInvitationBidWorkspacePostgresIT {
             .claim("email","test@example.test").claim("email_verified",true).build();
     }
     private Fixture fixture(BigDecimal stock,boolean share,boolean optIn) {
+        return fixture(stock,share,optIn,true);
+    }
+    private Fixture fixture(BigDecimal stock,boolean share,boolean optIn,
+                            boolean manuallyEvaluate) {
         String n=UUID.randomUUID().toString().replace("-","");
         String hcc=String.format("%02d%02d%03d",
             1+Integer.parseInt(n.substring(0,2),16)%99,
@@ -106,13 +111,17 @@ class SellerInvitationBidWorkspacePostgresIT {
         deals.createDemand(demand,Instant.now());
         consent.setDemandSharing(buyer,demand.id(),share);
         consent.setSellerInApp(seller,optIn);
-        var decision=evaluator.evaluate(demand.id(),seller,1,Instant.now());
-        assertThat(decision.status()).isEqualTo("ELIGIBLE");
-        // Same production at-least-once consumer, not a hand-inserted fake inbox.
-        var dispatcher=new MlEventDispatcher(queue,sink,"bid-integration",20,3,Duration.ofSeconds(30));
-        for(int i=0;i<5;i++)dispatcher.pollOnce();
+        UUID invitationId=null;
+        if(manuallyEvaluate) {
+            var decision=evaluator.evaluate(demand.id(),seller,1,Instant.now());
+            assertThat(decision.status()).isEqualTo("ELIGIBLE");
+            // Same production at-least-once consumer, not a hand-inserted fake inbox.
+            var dispatcher=new MlEventDispatcher(queue,sink,"bid-integration",20,3,Duration.ofSeconds(30));
+            for(int i=0;i<5;i++)dispatcher.pollOnce();
+            invitationId=decision.id();
+        }
         return new Fixture(seller,buyer,demand.id(),sku.getId(),location.getId(),
-            decision.id(),st,bt);
+            invitationId,st,bt);
     }
 
     private String quoteUrl(Fixture f) {
@@ -289,6 +298,43 @@ class SellerInvitationBidWorkspacePostgresIT {
         assertThat(jdbc.queryForObject(
             "SELECT count(*) FROM seller_bid_http_receipt WHERE seller_id=? AND invitation_id=?",
             Integer.class,f.seller(),f.invitation())).isEqualTo(1);
+    }
+
+    @Test void autonomousCandidateScannerFindsConsentedStockedSellerOnlyOnce() throws Exception {
+        var f=fixture(new BigDecimal("5.000"),true,true,false);
+        assertThat(jdbc.queryForObject(
+            "SELECT count(*) FROM ml_seller_invitation WHERE demand_id=?",
+            Integer.class,f.demand())).isZero();
+        assertThat(scanner.scanOnce(24)).isGreaterThanOrEqualTo(1);
+        UUID invitationId=jdbc.queryForObject("""
+            SELECT id FROM ml_seller_invitation
+            WHERE demand_id=? AND seller_id=? AND policy_version=1
+            """,UUID.class,f.demand(),f.seller());
+        assertThat(invitationId).isNotNull();
+        var dispatcher=new MlEventDispatcher(queue,sink,"scan-test",24,3,
+            Duration.ofSeconds(30));
+        for(int i=0;i<5;i++)dispatcher.pollOnce();
+        var auto=new Fixture(f.seller(),f.buyer(),f.demand(),f.sku(),f.origin(),
+            invitationId,f.sellerToken(),f.buyerToken());
+        mvc.perform(get(quoteUrl(auto))
+                .header("Authorization","Bearer "+auto.sellerToken()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.invitationId").value(invitationId.toString()));
+        assertThat(jdbc.queryForObject(
+            "SELECT count(*) FROM ml_seller_invitation WHERE demand_id=? AND seller_id=?",
+            Integer.class,f.demand(),f.seller())).isEqualTo(1);
+    }
+
+    @Test void autonomousScannerNeverInvitesWithoutBothOptInsOrFreeStock() {
+        var noBuyerConsent=fixture(new BigDecimal("5.000"),false,true,false);
+        var noSellerPreference=fixture(new BigDecimal("5.000"),true,false,false);
+        var zeroStock=fixture(BigDecimal.ZERO,true,true,false);
+        scanner.scanOnce(24);
+        for(var f:List.of(noBuyerConsent,noSellerPreference,zeroStock)) {
+            assertThat(jdbc.queryForObject(
+                "SELECT count(*) FROM ml_seller_invitation WHERE demand_id=?",
+                Integer.class,f.demand())).isZero();
+        }
     }
 
 }
