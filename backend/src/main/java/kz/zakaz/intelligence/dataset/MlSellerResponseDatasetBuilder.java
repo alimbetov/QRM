@@ -22,7 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
  * This component does not train, score or activate a Tribuo model.
  */
 @Component
-public final class MlSellerResponseDatasetBuilder {
+public class MlSellerResponseDatasetBuilder {
     public static final String SCHEMA="seller_response_24h.v1";
     public enum Label { POSITIVE, CENSORED }
     public record Sample(UUID invitationId,UUID demandId,UUID sellerId,
