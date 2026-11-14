@@ -11,6 +11,7 @@ import kz.zakaz.inventory.*;
 import kz.zakaz.order.BuyerOrderReadService;
 import kz.zakaz.security.*;
 import org.springframework.http.*;
+import org.springframework.core.env.Environment;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.*;
 
@@ -41,6 +42,8 @@ public class AuthenticatedCommerceController {
     public record BidCreated(UUID bidId){}
     public record OrderCreated(UUID orderId){}
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private Environment environment;
     private final BuyerIdentityService buyerIdentity;
     private final BuyerOrderReadService orderReads;
     private final SellerIdentityService sellerIdentity;
@@ -78,6 +81,11 @@ public class AuthenticatedCommerceController {
          @PathVariable UUID demandId,@Valid @RequestBody BidInput body,
          JwtAuthenticationToken actor){
         var seller=sellerIdentity.requireSellerAdmin(actor,sellerId);
+        // When invitation-only bidding is enabled, the legacy demand-UUID path
+        // must not bypass buyer consent or seller inbox authorization.
+        if(environment.getProperty("zakaz.seller.bid-workspace.enabled",Boolean.class,false))
+            throw new org.springframework.web.server.ResponseStatusException(
+                HttpStatus.FORBIDDEN,"Use the consented invitation bid endpoint");
         var now=Instant.now();
         if(!body.expiresAt().isAfter(now)||body.expiresAt().isAfter(now.plus(Duration.ofDays(30))))
             throw new IllegalArgumentException("Bid expiry out of range");
