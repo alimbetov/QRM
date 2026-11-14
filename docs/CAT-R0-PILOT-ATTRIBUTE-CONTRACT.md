@@ -125,6 +125,11 @@ status: PROPOSED
 | `COLOR` | ENUM | `SKU` | — | O | Y | SOFT_DEFAULT |
 | `MATERIAL` | ENUM | `SKU` | — | O | Y | SOFT_DEFAULT |
 | `CERTIFICATION_CLAIM_STATUS` | ENUM | `LOT` | — | O | N | VERIFIED_ONLY |
+
+### C.2 Установка розетки как услуга
+
+| Код характеристики | Тип | Факт/владелец | Ед. | Треб. | Search | Matching / policy |
+|---|---|---|---|---|---|---|
 | `WORK_TYPE` | ENUM | `SERVICE_SPEC` | — | M | Y | HARD |
 | `WORK_UNIT` | ENUM | `SERVICE_SPEC` | — | M | Y | HARD |
 | `WORK_POINTS` | DECIMAL | `REQUEST_LINE` | POINT | M | Y | HARD |
@@ -135,12 +140,6 @@ status: PROPOSED
 | `EARLIEST_SLOT_AT` | DATETIME | `QUOTE_LINE` | — | C | Y | ELIGIBILITY_GATE |
 | `SERVICE_PRICE_BASIS` | ENUM | `SERVICE_OFFER` | — | M | Y | HARD |
 | `ESTIMATED_DURATION_MIN` | DECIMAL | `SERVICE_OFFER` | MIN | O | Y | SOFT_DEFAULT |
-
-### C.2 Установка розетки как услуга
-
-| Код характеристики | Тип | Факт/владелец | Ед. | Треб. | Search | Matching / policy |
-|---|---|---|---|---|---|---|
-
 
 **Нормативные случаи:**
 - Покупатель запрашивает установку 5 розеток в бетонной стене без включённых материалов. SellerBid с включёнными материалами — **другие коммерческие условия**, нужна отдельная общая смета и согласие; простой текстовый match не значит эквивалентную цену.
@@ -207,7 +206,7 @@ CanonicalProduct должен отличать бренд/модель, SKU — 
 В CSV:
 - A: 15 применений
 - B: 15 применений
-- C: 19 применений электротоваров + undefined услуг
+- C: 9 применений электротоваров + 10 услуг
 - D: 11 применений электроники
 
 ## 10. Автоматизированные RED-тесты (oracle до GREEN)
