@@ -1,0 +1,24 @@
+name: Buyer Web UI
+on:
+  push:
+    paths: ['web/**', '.github/workflows/web-ci.yml']
+  pull_request:
+    paths: ['web/**', '.github/workflows/web-ci.yml']
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm test
+      - run: npm run build
+      - name: Compile and enumerate real-staging Playwright scenario (no network/login)
+        env:
+          STAGING_BASE_URL: https://ci.example.org
+        run: npm run e2e:staging -- --list

@@ -1,0 +1,34 @@
+# Isolated local media qualification only. Do NOT expose ports publicly or use
+# this single-node RustFS in production. Test with Backend running on host.
+name: zakaz-media-qualification
+services:
+  rustfs:
+    image: ${RUSTFS_IMAGE:-rustfs/rustfs:latest}
+    command: ["/data"]
+    environment:
+      RUSTFS_ADDRESS: "0.0.0.0:9000"
+      RUSTFS_CONSOLE_ENABLE: "false"
+      RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY:?set unique private test access key}
+      RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY:?set unique private test secret key}
+    ports:
+      - "127.0.0.1:19000:9000"
+    volumes:
+      - rustfs_media_data:/data
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+
+  clamav:
+    image: ${CLAMAV_IMAGE:-clamav/clamav:stable}
+    environment:
+      CLAMAV_NO_CLAMD: "false"
+      CLAMAV_NO_FRESHCLAMD: "false"
+    ports:
+      - "127.0.0.1:13310:3310"
+    volumes:
+      - clamav_signatures:/var/lib/clamav
+    restart: unless-stopped
+
+volumes:
+  rustfs_media_data:
+  clamav_signatures:

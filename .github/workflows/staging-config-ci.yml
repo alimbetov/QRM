@@ -1,0 +1,111 @@
+name: Staging Configuration
+on:
+  push:
+    paths:
+      - 'deploy/staging/**'
+      - 'backend/Dockerfile.staging'
+      - 'web/Dockerfile.staging'
+      - '.github/workflows/staging-config-ci.yml'
+  pull_request:
+    paths:
+      - 'deploy/staging/**'
+      - 'backend/Dockerfile.staging'
+      - 'web/Dockerfile.staging'
+      - '.github/workflows/staging-config-ci.yml'
+jobs:
+  static-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Validate script syntax
+        run: |
+          bash -n deploy/staging/seed-fixture.sh deploy/staging/smtp-ops.sh
+          python -m py_compile deploy/staging/render_realm.py deploy/staging/oidc-pkce-login.py deploy/staging/preflight.py deploy/staging/keycloak_smtp_ops.py
+          python -m unittest discover -s deploy/staging -p 'test_keycloak_*.py'
+          node --check deploy/staging/e2e-real-oidc.mjs
+      - name: Validate Compose syntax with dummy-only CI secrets
+        run: docker compose --env-file deploy/staging/private.env.example -f deploy/staging/compose.yaml config --quiet
+      - name: Validate rendered Keycloak realm and strict PKCE grants
+        env:
+          STAGING_DOMAIN: ci.example.org
+          STAGING_TEMPLATE_DIR: deploy/staging
+          STAGING_OUTPUT_DIR: ${{ runner.temp }}/realm-validation
+        run: |
+          python deploy/staging/render_realm.py
+          python - <<'PY'
+          import json, os, pathlib
+          realm=json.loads((pathlib.Path(os.environ['STAGING_OUTPUT_DIR'])/'realm.json').read_text())
+          clients={c['clientId']:c for c in realm['clients']}
+          assert realm['realm']=='zakaz-staging'
+          assert not realm['registrationAllowed']
+          assert realm['verifyEmail'] is True
+          assert {'zakaz-api','zakaz-buyer-web','zakaz-buyer-cli','zakaz-seller-cli','zakaz-mobile','zakaz-seller-web'} <= clients.keys()
+          for name in ('zakaz-buyer-web','zakaz-buyer-cli','zakaz-seller-cli','zakaz-seller-web','zakaz-mobile'):
+              client=clients[name]
+              assert client['publicClient'] and client['standardFlowEnabled']
+              assert not client['directAccessGrantsEnabled'] and not client['implicitFlowEnabled']
+              assert client['attributes']['pkce.code.challenge.method']=='S256'
+              assert 'zakaz-audience' in client['defaultClientScopes']
+          web=clients['zakaz-buyer-web']
+          assert web['redirectUris']==['https://ci.example.org/auth/callback']
+          assert web['webOrigins']==['https://ci.example.org']
+          assert web['attributes']['post.logout.redirect.uris']=='https://ci.example.org/auth/signed-out'
+          seller_web=clients['zakaz-seller-web']
+          assert seller_web['redirectUris']==['https://ci.example.org/seller/auth/callback']
+          assert seller_web['webOrigins']==['https://ci.example.org']
+          assert seller_web['attributes']['post.logout.redirect.uris']=='https://ci.example.org/seller/auth/signed-out'
+          assert {'catalog:write','deal:bid','order:confirm','leads:read'} <= set(seller_web['defaultClientScopes'])
+          mobile=clients['zakaz-mobile']
+          assert mobile['attributes']['post.logout.redirect.uris']=='kz.zakaz.mobile:/logout'
+          assert '__STAGING_DOMAIN__' not in json.dumps(realm)
+          print('PASS: realm PKCE, exact redirects, issuer origin inputs')
+          PY
+
+  keycloak-import-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      STAGING_DOMAIN: ci.example.org
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start isolated PostgreSQL + real Keycloak and import realm
+        run: |
+          docker compose --env-file deploy/staging/private.env.example \
+            -f deploy/staging/compose.yaml up -d iam-db realm-config keycloak
+      - name: Verify real OIDC discovery and signing JWKS from Docker network
+        run: |
+          ready=false
+          for attempt in $(seq 1 60); do
+            if docker run --rm --network zakaz-staging_private curlimages/curl:8.11.1 \
+              --connect-timeout 2 --max-time 5 -fsS \
+              http://keycloak:8080/identity/realms/zakaz-staging/.well-known/openid-configuration \
+              > /tmp/zakaz-oidc.json 2>/dev/null; then
+              ready=true
+              break
+            fi
+            sleep 5
+          done
+          test "$ready" = true
+          docker run --rm --network zakaz-staging_private curlimages/curl:8.11.1 \
+            --connect-timeout 2 --max-time 10 -fsS \
+            http://keycloak:8080/identity/realms/zakaz-staging/protocol/openid-connect/certs \
+            > /tmp/zakaz-jwks.json
+          python3 - <<'PY'
+          import json
+          conf=json.load(open('/tmp/zakaz-oidc.json'))
+          jwks=json.load(open('/tmp/zakaz-jwks.json'))
+          assert conf['issuer']=='https://ci.example.org/identity/realms/zakaz-staging'
+          assert any(k.get('kty')=='RSA' for k in jwks.get('keys',[]))
+          print('PASS: real Keycloak imported realm, canonical HTTPS issuer, RSA JWKS')
+          PY
+      - name: Clean isolated CI volumes
+        if: always()
+        run: |
+          docker compose --env-file deploy/staging/private.env.example \
+            -f deploy/staging/compose.yaml down -v --remove-orphans
