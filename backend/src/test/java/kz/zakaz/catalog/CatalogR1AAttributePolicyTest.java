@@ -56,6 +56,10 @@ class CatalogR1AAttributePolicyTest {
         temp.reviseDecimalBounds(BigDecimal.ZERO,new BigDecimal("30"));
         assertThat(fact.getDefinitionRevision()).isEqualTo(1L);
         assertThat(fact.getCanonicalValue()).isEqualTo("-18");
+        assertThatThrownBy(() -> CatalogPublicationPolicy.verify(category,List.of(rule),List.of(fact)))
+            .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("stale");
+        // An already published SKU must remain readable under the older pinned revision.
+        listing.publish();
         assertThatCode(() -> CatalogPublicationPolicy.verify(category,List.of(rule),List.of(fact)))
             .doesNotThrowAnyException();
     }
