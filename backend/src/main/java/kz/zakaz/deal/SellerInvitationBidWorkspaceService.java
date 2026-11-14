@@ -208,13 +208,34 @@ public class SellerInvitationBidWorkspaceService {
               WHERE seller_id=? AND city=? AND active=true)
             """,Boolean.class,seller,header.city()));
         var origins=jdbc.query("""
-            SELECT id,city,region_code,address_line,location_type,
-                   public_pickup_enabled
-            FROM inventory_location
-            WHERE seller_id=? AND active=true ORDER BY id LIMIT 40
+            SELECT origin.id,origin.city,origin.region_code,origin.address_line,
+                   origin.location_type,origin.public_pickup_enabled
+            FROM inventory_location origin
+            WHERE origin.seller_id=? AND origin.active=true
+            -- Show usable full-stock locations before empty or unrelated origins.
+            ORDER BY CASE WHEN (?=true OR
+                    (origin.public_pickup_enabled=true AND origin.city=?))
+                THEN (
+                    SELECT COUNT(*) FROM buyer_demand_line_snapshot needed
+                    WHERE needed.demand_id=? AND EXISTS (
+                        SELECT 1 FROM catalog_listing listing
+                        JOIN catalog_product product ON product.id=listing.product_id
+                        JOIN catalog_category category ON category.id=product.category_id
+                        JOIN catalog_sku sku ON sku.listing_id=listing.id
+                        JOIN inventory_balance balance
+                            ON balance.seller_id=origin.seller_id
+                           AND balance.location_id=origin.id
+                           AND balance.sku_id=sku.id
+                           AND balance.on_hand-balance.reserved>=needed.quantity
+                        WHERE listing.seller_id=origin.seller_id
+                          AND listing.product_id=needed.product_id
+                          AND listing.status='PUBLIC' AND category.active=true
+                          AND sku.sales_unit=needed.unit AND sku.tracking_mode='TRACKED')
+                ) ELSE -1 END DESC,origin.id
+            LIMIT 40
             """,(rs,i)->new OriginOption(rs.getObject(1,UUID.class),
                 rs.getString(2),rs.getString(3),rs.getString(4),rs.getString(5),
-                rs.getBoolean(6),delivers),seller);
+                rs.getBoolean(6),delivers),seller,delivers,header.city(),header.demandId());
         var lines=new ArrayList<RequestedLine>();
         for(var request:requested) {
             if(request.unit()==null)

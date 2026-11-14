@@ -474,6 +474,38 @@ class SellerInvitationBidWorkspacePostgresIT {
             Integer.class,f.demand())).isEqualTo(1);
     }
 
+
+    @Test void stockedOriginCannotBeHiddenBehindFortyEmptyLocations() throws Exception {
+        var f=fixture(new BigDecimal("5.000"),true,true);
+        for(int n=1;n<=41;n++) {
+            // Stable low UUIDs precede the random valid origin in PostgreSQL.
+            var empty=new UUID(0L,n);
+            assertThat(jdbc.update("""
+                INSERT INTO inventory_location(
+                    id,seller_id,code,name,region_code,region_name,city,
+                    address_line,location_type,public_pickup_enabled,active,version)
+                SELECT ?,seller_id,?,name,region_code,region_name,city,
+                    'Empty origin',location_type,false,true,0
+                FROM inventory_location WHERE id=?
+                """,empty,"EMPTY-"+n,f.origin())).isEqualTo(1);
+        }
+        var response=mvc.perform(get(quoteUrl(f))
+            .header("Authorization","Bearer "+f.sellerToken()))
+            .andExpect(status().isOk()).andReturn();
+        var availableOrigins=json.readTree(response.getResponse().getContentAsString())
+            .path("origins");
+        assertThat(availableOrigins).hasSize(40);
+        boolean stockedVisible=false;
+        for(var option:availableOrigins) {
+            if(f.origin().toString().equals(option.path("originLocationId").asText())) {
+                stockedVisible=true;
+            }
+        }
+        assertThat(stockedVisible)
+            .as("A valid invitation must expose at least one origin capable of the whole basket")
+            .isTrue();
+    }
+
     @Test void olderActiveInvitationRemainsUsableBeyondNewestHundredInboxRows() throws Exception {
         var f=fixture(new BigDecimal("5.000"),true,true);
         // Regression for previous preview code: listSellerInbox(seller,100)
