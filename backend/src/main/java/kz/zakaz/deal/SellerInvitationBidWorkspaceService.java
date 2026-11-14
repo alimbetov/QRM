@@ -228,7 +228,13 @@ public class SellerInvitationBidWorkspaceService {
                 WHERE l.seller_id=? AND l.status='PUBLIC' AND category.active=true
                   AND l.product_id=? AND sku.sales_unit=?
                   AND sku.tracking_mode='TRACKED'
-                ORDER BY sku.id LIMIT 20
+                ORDER BY COALESCE((
+                    SELECT MAX(stock.on_hand-stock.reserved)
+                    FROM inventory_balance stock
+                    JOIN inventory_location place ON place.id=stock.location_id
+                    WHERE stock.seller_id=l.seller_id
+                      AND stock.sku_id=sku.id AND place.active=true
+                ),0) DESC, sku.id LIMIT 20
                 """,(rs,i)->new Sku(rs.getObject(1,UUID.class),
                     rs.getString(2),rs.getBigDecimal(3)),
                 seller,request.productId(),request.unit());
