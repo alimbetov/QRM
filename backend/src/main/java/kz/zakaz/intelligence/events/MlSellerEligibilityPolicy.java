@@ -121,6 +121,7 @@ public final class MlSellerEligibilityPolicy {
         return Boolean.TRUE.equals(jdbc.queryForObject(
             "SELECT "+stockedOrigin("?","d.id","d.city")+
             " FROM buyer_demand_snapshot d WHERE d.id=?",
-            Boolean.class,sellerId,demandId));
+            // Both fullCatalogBasket and the origin predicate bind this seller.
+            Boolean.class,sellerId,sellerId,demandId));
     }
 }
