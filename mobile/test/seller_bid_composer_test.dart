@@ -48,6 +48,8 @@ void main(){
       return http.Response(jsonEncode({'bidId':bid}),201);
     });
     final api=ZakazApi('https://stage.example.test',client:client);
+    // Contract check outside widget error boundary pinpoints an invalid fixture.
+    expect((await api.sellerBidContext('seller-token',seller,invite))['demandId'],demand);
     await tester.pumpWidget(MaterialApp(home:SellerBidComposer(
       api:api,token:'seller-token',sellerId:seller,invitationId:invite)));
     await tester.pumpAndSettle();
