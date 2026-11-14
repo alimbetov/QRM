@@ -1,6 +1,6 @@
 # ML-R2-PARITY — Invitation eligibility aligned with seller commerce
 
-**Status:** implementation candidate, requires PostgreSQL CI and independent S2.
+**Status:** DB_VERIFIED on GREEN commit `7f8d9ca650290c96ff86cb472db38387158e0247`; independent S2 and production release still HOLD.
 **Branch:** `docs/adr-002-jpa-architecture-review`. Do not merge to `main`.
 
 ## Incident and reproducible regression
@@ -52,3 +52,19 @@ Run `mvn -B -f backend/pom.xml verify` on real PostgreSQL (Testcontainers);
 assert the four parity cases, missing consent, seller role, delayed ACK/replay,
 live stock revocation and the end-to-end SellerBid → order reservation path.
 Never convert a failing RED test into a disabled or weakened test.
+
+## Verified RED -> GREEN evidence (2026-11-14)
+
+- RED: `8d4c388f9bd534c14bd9201b75fe79551c40bad1`,
+  [PostgreSQL run](https://github.com/alimbetov/QRM/actions/runs/43560857223):
+  three actionable invitation parity assertions failed against the original
+  implementation, as expected.
+- GREEN: `7f8d9ca650290c96ff86cb472db38387158e0247`,
+  [Java+PostgreSQL run](https://github.com/alimbetov/QRM/actions/runs/43561956909):
+  Java unit 110/110 PASS, PostgreSQL 124/124 PASS, Flyway V1-V29 applied,
+  MlInvitationEligibilityParityPostgresIT 4/4, SellerInvitationBidWorkspacePostgresIT
+  12/12, JaCoCo generated. React, Flutter and staging configuration CI also passed
+  at that exact SHA.
+- No real seller-response prediction, label-ready ML dataset, Tribuo model
+  uplift, Keycloak browser/device E2E or independent S2 approval is implied.
+- Later commits in this shared branch require their own exact-SHA CI verification.
