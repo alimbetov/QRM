@@ -1,5 +1,5 @@
 pilot,subject,code,type,scope,unit,req,facet,match,rule
-A_FRUIT_VEG,FRESH_APPLE,CULTIVAR_CODE,ENUM,SKU,,C,Y,SELECTABLE_HARD,Сорт идентифицируется независимо от HCC; неизвестный не равен Гала
+A_FRUIT_VEG,FRESH_APPLE,VARIETY_CODE,ENUM,SKU,,C,Y,SELECTABLE_HARD,Сорт идентифицируется независимо от HCC; неизвестный не равен Гала
 A_FRUIT_VEG,FRESH_APPLE,GRADE_CODE,ENUM,SKU,,O,Y,SELECTABLE_HARD,Сортность только из утверждённого словаря и при наличии доказательств
 A_FRUIT_VEG,FRESH_APPLE,CALIBER_MM,DECIMAL,SKU,MM,O,Y,SELECTABLE_HARD,Только неотрицательный диапазон конкретного класса
 A_FRUIT_VEG,FRESH_APPLE,PACKAGE_TYPE,ENUM,SKU,,M,Y,INFO,BULK / BOX / BAG — способ продажи; не отдельная категория
@@ -27,8 +27,8 @@ B_FOOD,PASTEURIZED_MILK,EXPIRY_DATE,DATE,LOT,,C,Y,POLICY_GATE,При подтв�
 B_FOOD,PASTEURIZED_MILK,LOT_CODE,TEXT,LOT,,C,N,INFO,"Отдельная партия, не canonical товар"
 B_FOOD,PASTEURIZED_MILK,COLD_CHAIN_REQUIRED,BOOLEAN,SKU,,C,Y,POLICY_GATE,Проверенная необходимость температурного режима
 B_FOOD,PASTEURIZED_MILK,COMPLIANCE_CLAIM_STATUS,ENUM,LOT,,O,N,VERIFIED_ONLY,"Evidence проверяется, не автоматическое true"
-B_FOOD,FLOUR_HONEY,PACK_NET_MASS_KG,DECIMAL,SKU,KG,C,Y,HARD_FOR_CONVERSION,Мешок/банка с известной массой; отдельная цена за единицу продажи
-B_FOOD,FLOUR_HONEY,COUNTRY_ORIGIN_CODE,ENUM,LOT,,O,Y,SELECTABLE_HARD,Нет автоматического утверждения происхождения
+B_FOOD,FLOUR_HONEY,PACKAGE_NET_MASS_KG,DECIMAL,SKU,KG,C,Y,HARD_FOR_CONVERSION,Мешок/банка с известной массой; отдельная цена за единицу продажи
+B_FOOD,FLOUR_HONEY,ORIGIN_COUNTRY_CODE,ENUM,LOT,,O,Y,SELECTABLE_HARD,Нет автоматического утверждения происхождения
 C_ELECTRICAL,WALL_SOCKET,BRAND_CODE,ENUM,PRODUCT,,C,Y,SELECTABLE_HARD,Согласованный канонический бренд
 C_ELECTRICAL,WALL_SOCKET,MODEL_CODE,ENUM,PRODUCT,,C,Y,SELECTABLE_HARD,Не весь ассортимент требует модель бренда
 C_ELECTRICAL,WALL_SOCKET,RATED_VOLTAGE_V,DECIMAL,SKU,V,M,Y,SELECTABLE_HARD,Проверка диапазона 0..1000 по классу
