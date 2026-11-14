@@ -140,7 +140,7 @@ public class MlInvitationConsentService {
                          WHERE l.seller_id=inbox.seller_id AND l.city=d.city
                            AND l.active=true AND l.public_pickup_enabled=true)
               )
-            """+byInvitation+"""
+            """+" "+byInvitation+" "+"""
             ORDER BY inbox.delivered_at DESC,inbox.invitation_id DESC LIMIT ?
             """;
         return invitationId==null?
