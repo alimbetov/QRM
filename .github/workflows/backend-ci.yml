@@ -1,9 +1,9 @@
 name: Java 21 Backend
 on:
   push:
-    paths: ['backend/**', '.github/workflows/backend-ci.yml']
+    paths: ['backend/**', 'scripts/qa/**', '.github/workflows/backend-ci.yml']
   pull_request:
-    paths: ['backend/**', '.github/workflows/backend-ci.yml']
+    paths: ['backend/**', 'scripts/qa/**', '.github/workflows/backend-ci.yml']
 jobs:
   fast:
     runs-on: ubuntu-latest
@@ -15,6 +15,10 @@ jobs:
           java-version: '21'
           cache: maven
           cache-dependency-path: backend/pom.xml
+      - name: QA-00 — Flyway version collision regression
+        run: |
+          python3 -m unittest discover -s scripts/qa -p 'test_check_flyway_versions.py'
+          python3 scripts/qa/check_flyway_versions.py
       - run: mvn -B -f backend/pom.xml test
   postgres:
     runs-on: ubuntu-latest
@@ -26,6 +30,8 @@ jobs:
           java-version: '21'
           cache: maven
           cache-dependency-path: backend/pom.xml
+      - name: QA-00 — Flyway migration uniqueness preflight
+        run: python3 scripts/qa/check_flyway_versions.py
       - run: mvn -B -f backend/pom.xml verify
       - name: QA-02 — measure actual JaCoCo line/branch coverage
         run: python3 scripts/qa/jacoco_report.py
