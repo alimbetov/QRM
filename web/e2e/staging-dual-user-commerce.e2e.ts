@@ -64,8 +64,10 @@ test('P0: two Keycloak actors complete listing to confirmed reserved order in Re
     'Requires real HTTPS staging, Keycloak, PostgreSQL and autonomous invitation delivery');
   test.setTimeout(240_000);
   const fixture = seededIds();
-  const sellerContext = await browser.newContext();
-  const buyerContext = await browser.newContext();
+  const baseURL = need('STAGING_BASE_URL');
+  if (!baseURL.startsWith('https://')) throw new Error('Real HTTPS staging is required');
+  const sellerContext = await browser.newContext({baseURL});
+  const buyerContext = await browser.newContext({baseURL});
   try {
     const seller = await sellerContext.newPage();
     const buyer = await buyerContext.newPage();
