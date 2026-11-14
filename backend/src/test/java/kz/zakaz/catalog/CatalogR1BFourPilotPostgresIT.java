@@ -226,4 +226,38 @@ class CatalogR1BFourPilotPostgresIT {
             "SELECT count(*) FROM catalog_product WHERE id=?",Integer.class,product))
             .isEqualTo(1);
     }
+    @Test void oneGlobalAttributeDefinitionIsReusableAcrossPilotCategoriesWithoutFactLeakage() {
+        UUID electrical=category("77000000000000000000","PHYSICAL","Electrical pilot");
+        UUID electronics=category("78000000000000000000","PHYSICAL","Electronics pilot");
+        UUID sharedColor=attribute("PILOT_GLOBAL_COLOR","ENUM",null,null,null);
+        rule(electrical,sharedColor,false);
+        rule(electronics,sharedColor,false);
+        option(sharedColor,"BLACK");
+        option(sharedColor,"WHITE");
+
+        Item socket=item(electrical,product(electrical,"Electrical socket"),"BLACK-SOCKET","PCS");
+        Item phone=item(electronics,product(electronics,"Smartphone"),"WHITE-PHONE","PCS");
+        fact(socket.sku(),sharedColor,"BLACK");
+        fact(phone.sku(),sharedColor,"WHITE");
+        publish(socket);
+        publish(phone);
+
+        assertThat(jdbc.queryForObject("""
+            SELECT count(*) FROM catalog_attribute_definition
+            WHERE code='PILOT_GLOBAL_COLOR'
+            """,Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("""
+            SELECT count(*) FROM catalog_category_attribute_rule
+            WHERE attribute_id=?
+            """,Integer.class,sharedColor)).isEqualTo(2);
+        assertThat(facts.resolveForSeller(socket.seller(),socket.sku()).attributes())
+            .containsEntry("PILOT_GLOBAL_COLOR","BLACK")
+            .doesNotContainEntry("PILOT_GLOBAL_COLOR","WHITE");
+        assertThat(facts.resolveForSeller(phone.seller(),phone.sku()).attributes())
+            .containsEntry("PILOT_GLOBAL_COLOR","WHITE")
+            .doesNotContainEntry("PILOT_GLOBAL_COLOR","BLACK");
+        assertThatThrownBy(() -> facts.resolveForSeller(socket.seller(),phone.sku()))
+            .isInstanceOf(SecurityException.class);
+    }
+
 }
