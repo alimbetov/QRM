@@ -26,7 +26,7 @@ Never count Playwright --list, a test file, a mock JWT, or a green unrelated wor
 | Seller publishes stocked DRAFT Listing as PUBLIC | SellerWorkspace; staging-seller.e2e.ts | CODE_PRESENT, live browser unverified |
 | Buyer discovers Listing and creates BuyerDemand | BuyerFlow; AuthenticatedDealHttpPostgresIT | Existing PostgreSQL tests, exact-SHA recheck required |
 | Buyer/seller explicit invitation consent | BuyerInvitationSharing, SellerInvitationPreference | Web unit checks; live auth unverified |
-| Matching and invitation generation | MlSellerInvitationService.evaluate; internal dispatcher | **P0 BLOCKED:** no demonstrated autonomous candidate finder/scheduler |
+| Matching and invitation generation | MlInvitationCandidateScanner + MlInvitationCandidateScanConfiguration schedule + ML dispatcher | Candidate scan is CODE_PRESENT and covered by PostgreSQL source tests; autonomous *real staging* delivery still UNVERIFIED |
 | Seller submits compatible own SKU quote | SellerInvitationBidWorkspacePostgresIT, React/Flutter composers | DB tests exist; live seller UI unverified |
 | Buyer accepts one bid to PLACED | BidAcceptancePostgresIT | DB test exists; live two-browser unverified |
 | Seller confirms to one reservation | OrderConfirmationPostgresIT; enhanced PostgreSQL test | Additional assertions committed, exact-SHA CI pending |
@@ -51,13 +51,13 @@ The SQL checks exact synthetic 125000.50 KZT amount, status CONFIRMED, one RESER
 
 - Former React failure at d154af943b8d814f100a9c14097e5d0243a5501c: 59 PASS / 1 FAIL, async consent error contract; https://github.com/alimbetov/QRM/actions/runs/43558207910
 - Web CI at 5fe29f189d77ccce424f14e679538258b07f0313: SUCCESS, including listing of real-staging Playwright declarations; https://github.com/alimbetov/QRM/actions/runs/43558922282
-- Flutter CI at 85a31b81ca9a6b68da04b9afdf947237d1a15cd3: FAIL, Dart syntax cascade; https://github.com/alimbetov/QRM/actions/runs/43559023806. Fix committed later; verify at new SHA.
+- Flutter CI at 85a31b81ca9a6b68da04b9afdf947237d1a15cd3: FAIL, Dart syntax cascade; https://github.com/alimbetov/QRM/actions/runs/43559023806. After syntax, widget test, and visible-receipt fixes, Flutter CI at c7deeaccf414b713ea49c93ddf26fe13295f0b7f reported SUCCESS: https://github.com/alimbetov/QRM/actions/runs/43559594140. This is NOT physical-device qualification.
 - Backend exact-SHA test run and every final current branch check: RECHECK REQUIRED.
 - Real Keycloak + PostgreSQL two-browser E2E: NOT RUN. No private staging instance, operator credentials, or physical devices were available in this execution.
 
 ## How to qualify on isolated staging
 
-Provision a fresh synthetic fixture as described in deploy/staging/README.md and real verified Keycloak buyer + seller. Keep the feature flags OFF outside explicitly authorized private staging. Required flags for the backend and UI are seller workspace, seller studio, seller bid workspace, ML-R2 consent API, ML internal delivery, and internal invitation evaluation. Enabling the evaluator flag does not itself implement an autonomous scheduler.
+Provision a fresh synthetic fixture as described in deploy/staging/README.md and real verified Keycloak buyer + seller. Keep the feature flags OFF outside explicitly authorized private staging. Required flags for the backend and UI are seller workspace, seller studio, seller bid workspace, ML-R2 consent API, ML internal delivery, and internal invitation evaluation. Enable both evaluator and candidate-scanner flags only on authorized staging. A scheduler class and PostgreSQL tests now exist; this does not prove the complete real UI delivery journey.
 
 Set these private operator-only environment variables on the staging machine:
 
@@ -95,7 +95,7 @@ The script requires Docker Compose access on the staging operator host for indep
 
 ## Defect register
 
-- **P0-INVITE-AUTO:** the continuous BuyerDemand-to-seller-inbox chain lacks proven autonomous candidate discovery and delivery. OPEN.
+- **P0-INVITE-AUTO-E2E:** autonomous discovery/scheduling has been added and PostgreSQL tests exist, but real buyer-to-seller inbox delivery through Keycloak/React remains UNVERIFIED. OPEN as an acceptance gate.
 - **P0-DEVICE-E2E:** real Android/iOS Keycloak and buyer/seller lifecycle not demonstrated. BLOCKED.
 - **P0-NETWORK-RETRY:** guarantee on an uncertain seller bid POST must be proven with durable idempotency and replay tests. OPEN until verified.
 - **FIX-FLUTTER-SYNTAX:** malformed regexp and duplicated class content; patch committed, verify new SHA CI.
