@@ -5,9 +5,11 @@
 **Репозиторий:** alimbetov/QRM  
 **Единственная рабочая ветка:** docs/adr-002-jpa-architecture-review; PR #2 Draft; main не изменять.  
 **Предмет:** от сельскохозяйственного сырья, фермерской продукции и продовольствия до повседневных потребительских товаров, профессиональных и бытовых услуг, цифровых предложений.  
-**Результат этого изменения:** ТЗ и стратегия, НЕ реализация схем БД/API/UI, НЕ импорт справочника, НЕ подтверждение готовности ML.
+**Статус исполнения мастер-ТЗ:** CAT-R0 аудит оформлен; CAT-R1A содержит тестируемую Flyway V28/Java-реализацию, но **S2 HOLD**. CAT-R1B: PostgreSQL-пилоты реализованы и проверены 4/4, а версионирование правил остаётся RED/HOLD. Массовый импорт, новые сервисные API/UI и production ML не утверждены.
 
-**CAT-R0 evidence (2026-11-14):** [аудит согласованности CAT-R0](CAT-R0-CONSISTENCY-AUDIT-2026-11-14.md); [технический контракт четырёх пилотов](CAT-R0-PILOT-ATTRIBUTE-CONTRACT.md); [машиночитаемая матрица атрибутов](cat/CAT-R0-PILOT-ATTRIBUTES.csv). Архитектурный baseline допущен для проектирования RED-тестов; реальные миграции, импорт, независимый S2, product/compliance approval и новые E2E — HOLD. Аудит выполнен по SHA `0c6580e812b985f426b14e8fd2fa00a936cf1932`.
+**CAT-R0 evidence (2026-11-14):** [аудит согласованности CAT-R0](CAT-R0-CONSISTENCY-AUDIT-2026-11-14.md); [технический контракт четырёх пилотов](CAT-R0-PILOT-ATTRIBUTE-CONTRACT.md); [машиночитаемая матрица атрибутов](cat/CAT-R0-PILOT-ATTRIBUTES.csv). Архитектурный baseline допущен для проектирования RED-тестов; новые CAT-R1B schema migrations, каталогный импорт, независимый S2, product/compliance approval и новые E2E — HOLD. Аудит выполнен по SHA `0c6580e812b985f426b14e8fd2fa00a936cf1932`.
+
+**CAT-R1A / CAT-R1B evidence (2026-11-14):** [CAT-R1A GREEN и пакет независимого S2](CAT-R1A-IMPLEMENTATION-S2-PACK.md); [S2 HOLD, дефекты ретроактивных правил и CAT-R1B RED с четырьмя PostgreSQL-пилотами](CAT-R1A-S2-HOLD-CAT-R1B-REVIEW-CONTRACT.md). Настоящий независимый APPROVE не получен; RED-прогоны зафиксированы, pending-тесты истории правил явно выключены до реализации после S2.
 
 
 ## 0. Место документа в действующей системе требований
@@ -337,3 +339,4 @@ Safety gates:
 **Change log**
 - 2026-11-14, v0.1: создано отдельное мастер-ТЗ для согласованного, расширяемого каталога агро-/продовольственных товаров, потребительских товаров, услуг и DIGITAL; сохранены HCC/Search/ML/Commerce инварианты, определены CAT-R0…R7, 22 acceptance-теста и 12 открытых решений.
 - 2026-11-14, CAT-R0: source/code consistency audit и четыре пилота формализованы в отдельных файлах; устранены конфликты дублирующихся глобальных attribute codes; подтверждён технический baseline только для RED-test design, не production approval.
+- 2026-11-14, CAT-R1A/R1B: CAT-R1A V28/Java/CI evidence, независимый S2 HOLD; 4 PostgreSQL pilot fixture PASS; 3 category-rule RED доказаны и сохранены с явным HOLD. Production rollout и CAT-R1B schema migrations не разрешены.
