@@ -404,5 +404,84 @@ class ZakazApi {
     return items;
   }
 
+
+  /// Seller-only invitation projection. No buyer identifiers or PII.
+  Future<Map<String,dynamic>> sellerBidContext(
+      String bearer,String sellerId,String invitationId) async {
+    _sellerId(sellerId);_sellerId(invitationId);
+    final result=await request('GET',
+      '/api/v1/sellers/'+sellerId+'/invitations/'+invitationId+'/quote-context',
+      bearer:_requireToken(bearer));
+    if(result['invitationId']!=invitationId ||
+       result['demandId'] is! String ||
+       !_sellerUuid.hasMatch(result['demandId'] as String) ||
+       result['destinationCity'] is! String ||
+       result['expiresAt'] is! String ||
+       result['nextRevision'] is! int ||
+       (result['nextRevision'] as int)<1 ||
+       result['lines'] is! List<dynamic> ||
+       (result['lines'] as List).isEmpty ||
+       result['origins'] is! List<dynamic>) {
+      throw const FormatException('Invalid seller bid context');
+    }
+    for(final raw in result['lines'] as List<dynamic>) {
+      if(raw is! Map<String,dynamic> ||
+         raw['productId'] is! String ||
+         !_sellerUuid.hasMatch(raw['productId'] as String) ||
+         raw['productName'] is! String ||
+         raw['quantity'] is! String ||
+         raw['unit'] is! String ||
+         raw['skus'] is! List<dynamic> ||
+         (raw['skus'] as List).isEmpty) {
+        throw const FormatException('Invalid seller bid request line');
+      }
+      for(final candidate in raw['skus'] as List) {
+        if(candidate is! Map<String,dynamic> ||
+           candidate['skuId'] is! String ||
+           !_sellerUuid.hasMatch(candidate['skuId'] as String) ||
+           candidate['code'] is! String ||
+           candidate['availableByOrigin'] is! Map<String,dynamic>) {
+          throw const FormatException('Invalid candidate SKU');
+        }
+      }
+    }
+    for(final origin in result['origins'] as List<dynamic>) {
+      if(origin is! Map<String,dynamic> ||
+         origin['originLocationId'] is! String ||
+         !_sellerUuid.hasMatch(origin['originLocationId'] as String) ||
+         origin['city'] is! String ||
+         origin['pickup'] is! bool || origin['delivery'] is! bool) {
+        throw const FormatException('Invalid seller bid origin');
+      }
+    }
+    return result;
+  }
+
+  /// A bid is accepted only on a real 201 response with a server-issued UUID.
+  Future<String> sellerSubmitInvitationBid(
+      String bearer,String sellerId,String invitationId,
+      Map<String,dynamic> payload) async {
+    _sellerId(sellerId);_sellerId(invitationId);
+    final path='/api/v1/sellers/'+sellerId+
+      '/invitations/'+invitationId+'/bid';
+    final req=http.Request('POST',url(path));
+    req.headers.addAll({
+      'Authorization':'Bearer '+_requireToken(bearer),
+      'Accept':'application/json',
+      'Content-Type':'application/json'
+    });
+    req.body=jsonEncode(payload);
+    final response=await http.Response.fromStream(
+      await client.send(req)).timeout(requestTimeout);
+    if(response.statusCode!=201)throw ZakazApiError(response.statusCode);
+    final result=jsonDecode(utf8.decode(response.bodyBytes));
+    if(result is! Map<String,dynamic> ||
+       result['bidId'] is! String ||
+       !_sellerUuid.hasMatch(result['bidId'] as String)) {
+      throw const FormatException('Invalid seller bid receipt');
+    }
+    return result['bidId'] as String;
+  }
+
   void dispose()=>client.close();
 }
