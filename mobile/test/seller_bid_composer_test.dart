@@ -51,9 +51,13 @@ void main(){
     await tester.pumpWidget(MaterialApp(home:SellerBidComposer(
       api:api,token:'seller-token',sellerId:seller,invitationId:invite)));
     await tester.pumpAndSettle();
+    final visibleText=tester.widgetList<Text>(find.byType(Text)).map((t)=>t.data??'').join(' | ');
+    expect(find.textContaining('Город:'),findsOneWidget,reason:visibleText);
     await tester.scrollUntilVisible(find.text('Отправить SellerBid'), 180);
     expect(find.text('Итого с доставкой: 120.00 KZT'),findsOneWidget);
     expect(bidCalls,0);
+    final visibleText=tester.widgetList<Text>(find.byType(Text)).map((t)=>t.data??'').join(' | ');
+    expect(find.textContaining('Город:'),findsOneWidget,reason:visibleText);
     await tester.scrollUntilVisible(find.text('Отправить SellerBid'), 180);
     await tester.tap(find.text('Отправить SellerBid'));
     await tester.pumpAndSettle();
@@ -76,6 +80,8 @@ void main(){
       api:ZakazApi('https://stage.example.test',client:client),
       token:'seller-token',sellerId:seller,invitationId:invite)));
     await tester.pumpAndSettle();
+    final visibleText=tester.widgetList<Text>(find.byType(Text)).map((t)=>t.data??'').join(' | ');
+    expect(find.textContaining('Город:'),findsOneWidget,reason:visibleText);
     await tester.scrollUntilVisible(find.text('Отправить SellerBid'), 180);
     await tester.tap(find.text('Отправить SellerBid'));
     await tester.pumpAndSettle();
