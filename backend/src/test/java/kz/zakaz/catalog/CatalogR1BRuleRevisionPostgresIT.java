@@ -38,11 +38,13 @@ class CatalogR1BRuleRevisionPostgresIT {
     private static final AtomicInteger rootCode = new AtomicInteger(76);
 
     private record Fixture(UUID category,UUID product,UUID listing,
-                           UUID sku,UUID seller,UUID attr) {}
+                           UUID sku,UUID seller,UUID attr,String storageCode) {}
 
     private Fixture publishedPhone() {
         UUID category=id(),product=id(),listing=id(),sku=id(),seller=id(),storage=id();
-        String hcc=String.format("%02d",rootCode.getAndIncrement())+"000000000000000000";
+        int sequence=rootCode.getAndIncrement();
+        String hcc=String.format("%02d",sequence)+"000000000000000000";
+        String storageCode="PILOT_R1B_STORAGE_GB_"+sequence;
         jdbc.update("""
           INSERT INTO catalog_category(id,hcc_code,product_type,label,active)
           VALUES (?,?,'PHYSICAL','Pilot phone',true)
@@ -61,8 +63,8 @@ class CatalogR1BRuleRevisionPostgresIT {
           """,sku,listing);
         jdbc.update("""
           INSERT INTO catalog_attribute_definition(id,code,kind,canonical_unit,active)
-          VALUES (?,'PILOT_R1B_STORAGE_GB','DECIMAL','GB',true)
-          """,storage);
+          VALUES (?,?,'DECIMAL','GB',true)
+          """,storage,storageCode);
         jdbc.update("""
           INSERT INTO catalog_category_attribute_rule
             (id,category_id,attribute_id,required,filterable)
@@ -75,13 +77,13 @@ class CatalogR1BRuleRevisionPostgresIT {
           """,id(),sku,storage);
         // A legacy already-public offer; no forced rewriting of historical facts.
         jdbc.update("UPDATE catalog_listing SET status='PUBLIC' WHERE id=?",listing);
-        return new Fixture(category,product,listing,sku,seller,storage);
+        return new Fixture(category,product,listing,sku,seller,storage,storageCode);
     }
 
     @Test void alreadyPublishedSkuMustStayReadableAfterFutureRequiredRule() {
         Fixture f=publishedPhone();
         assertThat(facts.resolveForSeller(f.seller(),f.sku()).attributes())
-            .containsEntry("PILOT_R1B_STORAGE_GB","256");
+            .containsEntry(f.storageCode(),"256");
         UUID color=id();
         jdbc.update("""
           INSERT INTO catalog_attribute_definition(id,code,kind,active)
