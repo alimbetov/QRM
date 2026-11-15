@@ -82,6 +82,8 @@ public class ApiSecurityConfig {
                     .hasAuthority("SCOPE_leads:read")
                 .requestMatchers(HttpMethod.PUT,"/api/v1/sellers/*/leads/*/status")
                     .hasAuthority("SCOPE_leads:read")
+                .requestMatchers(HttpMethod.GET,"/api/v1/sellers/*/catalog-products")
+                    .hasAuthority("SCOPE_catalog:write")
                 .requestMatchers(HttpMethod.GET,"/api/v1/sellers/*/listings")
                     .hasAuthority("SCOPE_catalog:write")
                 .requestMatchers(HttpMethod.GET,"/api/v1/sellers/*/listings/*")
