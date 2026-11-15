@@ -1,0 +1,2 @@
+.qr-photo-gallery{display:flex;gap:.8rem;overflow-x:auto;scroll-snap-type:x mandatory;padding:.4rem 0 1rem;overscroll-behavior-x:contain}
+.qr-photo-gallery img{display:block;object-fit:contain;background:#f1f3f5;border-radius:10px;max-height:420px;max-width:min(85vw,600px);width:auto;height:auto;scroll-snap-align:start}

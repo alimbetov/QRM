@@ -1,0 +1,15 @@
+# Local/staging secrets and evidence: never commit credentials or PII.
+deploy/staging/private.env
+deploy/staging/*.local
+deploy/staging/*.log
+deploy/staging/evidence/
+deploy/staging/fixtures.private.*
+**/.env
+**/.env.local
+**/target/
+**/node_modules/
+**/dist/
+**/.dart_tool/
+**/build/
+*.pem
+*.key

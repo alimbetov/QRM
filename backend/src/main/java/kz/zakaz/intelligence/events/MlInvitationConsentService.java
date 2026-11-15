@@ -1,0 +1,138 @@
+package kz.zakaz.intelligence.events;
+
+import java.util.*;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+/**
+ * ML-R2 explicit request-sharing and merchant opt-in policy.
+ * Missing preferences DENY; existing inbox items are hidden immediately
+ * when consent or live visibility is revoked. External Push is unsupported.
+ */
+@Service
+public class MlInvitationConsentService {
+    public record InboxItem(UUID invitationId,UUID demandId,
+                            java.time.Instant deliveredAt) {}
+    private final JdbcTemplate jdbc;
+    public MlInvitationConsentService(JdbcTemplate jdbc) {this.jdbc=jdbc;}
+
+    @Transactional
+    public void setDemandSharing(UUID verifiedBuyer,UUID demandId,boolean enabled) {
+        Objects.requireNonNull(verifiedBuyer);
+        Objects.requireNonNull(demandId);
+        Integer owned=jdbc.queryForObject("""
+            SELECT count(*) FROM buyer_demand_snapshot WHERE id=? AND buyer_id=?
+            """,Integer.class,demandId,verifiedBuyer);
+        if(owned==null||owned!=1)
+            throw new AccessDeniedException("Buyer does not own demand");
+        if(enabled) {
+            Boolean active=jdbc.queryForObject("""
+                SELECT expires_at>clock_timestamp() AND NOT EXISTS(
+                    SELECT 1 FROM bid_acceptance WHERE demand_id=?)
+                FROM buyer_demand_snapshot WHERE id=?
+                """,Boolean.class,demandId,demandId);
+            if(!Boolean.TRUE.equals(active))
+                throw new IllegalStateException("Cannot share expired or accepted demand");
+        }
+        jdbc.update("""
+            INSERT INTO ml_buyer_demand_invitation_consent(
+                demand_id,buyer_id,enabled,updated_at)
+            VALUES (?,?,?,clock_timestamp())
+            ON CONFLICT(demand_id) DO UPDATE
+              SET enabled=EXCLUDED.enabled,updated_at=clock_timestamp()
+            WHERE ml_buyer_demand_invitation_consent.buyer_id=EXCLUDED.buyer_id
+            """,demandId,verifiedBuyer,enabled);
+    }
+
+    @Transactional
+    public void setSellerInApp(UUID verifiedSeller,boolean enabled) {
+        Objects.requireNonNull(verifiedSeller);
+        jdbc.update("""
+            INSERT INTO ml_seller_invitation_preference(
+                seller_id,in_app_enabled,updated_at)
+            VALUES (?,?,clock_timestamp())
+            ON CONFLICT(seller_id) DO UPDATE
+                SET in_app_enabled=EXCLUDED.in_app_enabled,
+                    updated_at=clock_timestamp()
+            """,verifiedSeller,enabled);
+    }
+
+
+    /** Missing consent/pref is false; verified buyer ownership is mandatory. */
+    @Transactional(readOnly=true)
+    public boolean demandSharingEnabled(UUID verifiedBuyer,UUID demandId) {
+        Objects.requireNonNull(verifiedBuyer);
+        Objects.requireNonNull(demandId);
+        Integer owner=jdbc.queryForObject("""
+            SELECT count(*) FROM buyer_demand_snapshot WHERE id=? AND buyer_id=?
+            """,Integer.class,demandId,verifiedBuyer);
+        if(owner==null||owner!=1)
+            throw new AccessDeniedException("Buyer does not own demand");
+        var values=jdbc.query("""
+            SELECT enabled FROM ml_buyer_demand_invitation_consent
+            WHERE demand_id=? AND buyer_id=?
+            """,(rs,row)->rs.getBoolean(1),demandId,verifiedBuyer);
+        return !values.isEmpty()&&values.getFirst();
+    }
+
+    @Transactional(readOnly=true)
+    public boolean sellerInAppEnabled(UUID verifiedSeller) {
+        Objects.requireNonNull(verifiedSeller);
+        var values=jdbc.query("""
+            SELECT in_app_enabled FROM ml_seller_invitation_preference
+            WHERE seller_id=?
+            """,(rs,row)->rs.getBoolean(1),verifiedSeller);
+        return !values.isEmpty()&&values.getFirst();
+    }
+
+    @Transactional(readOnly=true)
+    public List<InboxItem> listSellerInbox(UUID verifiedSeller,int limit) {
+        Objects.requireNonNull(verifiedSeller);
+        if(limit<1||limit>100)throw new IllegalArgumentException("Invalid inbox limit");
+        return visibleSellerInbox(verifiedSeller,null,limit);
+    }
+
+    /**
+     * Exact invitation visibility, independent of inbox page size or sort order.
+     * An older delivered/consented invitation must not disappear just because a
+     * merchant has received more than 100 newer invitations.
+     */
+    @Transactional(readOnly=true)
+    public boolean isSellerInvitationVisible(UUID verifiedSeller,UUID invitationId) {
+        Objects.requireNonNull(verifiedSeller);
+        Objects.requireNonNull(invitationId);
+        return !visibleSellerInbox(verifiedSeller,invitationId,1).isEmpty();
+    }
+
+    private List<InboxItem> visibleSellerInbox(UUID verifiedSeller,
+                                                UUID invitationId,int limit) {
+        String byInvitation=invitationId==null?"":" AND inbox.invitation_id=?";
+        String sql="""
+            SELECT inbox.invitation_id,inbox.demand_id,inbox.delivered_at
+            FROM ml_seller_invitation_inbox inbox
+            JOIN buyer_demand_snapshot d ON d.id=inbox.demand_id
+            JOIN ml_buyer_demand_invitation_consent c
+              ON c.demand_id=d.id AND c.buyer_id=d.buyer_id AND c.enabled=true
+            JOIN ml_seller_invitation_preference p
+              ON p.seller_id=inbox.seller_id AND p.in_app_enabled=true
+            WHERE inbox.seller_id=? AND d.expires_at>clock_timestamp()
+              AND NOT EXISTS(SELECT 1 FROM bid_acceptance a WHERE a.demand_id=d.id)
+              AND EXISTS(SELECT 1 FROM seller_membership m
+                         WHERE m.seller_id=inbox.seller_id AND m.active=true
+                           AND m.role='SELLER_ADMIN')
+              AND """ + MlSellerEligibilityPolicy.stockedOrigin(
+                "inbox.seller_id","d.id","d.city") + """
+            """+" "+byInvitation+" "+"""
+            ORDER BY inbox.delivered_at DESC,inbox.invitation_id DESC LIMIT ?
+            """;
+        return invitationId==null?
+            jdbc.query(sql,(rs,i)->new InboxItem(rs.getObject("invitation_id",UUID.class),
+                rs.getObject("demand_id",UUID.class),
+                rs.getTimestamp("delivered_at").toInstant()),verifiedSeller,limit):
+            jdbc.query(sql,(rs,i)->new InboxItem(rs.getObject("invitation_id",UUID.class),
+                rs.getObject("demand_id",UUID.class),
+                rs.getTimestamp("delivered_at").toInstant()),verifiedSeller,invitationId,limit);
+    }
+}
