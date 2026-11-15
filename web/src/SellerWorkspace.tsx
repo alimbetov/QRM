@@ -9,6 +9,8 @@ import {
 import {formatPublishedPriceKzt,qrTokenPattern} from './qr-api';
 import SellerDealsPanel from './SellerDealsPanel';
 import {sellerAccounts,type SellerAccount} from './seller-deals-api';
+import {searchSellerCanonicalProducts,validProductSearch,
+  type SellerCanonicalProduct} from './seller-product-api';
 import './seller-workspace.css';
 
 const SELLER_STORAGE_KEY='zakaz.seller.workspace.selection.v1';
@@ -130,6 +132,9 @@ export default function SellerWorkspace() {
   const [error,setError]=useState('');
   const [success,setSuccess]=useState('');
   const [product,setProduct]=useState('');
+  const [productQuery,setProductQuery]=useState('');
+  const [productOptions,setProductOptions]=useState<SellerCanonicalProduct[]>([]);
+  const [productLookup,setProductLookup]=useState<'idle'|'loading'|'ready'|'error'>('idle');
   const [skuCode,setSkuCode]=useState('');
   const [unit,setUnit]=useState<string>('PCS');
   const [price,setPrice]=useState('');
@@ -180,6 +185,35 @@ export default function SellerWorkspace() {
     return ()=>{active=false;};
   },[enabled,user,loadPage]);
 
+  // Search existing, including not-yet-published canonical products. The
+  // identity-scoped API returns only active physical categories; never infer
+  // productId from another seller's public listing.
+  useEffect(()=>{
+    if(!enabled||!user||!sellerId||!validProductSearch(productQuery)){
+      setProductOptions([]);setProductLookup('idle');
+      return;
+    }
+    const controller=new AbortController();
+    setProductLookup('loading');
+    const timer=window.setTimeout(()=>{
+      searchSellerCanonicalProducts(sellerId,user.access_token,productQuery,
+          controller.signal).then(options=>{
+        if(!controller.signal.aborted){
+          setProductOptions(options);setProductLookup('ready');
+        }
+      }).catch(()=>{
+        if(!controller.signal.aborted){
+          setProductOptions([]);setProductLookup('error');
+        }
+      });
+    },300);
+    return ()=>{window.clearTimeout(timer);controller.abort();};
+  },[enabled,user,sellerId,productQuery]);
+
+  useEffect(()=>{
+    setProduct('');setProductQuery('');setProductOptions([]);
+  },[sellerId]);
+
   async function connect(event:FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if(!user||!uuid.test(sellerInput)){setError('Укажите идентификатор продавца (UUID).');return;}
@@ -198,7 +232,7 @@ export default function SellerWorkspace() {
         productId:product,skuCode:skuCode.trim(),unit,trackingMode:'TRACKED',
         publicPriceKzt:price.trim()||null
       });
-      setProduct('');setSkuCode('');setPrice('');
+      setProduct('');setProductQuery('');setSkuCode('');setPrice('');
       setSuccess('Черновик создан в PostgreSQL. Теперь можно загрузить фото и опубликовать.');
       await loadPage(sellerId,user.access_token,0);
     }catch{setError('Не удалось создать черновик. Нужен активный канонический физический товар и права редактора каталога.');}
@@ -262,9 +296,31 @@ export default function SellerWorkspace() {
         <p className="seller-hint">R1: выбирается уже существующий канонический физический товар.
           Свободное создание HCC и новых справочников продавцу недоступно.</p>
         <form onSubmit={create} className="seller-form">
-          <label>Канонический Product ID
-            <input value={product} onChange={e=>setProduct(e.target.value)}
-              placeholder="UUID товара" required/></label>
+          <label>Поиск канонического товара
+            <input aria-label="Поиск канонического товара" value={productQuery}
+              onChange={e=>{setProductQuery(e.target.value);setProduct('');}}
+              placeholder="Начните вводить название товара" maxLength={80}/></label>
+          <label>Канонический товар
+            <select aria-label="Канонический товар" value={product}
+              onChange={e=>setProduct(e.target.value)} required>
+              <option value="">Выберите товар из справочника</option>
+              {productOptions.map(item=><option key={item.id} value={item.id}>
+                {item.name} · {item.categoryLabel} · HCC {item.categoryCode}
+              </option>)}
+            </select>
+          </label>
+          {productLookup==='loading'&&<p className="seller-hint" role="status">
+            Ищем товары в справочнике…
+          </p>}
+          {productLookup==='ready'&&productOptions.length===0&&
+            <p className="seller-hint" role="status">
+              Подходящих товаров нет. Создание канонического товара доступно только администратору каталога.
+            </p>}
+          {productLookup==='error'&&<p className="seller-error" role="alert">
+            Поиск не выполнен. Проверьте доступ и соединение с сервером.
+          </p>}
+          {productLookup==='idle'&&
+            <p className="seller-hint">Для поиска введите минимум 2 символа. UUID вводить не требуется.</p>}
           <label>Код SKU
             <input value={skuCode} maxLength={80}
               onChange={e=>setSkuCode(e.target.value)} placeholder="Например, DRILL-001" required/></label>
@@ -275,7 +331,9 @@ export default function SellerWorkspace() {
           <label>Публичная цена за единицу, ₸ (необязательно)
             <input value={price} onChange={e=>setPrice(e.target.value)}
               inputMode="decimal" placeholder="125000.50"/></label>
-          <button type="submit" disabled={busy}>Создать черновик и SKU</button>
+          <button type="submit" disabled={busy||!uuid.test(product)}>
+            Создать черновик и SKU
+          </button>
         </form>
       </section>}
       {sellerId&&<section className="seller-panel">
