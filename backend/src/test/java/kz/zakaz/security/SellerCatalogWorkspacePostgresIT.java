@@ -72,7 +72,10 @@ class SellerCatalogWorkspacePostgresIT {
 
     @Test void catalogEditorFindsUnpublishedCanonicalProductWithoutGuessingId() throws Exception {
         UUID seller=UUID.randomUUID(),hiddenCategoryProduct=product();
-        var category=products.findById(hiddenCategoryProduct).orElseThrow().getCategory();
+        UUID categoryId=jdbc.queryForObject(
+            "SELECT category_id FROM catalog_product WHERE id=?",
+            UUID.class,hiddenCategoryProduct);
+        var category=categories.findById(categoryId).orElseThrow();
         String uniqueName="Rare seller widget "+UUID.randomUUID().toString().substring(0,8);
         var eligible=products.saveAndFlush(CanonicalProduct.create(category,uniqueName));
         // A canonical product exists before any seller creates a Listing.
