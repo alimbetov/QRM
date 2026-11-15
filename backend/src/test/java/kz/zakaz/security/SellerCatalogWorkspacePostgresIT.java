@@ -70,6 +70,60 @@ class SellerCatalogWorkspacePostgresIT {
                 .claim("scope","catalog:write").build());
     }
 
+    @Test void catalogEditorFindsUnpublishedCanonicalProductWithoutGuessingId() throws Exception {
+        UUID seller=UUID.randomUUID(),hiddenCategoryProduct=product();
+        var category=products.findById(hiddenCategoryProduct).orElseThrow().getCategory();
+        String uniqueName="Rare seller widget "+UUID.randomUUID().toString().substring(0,8);
+        var eligible=products.saveAndFlush(CanonicalProduct.create(category,uniqueName));
+        // A canonical product exists before any seller creates a Listing.
+        assertThat(jdbc.queryForObject(
+            "SELECT count(*) FROM catalog_listing WHERE product_id=?",
+            Integer.class,eligible.getId())).isZero();
+        authenticate(seller);
+        String url="/api/v1/sellers/"+seller+"/catalog-products";
+        mvc.perform(get(url).param("query",uniqueName)
+                .header("Authorization","Bearer signed"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].id").value(eligible.getId().toString()))
+            .andExpect(jsonPath("$[0].name").value(uniqueName))
+            .andExpect(jsonPath("$[0].categoryCode").value(category.getHccCode()))
+            .andExpect(jsonPath("$[0].categoryLabel").isNotEmpty())
+            .andExpect(jsonPath("$[0].sellerId").doesNotExist());
+        // The product shown by the selector can actually be drafted using the
+        // same protected real PostgreSQL route, without a manual UUID input.
+        mvc.perform(post("/api/v1/sellers/"+seller+"/listings")
+                .header("Authorization","Bearer signed")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body(eligible.getId(),"250.50")))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.productId").value(eligible.getId().toString()));
+    }
+
+    @Test void catalogPickerRejectsForeignAnonymousAndInvalidSearches() throws Exception {
+        UUID seller=UUID.randomUUID(),foreign=UUID.randomUUID();
+        authenticate(seller);
+        String url="/api/v1/sellers/"+seller+"/catalog-products";
+        mvc.perform(get(url).param("query","widget"))
+            .andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/v1/sellers/"+foreign+"/catalog-products")
+                .param("query","widget")
+                .header("Authorization","Bearer signed"))
+            .andExpect(status().isForbidden());
+        for(String invalid:List.of("x","%","a_b","ab%","a".repeat(81))) {
+            mvc.perform(get(url).param("query",invalid)
+                    .header("Authorization","Bearer signed"))
+                .andExpect(status().isBadRequest());
+        }
+        when(decoder.decode(anyString())).thenReturn(
+            Jwt.withTokenValue("signed").header("alg","RS256")
+                .issuer("https://idp.example.test").subject("merchant-"+seller)
+                .claim("aud",List.of("zakaz-api"))
+                .claim("scope","deal:bid").build());
+        mvc.perform(get(url).param("query","widget")
+                .header("Authorization","Bearer signed"))
+            .andExpect(status().isForbidden());
+    }
+
     @Test void postDraftIsAtomicWithSkuAndExactPriceInPostgresql() throws Exception {
         UUID product=product(),seller=UUID.randomUUID();
         authenticate(seller);
