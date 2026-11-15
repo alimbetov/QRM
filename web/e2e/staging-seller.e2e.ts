@@ -16,6 +16,7 @@ test('seller logs in, creates own draft SKU, publishes and opens stable QR',asyn
   }
   const sellerId=required('STAGING_SELLER_ID');
   const productId=required('STAGING_CANONICAL_PRODUCT_ID');
+  const productName=required('STAGING_CANONICAL_PRODUCT_NAME');
   const username=required('STAGING_SELLER_BROWSER_USERNAME');
   const password=required('STAGING_SELLER_BROWSER_PASSWORD');
 
@@ -32,7 +33,12 @@ test('seller logs in, creates own draft SKU, publishes and opens stable QR',asyn
   await page.getByRole('button',{name:'Проверить доступ и загрузить'}).click();
   await expect(page.getByRole('heading',{name:'Мои объявления'})).toBeVisible();
   const sku='R1-BROWSER-'+Date.now();
-  await page.getByRole('textbox',{name:'Канонический Product ID'}).fill(productId);
+  // Search the real protected canonical dictionary. The id comes from the
+  // configured fixture only to assert identity, never from a pasted UI value.
+  await page.getByRole('textbox',{name:'Поиск канонического товара'}).fill(productName);
+  const picker=page.getByRole('combobox',{name:'Канонический товар'});
+  await expect(picker.locator('option[value="'+productId+'"]')).toHaveCount(1);
+  await picker.selectOption(productId);
   await page.getByRole('textbox',{name:'Код SKU'}).fill(sku);
   await page.getByRole('textbox',{name:/Публичная цена за единицу/}).fill('125000.50');
   await page.getByRole('button',{name:'Создать черновик и SKU'}).click();
